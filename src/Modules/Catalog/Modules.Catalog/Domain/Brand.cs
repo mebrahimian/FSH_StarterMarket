@@ -13,6 +13,7 @@ public sealed class Brand : AggregateRoot<Guid>, ISoftDeletable
 
     // Soft-delete metadata, set by AuditableEntitySaveChangesInterceptor on dbContext.Remove(). A
     // BaseDbContext global query filter hides deleted rows; use IgnoreQueryFilters() for trash views.
+    //
     public bool IsDeleted { get; private set; }
     public DateTimeOffset? DeletedOnUtc { get; private set; }
     public string? DeletedBy { get; private set; }
