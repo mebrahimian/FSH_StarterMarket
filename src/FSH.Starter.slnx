@@ -98,4 +98,8 @@
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
   </Folder>
+  <Folder Name="/_SystemDocument/">
+    <File Path="../docs/00-ProjectContext.md" />
+    <File Path="../docs/01-Architecture.md" />
+  </Folder>
 </Solution>

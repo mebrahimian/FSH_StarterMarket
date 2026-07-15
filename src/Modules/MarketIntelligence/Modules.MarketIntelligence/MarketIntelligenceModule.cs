@@ -2,8 +2,9 @@
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
-using FSH.Modules.Files.Contracts;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
+using FSH.Modules.MarketIntelligence.Data;
+using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -16,7 +17,7 @@ using Microsoft.Extensions.Hosting;
 namespace FSH.Modules.MarketIntelligence
 {
 #pragma warning disable S2094 // Empty classes should not be used
-    public class MarketIntelligenceModule :IModule
+    public class MarketIntelligenceModule : IModule
     {
         public void ConfigureServices(IHostApplicationBuilder builder)
         {
@@ -31,8 +32,36 @@ namespace FSH.Modules.MarketIntelligence
 
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
-                    name: "db:catalog",
+                    name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
+        }
+        public void ConfigureMiddleware(IApplicationBuilder app)
+        {
+            // No custom middleware needed
+        }
+
+        public void MapEndpoints(IEndpointRouteBuilder endpoints)
+        {
+            ArgumentNullException.ThrowIfNull(endpoints);
+
+            var versionSet = endpoints.NewApiVersionSet()
+                .HasApiVersion(new ApiVersion(1))
+                .ReportApiVersions()
+                .Build();
+
+            var group = endpoints
+                .MapGroup("api/v{version:apiVersion}/marketintelligence")
+                .WithTags("MarketIntelligence")
+                .WithApiVersionSet(versionSet)
+                .RequireAuthorization();
+
+            // Trash routes registered first so the literal `/trash` segment wins
+            // over the catch-all `/{id:guid}`.
+           
+            group.MapSearchDisclosuresEndpoint();
+
+                      
+
         }
 
     }
