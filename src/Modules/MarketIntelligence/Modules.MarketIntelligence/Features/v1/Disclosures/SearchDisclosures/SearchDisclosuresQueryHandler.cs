@@ -19,13 +19,14 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         int size = query.PageSize is < 1 or > 200 ? 20 : query.PageSize;
 
         var q = dbContext.Disclosures.AsNoTracking().AsQueryable();
+        
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             string term = query.Search.Trim();
             q = q.Where(b =>
-                EF.Functions.ILike(b.Name, $"%{term}%") ||
-                EF.Functions.ILike(b.Slug, $"%{term}%"));
+                    b.Name.Contains(term) ||
+                    b.Slug.Contains(term));
         }
 
         q = ApplySort(q, query.SortBy, query.SortDir);

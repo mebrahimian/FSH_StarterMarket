@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using FSH.Modules.MarketIntelligence.Services.Codal;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -28,7 +29,9 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddHeroDbContext<MarketIntelligenceDbContext>();
             builder.Services.AddScoped<IDbInitializer, MarketIntelligenceDbInitializer>();
 
-            
+            builder.Services.AddHttpClient<ICodalClient, CodalClient>();
+
+            builder.Services.AddSingleton<ICodalCollectorState, InMemoryCodalCollectorState>();
 
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(

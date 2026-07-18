@@ -1,17 +1,18 @@
 ﻿using FSH.Framework.Web;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Auditing;
+using FSH.Modules.Billing;
+using FSH.Modules.Catalog;
 using FSH.Modules.Identity;
 using FSH.Modules.Identity.Contracts.v1.Tokens.TokenGeneration;
 using FSH.Modules.Identity.Features.v1.Tokens.TokenGeneration;
+using FSH.Modules.MarketIntelligence;
+using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.Multitenancy;
 using FSH.Modules.Multitenancy.Contracts.v1.GetTenantStatus;
-using FSH.Modules.Webhooks;
-using FSH.Modules.Billing;
-using FSH.Modules.Catalog;
-using FSH.Modules.MarketIntelligence;
-using FSH.Modules.Tickets;
 using FSH.Modules.Multitenancy.Features.v1.GetTenantStatus;
+using FSH.Modules.Tickets;
+using FSH.Modules.Webhooks;
 using System.Reflection;
 using System.Text.Json.Serialization;
 
@@ -55,7 +56,9 @@ builder.Services.AddMediator(o =>
         typeof(FSH.Modules.Billing.Contracts.BillingContractsMarker),
         typeof(FSH.Modules.Billing.BillingModule),
         typeof(FSH.Modules.Catalog.Contracts.CatalogContractsMarker),
+        typeof(FSH.Modules.MarketIntelligence.Contracts.MarketIntelligenceContractsMarker),
         typeof(FSH.Modules.Catalog.CatalogModule),
+        typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule),
         typeof(FSH.Modules.Tickets.Contracts.TicketsContractsMarker),
         typeof(FSH.Modules.Tickets.TicketsModule),
         typeof(FSH.Modules.Files.Contracts.v1.Commands.RequestUploadUrlCommand),
@@ -76,6 +79,7 @@ var moduleAssemblies = new Assembly[]
     typeof(BillingModule).Assembly,
     typeof(CatalogModule).Assembly,
     typeof(MarketIntelligenceModule).Assembly,
+    typeof(SearchDisclosuresQueryHandler).Assembly,
     typeof(TicketsModule).Assembly,
     typeof(FSH.Modules.Chat.ChatModule).Assembly,
     typeof(FSH.Modules.Notifications.NotificationsModule).Assembly,
