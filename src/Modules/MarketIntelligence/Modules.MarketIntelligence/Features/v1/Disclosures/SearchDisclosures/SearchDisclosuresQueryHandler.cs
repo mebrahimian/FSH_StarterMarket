@@ -25,8 +25,8 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         {
             string term = query.Search.Trim();
             q = q.Where(b =>
-                    b.Name.Contains(term) ||
-                    b.Slug.Contains(term));
+                    b.CompanyName.Contains(term) ||
+                    b.Title.Contains(term));
         }
 
         q = ApplySort(q, query.SortBy, query.SortDir);
@@ -41,7 +41,7 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         return new PagedResponse<DisclosureDto>
         {
             Items = disclosures
-                .Select(b => new DisclosureDto(b.Id, b.Name, b.Slug, b.Description, b.LogoUrl, b.CreatedAtUtc, b.UpdatedAtUtc, b.DeletedOnUtc, b.DeletedBy))
+                .Select(b => new DisclosureDto(b.Id, b.CompanyName, b.Title, b.Symbol, b.LetterCode, b.PublishDateTime, b.SentDateTime))
                 .ToList(),
             PageNumber = page,
             PageSize = size,
@@ -57,11 +57,11 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
         return (sortBy?.ToUpperInvariant()) switch
         {
-            "SLUG" => desc ? q.OrderByDescending(b => b.Slug) : q.OrderBy(b => b.Slug),
+            "SLUG" => desc ? q.OrderByDescending(b => b.Title) : q.OrderBy(b => b.Title),
             "CREATEDATUTC" or "CREATED" => desc
-                ? q.OrderByDescending(b => b.CreatedAtUtc)
-                : q.OrderBy(b => b.CreatedAtUtc),
-            _ => desc ? q.OrderByDescending(b => b.Name) : q.OrderBy(b => b.Name),
+                ? q.OrderByDescending(b => b.PublishDateTime)
+                : q.OrderBy(b => b.SentDateTime),
+            _ => desc ? q.OrderByDescending(b => b.Symbol) : q.OrderBy(b => b.Symbol),
         };
     }
 }

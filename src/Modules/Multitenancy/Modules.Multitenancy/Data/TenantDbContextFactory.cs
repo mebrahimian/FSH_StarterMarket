@@ -8,7 +8,6 @@ public sealed class TenantDbContextFactory : IDesignTimeDbContextFactory<TenantD
 {
     public TenantDbContext CreateDbContext(string[] args)
     {
-        // Design-time factory: read configuration (appsettings + env vars) to decide provider and connection.
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true)
@@ -16,11 +15,15 @@ public sealed class TenantDbContextFactory : IDesignTimeDbContextFactory<TenantD
             .AddEnvironmentVariables()
             .Build();
 
-        var provider = configuration["DatabaseOptions:Provider"] ?? "POSTGRESQL";
+        var provider = configuration["DatabaseOptions:Provider"] ?? "MSSQL";
+
         var connectionString = configuration["DatabaseOptions:ConnectionString"]
-            ?? "Host=localhost;Database=fsh-tenant;Username=postgres;Password=postgres";
+            ?? throw new InvalidOperationException(
+                "DatabaseOptions:ConnectionString is not configured.");
+
         var migrationsAssembly = configuration["DatabaseOptions:MigrationsAssembly"]
-            ?? "FSH.Starter.Migrations.PostgreSQL";
+            ?? "FSH.Starter.Migrations.MSSQL";
+
         var optionsBuilder = new DbContextOptionsBuilder<TenantDbContext>();
 
         switch (provider.ToUpperInvariant())
@@ -30,8 +33,16 @@ public sealed class TenantDbContextFactory : IDesignTimeDbContextFactory<TenantD
                     connectionString,
                     b => b.MigrationsAssembly(migrationsAssembly));
                 break;
+
+            case "MSSQL":
+                optionsBuilder.UseSqlServer(
+                    connectionString,
+                    b => b.MigrationsAssembly(migrationsAssembly));
+                break;
+
             default:
-                throw new NotSupportedException($"Database provider '{provider}' is not supported for TenantDbContext migrations.");
+                throw new NotSupportedException(
+                    $"Database provider '{provider}' is not supported for TenantDbContext migrations.");
         }
 
         return new TenantDbContext(optionsBuilder.Options);

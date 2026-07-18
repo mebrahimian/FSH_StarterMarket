@@ -1,75 +1,116 @@
-using FSH.Framework.Core.Domain;
+﻿using FSH.Framework.Core.Domain;
+using FSH.Framework.Shared.Persistence;
 
 namespace FSH.Modules.MarketIntelligence.Domain;
 
-public sealed class Disclosure : AggregateRoot<Guid>, ISoftDeletable
+/// <summary>
+/// Represents a disclosure published by Codal.
+/// This is a global market-data entity and is not tenant-specific.
+/// </summary>
+public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
 {
-    public string Name { get; private set; } = default!;
-    public string Slug { get; private set; } = default!;
-    public string? Description { get; private set; }
-    public string? LogoUrl { get; private set; }
-    public DateTime CreatedAtUtc { get; private set; }
-    public DateTime? UpdatedAtUtc { get; private set; }
-
-    // Soft-delete metadata, set by AuditableEntitySaveChangesInterceptor on dbContext.Remove(). A
-    // BaseDbContext global query filter hides deleted rows; use IgnoreQueryFilters() for trash views.
-    //
-    public bool IsDeleted { get; private set; }
-    public DateTimeOffset? DeletedOnUtc { get; private set; }
-    public string? DeletedBy { get; private set; }
+    /// <summary>
+    /// Codal tracing number. This is the unique identifier of a disclosure.
+    /// </summary>
+    public long TracingNo { get; private set; }
 
     /// <summary>
-    /// Reverses a soft delete. Idempotent: calling on a non-deleted Disclosure is a no-op.
+    /// Stock symbol associated with the disclosure.
     /// </summary>
-    public void Restore()
+    public string Symbol { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Company name published by Codal.
+    /// </summary>
+    public string CompanyName { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Disclosure title.
+    /// </summary>
+    public string Title { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Codal letter code.
+    /// </summary>
+    public string LetterCode { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// Date and time when the disclosure was sent to Codal.
+    /// </summary>
+    public DateTime SentDateTime { get; private set; }
+
+    /// <summary>
+    /// Date and time when the disclosure was published.
+    /// </summary>
+    public DateTime PublishDateTime { get; private set; }
+
+    public bool HasHtml { get; private set; }
+
+    public bool IsEstimate { get; private set; }
+
+    public string Url { get; private set; } = string.Empty;
+
+    public bool HasExcel { get; private set; }
+
+    public bool HasPdf { get; private set; }
+
+    public bool HasXbrl { get; private set; }
+
+    public bool HasAttachment { get; private set; }
+
+    public string? AttachmentUrl { get; private set; }
+
+    public string? PdfUrl { get; private set; }
+
+    public string? ExcelUrl { get; private set; }
+
+    public string? XbrlUrl { get; private set; }
+
+    public string? TedanUrl { get; private set; }
+
+    private Disclosure()
     {
-        if (!IsDeleted) return;
-        IsDeleted = false;
-        DeletedOnUtc = null;
-        DeletedBy = null;
-        UpdatedAtUtc = DateTime.UtcNow;
     }
 
-    private Disclosure() { }
-
-    public static Disclosure Create(string name, string? description, string? logoUrl)
+    public Disclosure(
+        long tracingNo,
+        string symbol,
+        string companyName,
+        string title,
+        string letterCode,
+        DateTime sentDateTime,
+        DateTime publishDateTime,
+        bool hasHtml,
+        bool isEstimate,
+        string url,
+        bool hasExcel,
+        bool hasPdf,
+        bool hasXbrl,
+        bool hasAttachment,
+        string? attachmentUrl,
+        string? pdfUrl,
+        string? excelUrl,
+        string? xbrlUrl,
+        string? tedanUrl)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        return new Disclosure
-        {
-            Id = Guid.CreateVersion7(),
-            Name = name.Trim(),
-            Slug = Slugify(name),
-            Description = description?.Trim(),
-            LogoUrl = logoUrl?.Trim(),
-            CreatedAtUtc = DateTime.UtcNow
-        };
-    }
-
-    public void Update(string name, string? description, string? logoUrl)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        Name = name.Trim();
-        Slug = Slugify(name);
-        Description = description?.Trim();
-        LogoUrl = logoUrl?.Trim();
-        UpdatedAtUtc = DateTime.UtcNow;
-    }
-
-    private static string Slugify(string value)
-    {
-        var trimmed = value.Trim();
-#pragma warning disable CA1308 // slug is canonical lowercase, not security-sensitive
-        var lower = trimmed.ToLowerInvariant();
-#pragma warning restore CA1308
-        var chars = lower.Select(c => char.IsLetterOrDigit(c) ? c : '-').ToArray();
-        var collapsed = new string(chars).Trim('-');
-        while (collapsed.Contains("--", StringComparison.Ordinal))
-        {
-            collapsed = collapsed.Replace("--", "-", StringComparison.Ordinal);
-        }
-        return collapsed;
+        TracingNo = tracingNo;
+        Symbol = symbol;
+        CompanyName = companyName;
+        Title = title;
+        LetterCode = letterCode;
+        SentDateTime = sentDateTime;
+        PublishDateTime = publishDateTime;
+        HasHtml = hasHtml;
+        IsEstimate = isEstimate;
+        Url = url;
+        HasExcel = hasExcel;
+        HasPdf = hasPdf;
+        HasXbrl = hasXbrl;
+        HasAttachment = hasAttachment;
+        AttachmentUrl = attachmentUrl;
+        PdfUrl = pdfUrl;
+        ExcelUrl = excelUrl;
+        XbrlUrl = xbrlUrl;
+        TedanUrl = tedanUrl;
     }
 }

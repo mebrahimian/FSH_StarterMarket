@@ -1,7 +1,6 @@
-using FSH.Modules.MarketIntelligence.Domain;
+﻿using FSH.Modules.MarketIntelligence.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
 
 namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 
@@ -11,16 +10,58 @@ public sealed class DisclosureConfiguration : IEntityTypeConfiguration<Disclosur
     {
         ArgumentNullException.ThrowIfNull(builder);
         builder.ToTable("Disclosures");
+
         builder.HasKey(x => x.Id);
-        builder.Property(x => x.Name).IsRequired().HasMaxLength(128);
-        builder.Property(x => x.Slug).IsRequired().HasMaxLength(160);
-        // Filtered unique index — only enforce uniqueness across live rows
-        // so a soft-deleted slug doesn't block recreating the same brand.
-        builder.HasIndex(x => x.Slug).IsUnique().HasFilter("\"IsDeleted\" = FALSE");
-        builder.Property(x => x.Description).HasMaxLength(1024);
-        builder.Property(x => x.LogoUrl).HasMaxLength(512);
-        builder.Property(x => x.DeletedBy).HasMaxLength(64);
-        builder.HasIndex(x => x.IsDeleted);
-        builder.Ignore(x => x.DomainEvents);
+
+        builder.Property(x => x.TracingNo)
+            .IsRequired();
+
+        builder.Property(x => x.Symbol)
+            .IsRequired()
+            .HasMaxLength(64);
+
+        builder.Property(x => x.CompanyName)
+            .IsRequired()
+            .HasMaxLength(256);
+
+        builder.Property(x => x.Title)
+            .IsRequired()
+            .HasMaxLength(1024);
+
+        builder.Property(x => x.LetterCode)
+            .IsRequired()
+            .HasMaxLength(64);
+
+        builder.Property(x => x.SentDateTime)
+            .IsRequired()
+            .HasMaxLength(32);
+
+        builder.Property(x => x.PublishDateTime)
+            .IsRequired()
+            .HasMaxLength(32);
+
+        builder.Property(x => x.Url)
+            .IsRequired()
+            .HasMaxLength(1024);
+
+        builder.Property(x => x.AttachmentUrl)
+            .HasMaxLength(1024);
+
+        builder.Property(x => x.PdfUrl)
+            .HasMaxLength(1024);
+
+        builder.Property(x => x.ExcelUrl)
+            .HasMaxLength(1024);
+
+        builder.Property(x => x.XbrlUrl)
+            .HasMaxLength(1024);
+
+        builder.Property(x => x.TedanUrl)
+            .HasMaxLength(1024);
+
+        builder.HasIndex(x => x.TracingNo)
+            .IsUnique();
+
+        builder.HasIndex(x => x.PublishDateTime);
     }
 }

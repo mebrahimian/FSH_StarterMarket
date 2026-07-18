@@ -67,6 +67,7 @@
   </Folder>
   <!--#endif -->
   <Folder Name="/Host/Migrations/">
+    <Project Path="Host/FSH.Starter.Migrations.MSSQL/FSH.Starter.Migrations.MSSQL.csproj" Id="5c895dbf-f94a-421f-9c81-bdeb1beafae1" />
     <Project Path="Host/FSH.Starter.Migrations.PostgreSQL/FSH.Starter.Migrations.PostgreSQL.csproj" Id="2c21903e-5dfa-47e0-82d9-1a0bd627fcbd" />
   </Folder>
   <Folder Name="/Tests/">
