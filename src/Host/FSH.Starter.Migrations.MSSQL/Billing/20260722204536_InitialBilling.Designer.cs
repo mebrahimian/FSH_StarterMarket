@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Billing
 {
     [DbContext(typeof(BillingDbContext))]
-    [Migration("20260718221205_InitialBilling")]
+    [Migration("20260722204536_InitialBilling")]
     partial class InitialBilling
     {
         /// <inheritdoc />
@@ -58,10 +58,8 @@ namespace FSH.Starter.Migrations.MSSQL.Billing
 
                     b.Property<string>("_overageRates")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("OverageRates")
-                        .HasDefaultValueSql("'{}'::jsonb");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OverageRates");
 
                     b.HasKey("Id");
 

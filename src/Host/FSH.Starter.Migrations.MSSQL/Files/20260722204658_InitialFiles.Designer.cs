@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Files
 {
     [DbContext(typeof(FilesDbContext))]
-    [Migration("20260718222656_InitialFiles")]
+    [Migration("20260722204658_InitialFiles")]
     partial class InitialFiles
     {
         /// <inheritdoc />
@@ -114,7 +114,7 @@ namespace FSH.Starter.Migrations.MSSQL.Files
                     b.HasIndex("StorageKey", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("UX_FileAsset_StorageKey")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("FileAssets", "files");
 

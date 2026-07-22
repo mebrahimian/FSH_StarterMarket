@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Notifications
 {
     [DbContext(typeof(NotificationsDbContext))]
-    [Migration("20260718223408_InitialNotifications")]
+    [Migration("20260722204848_InitialNotifications")]
     partial class InitialNotifications
     {
         /// <inheritdoc />
@@ -44,7 +44,7 @@ namespace FSH.Starter.Migrations.MSSQL.Notifications
 
                     b.Property<string>("MetadataJson")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("ReadAtUtc")
                         .HasColumnType("datetime2");

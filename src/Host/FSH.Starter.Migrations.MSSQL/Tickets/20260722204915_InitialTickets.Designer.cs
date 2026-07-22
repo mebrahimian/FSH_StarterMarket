@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Tickets
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20260718223616_InitialTickets")]
+    [Migration("20260722204915_InitialTickets")]
     partial class InitialTickets
     {
         /// <inheritdoc />
@@ -105,7 +105,7 @@ namespace FSH.Starter.Migrations.MSSQL.Tickets
                     b.HasIndex("Number", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Tickets_Number")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Tickets", "tickets");
 

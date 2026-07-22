@@ -102,7 +102,7 @@ namespace FSH.Starter.Migrations.MSSQL.Tickets
                     b.HasIndex("Number", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Tickets_Number")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Tickets", "tickets");
 

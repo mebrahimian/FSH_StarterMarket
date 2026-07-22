@@ -111,7 +111,7 @@ namespace FSH.Starter.Migrations.MSSQL.Files
                     b.HasIndex("StorageKey", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("UX_FileAsset_StorageKey")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("FileAssets", "files");
 

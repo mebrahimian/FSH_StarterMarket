@@ -53,9 +53,8 @@ namespace FSH.Starter.Migrations.PostgreSQL.MultiTenancy
                         .HasColumnType("character varying(64)");
 
                     b.Property<string>("QuotaLimits")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
+                        .IsRequired();
+                       
                     b.Property<DateTime>("ValidUpto")
                         .HasColumnType("timestamp with time zone");
 

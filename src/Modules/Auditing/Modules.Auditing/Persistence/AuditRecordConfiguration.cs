@@ -15,7 +15,7 @@ public class AuditRecordConfiguration : IEntityTypeConfiguration<AuditRecord>
         builder.Property(x => x.EventType).HasConversion<int>();
         builder.Property(x => x.Severity).HasConversion<byte>();
         builder.Property(x => x.Tags).HasConversion<long>();
-        builder.Property(x => x.PayloadJson).HasColumnType("jsonb");
+       
 
         // Hot-path index: default audits list filters on TenantId (Finbuckle) and orders by OccurredAtUtc DESC.
         // A composite over both lets PostgreSQL serve the paged top-N from an index-only walk.
@@ -39,19 +39,10 @@ public class AuditRecordConfiguration : IEntityTypeConfiguration<AuditRecord>
         // ILIKE search on Source / UserName: pg_trgm GIN indexes turn `%term%` from a seq scan into a probe.
         // (pg_trgm extension is created at the context level.)
         builder.HasIndex(x => x.Source)
-            .HasMethod("gin")
-            .HasOperators("gin_trgm_ops")
             .HasDatabaseName("IX_AuditRecords_Source_trgm");
         builder.HasIndex(x => x.UserName)
-            .HasMethod("gin")
-            .HasOperators("gin_trgm_ops")
             .HasDatabaseName("IX_AuditRecords_UserName_trgm");
 
-        // GIN over jsonb via jsonb_path_ops: supports containment (@>, ?) at far less disk than default jsonb_ops.
-        // ILIKE on raw JSON text still seq-scans — extract indexed columns (Source, UserName) or denormalize for that.
-        builder.HasIndex(x => x.PayloadJson)
-            .HasMethod("gin")
-            .HasOperators("jsonb_path_ops")
-            .HasDatabaseName("IX_AuditRecords_PayloadJson_gin");
+        
     }
 }

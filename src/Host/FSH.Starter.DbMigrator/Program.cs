@@ -1,6 +1,6 @@
-using System.Globalization;
-using System.Reflection;
+using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Shared.Multitenancy;
+using FSH.Framework.Shared.Persistence;
 using FSH.Framework.Web;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.Auditing;
@@ -14,17 +14,19 @@ using FSH.Modules.Multitenancy.Contracts;
 using FSH.Modules.Multitenancy.Contracts.v1.GetTenantStatus;
 using FSH.Modules.Multitenancy.Data;
 using FSH.Modules.Multitenancy.Features.v1.GetTenantStatus;
+using FSH.Modules.MarketIntelligence;
 using FSH.Modules.Tickets;
 using FSH.Modules.Webhooks;
 using FSH.Starter.DbMigrator;
 using FSH.Starter.DbMigrator.DemoSeed;
-using Finbuckle.MultiTenant.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
+using System.Reflection;
 
 // FSH DbMigrator — one-shot console that migrates every DB to head, optionally seeds, then exits 0/1.
 // Runs as a deployment step (not at API startup) so it can use an elevated-DDL connection string. Verbs: see MigratorCommand.HelpText.
@@ -93,6 +95,8 @@ builder.Services.AddMediator(o =>
         typeof(FSH.Modules.Billing.BillingModule),
         typeof(FSH.Modules.Catalog.Contracts.CatalogContractsMarker),
         typeof(FSH.Modules.Catalog.CatalogModule),
+        typeof(FSH.Modules.MarketIntelligence.Contracts.MarketIntelligenceContractsMarker),
+        typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule),
         typeof(FSH.Modules.Tickets.Contracts.TicketsContractsMarker),
         typeof(FSH.Modules.Tickets.TicketsModule),
         typeof(FSH.Modules.Files.Contracts.v1.Commands.RequestUploadUrlCommand),
@@ -113,6 +117,7 @@ var moduleAssemblies = new Assembly[]
     typeof(WebhooksModule).Assembly,
     typeof(BillingModule).Assembly,
     typeof(CatalogModule).Assembly,
+    typeof(MarketIntelligenceModule).Assembly,
     typeof(TicketsModule).Assembly,
     typeof(FSH.Modules.Chat.ChatModule).Assembly,
     typeof(FSH.Modules.Notifications.NotificationsModule).Assembly,
@@ -168,22 +173,32 @@ try
     // Postgres may still be initialising on cold-start; exp. backoff (≤2 min), then TimeoutException + exit 1.
     var connectionString = host.Services.GetRequiredService<IConfiguration>()["DatabaseOptions:ConnectionString"]
         ?? throw new InvalidOperationException("DatabaseOptions:ConnectionString is not configured.");
-    await Console.Out.WriteLineAsync("[migrator] waiting for postgres…").ConfigureAwait(false);
-    await PostgresMigratorLock.WaitForDatabaseAsync(connectionString, logger, CancellationToken.None)
-        .ConfigureAwait(false);
-    await Console.Out.WriteLineAsync("[migrator] postgres ready").ConfigureAwait(false);
+    var dbProvider = host.Services.GetRequiredService<IConfiguration>()["DatabaseOptions:Provider"]
+    ?? "MSSQL";
+
+    IAsyncDisposable? migratorLock = null;
+
+    if (dbProvider.Equals("POSTGRESQL", StringComparison.OrdinalIgnoreCase))
+    {
+        await Console.Out.WriteLineAsync("[migrator] acquiring advisory lock…")
+            .ConfigureAwait(false);
+
+        migratorLock = await PostgresMigratorLock
+            .AcquireAsync(connectionString, logger, CancellationToken.None)
+            .ConfigureAwait(false);
+
+        await Console.Out.WriteLineAsync("[migrator] advisory lock acquired")
+            .ConfigureAwait(false);
+    }
+    else
+    {
+        await Console.Out.WriteLineAsync("[migrator] MSSQL selected, skipping advisory lock.")
+            .ConfigureAwait(false);
+    }
 
     // Log the connected role + database so a misconfigured low-priv connection string surfaces now,
     // not as "permission denied for schema public" during MigrateAsync.
-    await LogConnectionIdentityAsync(connectionString).ConfigureAwait(false);
-
-    // ── Step 0b — acquire the advisory lock ──────────────────────────────
-    // Session-level lock: concurrent runs block here; auto-releases on connection close (no orphan on crash).
-    await Console.Out.WriteLineAsync("[migrator] acquiring advisory lock…").ConfigureAwait(false);
-    await using var migratorLock = await PostgresMigratorLock
-        .AcquireAsync(connectionString, logger, CancellationToken.None)
-        .ConfigureAwait(false);
-    await Console.Out.WriteLineAsync("[migrator] advisory lock acquired").ConfigureAwait(false);
+    await LogConnectionIdentityAsync(connectionString, dbProvider).ConfigureAwait(false);
 
     // ── Step 1 — tenant catalog ───────────────────────────────────────────
     // Always applied first: the per-tenant migrator below reads every tenant out of this database.
@@ -328,24 +343,41 @@ finally
     await host.StopAsync().ConfigureAwait(false);
 }
 
-static async Task LogConnectionIdentityAsync(string connectionString)
+static async Task LogConnectionIdentityAsync(string connectionString,string dbProvider)
 {
+
     // Best-effort identity probe — never fail the migrator over a logging step.
     try
     {
-        await using var conn = new Npgsql.NpgsqlConnection(connectionString);
-        await conn.OpenAsync().ConfigureAwait(false);
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT current_user, current_database()";
-        await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
-        if (await reader.ReadAsync().ConfigureAwait(false))
+       
+        if (dbProvider.Equals("MSSQL", StringComparison.OrdinalIgnoreCase))
         {
-            var role = reader.GetString(0);
-            var db = reader.GetString(1);
-            await Console.Out.WriteLineAsync(string.Create(
-                System.Globalization.CultureInfo.InvariantCulture,
-                $"[migrator] connected as role={role} database={db}")).ConfigureAwait(false);
+            await using var conn = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
+            await conn.OpenAsync();
+
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT SUSER_SNAME(), DB_NAME()";
+
+            var result = await cmd.ExecuteScalarAsync();
+            await Console.Out.WriteLineAsync($"[migrator] connected: {result}");
         }
+        else
+        {
+            await using var conn = new Npgsql.NpgsqlConnection(connectionString);
+            await conn.OpenAsync().ConfigureAwait(false);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT current_user, current_database()";
+            await using var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false);
+            if (await reader.ReadAsync().ConfigureAwait(false))
+            {
+                var role = reader.GetString(0);
+                var db = reader.GetString(1);
+                await Console.Out.WriteLineAsync(string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"[migrator] connected as role={role} database={db}")).ConfigureAwait(false);
+            }
+        }
+ //////////////////////////////
     }
 #pragma warning disable CA1031 // Logging-only path: any exception swallowed and reported, never fatal.
     catch (Exception ex)

@@ -54,7 +54,7 @@ namespace FSH.Starter.Migrations.MSSQL.MultiTenancy
 
                     b.Property<string>("QuotaLimits")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("ValidUpto")
                         .HasColumnType("datetime2");

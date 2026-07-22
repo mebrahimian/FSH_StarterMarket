@@ -18,7 +18,7 @@ internal sealed class NotificationConfiguration : IEntityTypeConfiguration<Notif
         builder.Property(x => x.Body).HasMaxLength(1024);
         builder.Property(x => x.Link).HasMaxLength(512);
         builder.Property(x => x.Source).HasMaxLength(64).IsRequired();
-        builder.Property(x => x.MetadataJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(x => x.MetadataJson).HasColumnType("nvarchar(max)").IsRequired();
         builder.Property(x => x.CreatedAtUtc).IsRequired();
         builder.Property(x => x.ReadAtUtc);
 

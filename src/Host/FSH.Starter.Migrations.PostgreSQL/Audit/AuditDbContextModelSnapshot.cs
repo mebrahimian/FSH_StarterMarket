@@ -39,8 +39,7 @@ namespace FSH.Starter.Migrations.PostgreSQL.Audit
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PayloadJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
+                        .IsRequired();
 
                     b.Property<DateTime>("ReceivedAtUtc")
                         .HasColumnType("timestamp with time zone");

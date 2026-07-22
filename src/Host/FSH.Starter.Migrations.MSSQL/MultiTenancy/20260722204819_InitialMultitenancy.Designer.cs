@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MultiTenancy
 {
     [DbContext(typeof(TenantDbContext))]
-    [Migration("20260718215413_InitialMultitenancy")]
+    [Migration("20260722204819_InitialMultitenancy")]
     partial class InitialMultitenancy
     {
         /// <inheritdoc />
@@ -57,7 +57,7 @@ namespace FSH.Starter.Migrations.MSSQL.MultiTenancy
 
                     b.Property<string>("QuotaLimits")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("ValidUpto")
                         .HasColumnType("datetime2");

@@ -3,8 +3,8 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
     <EnablePackageVersionOverride>true</EnablePackageVersionOverride>
-  </PropertyGroup>
-  <PropertyGroup>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
     <IsPublishable>true</IsPublishable>
     <!-- Pack default lives in Directory.Build.props (false; source-ownership model). -->
   </PropertyGroup>
@@ -132,5 +132,6 @@
          AccessViolation). Transitive pinning is enabled, so this entry alone bumps it.
          Remove once the SignalR backplane package depends on a patched version itself. -->
     <PackageVersion Include="MessagePack" Version="2.5.301" />
+      <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.8" />
   </ItemGroup>
 </Project>

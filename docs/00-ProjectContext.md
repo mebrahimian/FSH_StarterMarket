@@ -1,5 +1,24 @@
 # ProjectContext.md
 
+Important Emails :
+Hotmail --------> Ebrahimian_4585@hotmail.com           Pass:Khashayar76  -->GitHub, Microsoft, Every General 
+Gmail   --------> Ebrahimian.Behzad@gmail.com           Pass:Khashayar76  -->ChatGpt
+Gmail   --------> mebrahimian4585@gmail.com             Pass:Sadaf4585    -->Alternate Ebrahimian_4585@hotmail.com 
+==========================
+upgrade .net 
+PS D:\myappfsh.marketintelligence\src> dotnet tool update dotnet-ef --version 10.0.8
+===========================
+Migration List 
+dotnet ef migrations list --context "FSH.Modules.Identity.Data.IdentityDbContext" 
+                          --project ".\Host\FSH.Starter.Migrations.MSSQL\FSH.Starter.Migrations.MSSQL.csproj" 
+                          --startup-project ".\Host\FSH.Starter.Api\FSH.Starter.Api.csproj"
+==========================
+Update Database
+dotnet ef database update --context "FSH.Modules.Identity.Data.IdentityDbContext" 
+                          --project ".\Host\FSH.Starter.Migrations.MSSQL\FSH.Starter.Migrations.MSSQL.csproj" 
+                          --startup-project ".\Host\FSH.Starter.Api\FSH.Starter.Api.csproj"
+=========================
+
 # FSH.MarketIntelligence
 
 **Version:** 1.0  

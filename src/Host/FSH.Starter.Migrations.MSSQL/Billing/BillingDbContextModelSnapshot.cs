@@ -55,10 +55,8 @@ namespace FSH.Starter.Migrations.MSSQL.Billing
 
                     b.Property<string>("_overageRates")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("OverageRates")
-                        .HasDefaultValueSql("'{}'::jsonb");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OverageRates");
 
                     b.HasKey("Id");
 

@@ -126,12 +126,12 @@ namespace FSH.Starter.Migrations.MSSQL.Chat
                     b.HasIndex("DirectKey", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Channels_DirectKey")
-                        .HasFilter("\"Type\" = 0 AND \"IsDeleted\" = FALSE");
+                        .HasFilter("[Type] = 0 AND [IsDeleted] = 0");
 
                     b.HasIndex("Slug", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Channels_Slug")
-                        .HasFilter("\"Slug\" IS NOT NULL AND \"IsDeleted\" = FALSE");
+                        .HasFilter("[Slug] IS NOT NULL AND [IsDeleted] = 0");
 
                     b.ToTable("Channels", "chat");
 
@@ -192,7 +192,7 @@ namespace FSH.Starter.Migrations.MSSQL.Chat
                         .IsDescending(false, true);
 
                     b.HasIndex("ChannelId", "IsPinned")
-                        .HasFilter("\"IsPinned\" = true");
+                        .HasFilter("[IsPinned] = 1");
 
                     b.ToTable("Messages", "chat");
 

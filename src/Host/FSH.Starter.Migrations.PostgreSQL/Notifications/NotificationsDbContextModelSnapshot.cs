@@ -40,8 +40,8 @@ namespace FSH.Starter.Migrations.PostgreSQL.Notifications
                         .HasColumnType("character varying(512)");
 
                     b.Property<string>("MetadataJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
+                        .IsRequired();
+                   
 
                     b.Property<DateTime?>("ReadAtUtc")
                         .HasColumnType("timestamp with time zone");

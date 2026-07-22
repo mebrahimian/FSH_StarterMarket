@@ -56,7 +56,6 @@ namespace FSH.Starter.Migrations.PostgreSQL.Billing
                     b.Property<string>("_overageRates")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
                         .HasColumnName("OverageRates")
                         .HasDefaultValueSql("'{}'::jsonb");
 

@@ -17,7 +17,6 @@ namespace FSH.Starter.Migrations.MSSQL.Auditing
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("Npgsql:PostgresExtension:pg_trgm", ",,")
                 .HasAnnotation("ProductVersion", "10.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
@@ -40,7 +39,7 @@ namespace FSH.Starter.Migrations.MSSQL.Auditing
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("ReceivedAtUtc")
                         .HasColumnType("datetime2");
@@ -78,23 +77,14 @@ namespace FSH.Starter.Migrations.MSSQL.Auditing
                     b.HasIndex("CorrelationId")
                         .HasDatabaseName("IX_AuditRecords_CorrelationId");
 
-                    b.HasIndex("PayloadJson")
-                        .HasDatabaseName("IX_AuditRecords_PayloadJson_gin")
-                        .HasAnnotation("Npgsql:IndexMethod", "gin")
-                        .HasAnnotation("Npgsql:IndexOperators", new[] { "jsonb_path_ops" });
-
                     b.HasIndex("Source")
-                        .HasDatabaseName("IX_AuditRecords_Source_trgm")
-                        .HasAnnotation("Npgsql:IndexMethod", "gin")
-                        .HasAnnotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
+                        .HasDatabaseName("IX_AuditRecords_Source_trgm");
 
                     b.HasIndex("TraceId")
                         .HasDatabaseName("IX_AuditRecords_TraceId");
 
                     b.HasIndex("UserName")
-                        .HasDatabaseName("IX_AuditRecords_UserName_trgm")
-                        .HasAnnotation("Npgsql:IndexMethod", "gin")
-                        .HasAnnotation("Npgsql:IndexOperators", new[] { "gin_trgm_ops" });
+                        .HasDatabaseName("IX_AuditRecords_UserName_trgm");
 
                     b.HasIndex("TenantId", "OccurredAtUtc")
                         .IsDescending(false, true)

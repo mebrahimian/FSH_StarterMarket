@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Catalog
 {
     [DbContext(typeof(CatalogDbContext))]
-    [Migration("20260718221434_InitialCatalog")]
+    [Migration("20260722204603_InitialCatalog")]
     partial class InitialCatalog
     {
         /// <inheritdoc />
@@ -136,7 +136,7 @@ namespace FSH.Starter.Migrations.MSSQL.Catalog
                     b.HasIndex("Slug", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Categories_Slug")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Categories", "catalog");
 
@@ -211,12 +211,12 @@ namespace FSH.Starter.Migrations.MSSQL.Catalog
                     b.HasIndex("Sku", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Products_Sku")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.HasIndex("Slug", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Products_Slug")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Products", "catalog");
 

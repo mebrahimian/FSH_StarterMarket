@@ -17,7 +17,7 @@ public class PasswordHistoryConfiguration : IEntityTypeConfiguration<PasswordHis
         builder
             .Property(ph => ph.UserId)
             .IsRequired()
-            .HasMaxLength(256);
+            .HasMaxLength(450);
 
         builder
             .Property(ph => ph.PasswordHash)

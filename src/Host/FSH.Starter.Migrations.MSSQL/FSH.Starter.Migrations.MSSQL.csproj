@@ -24,11 +24,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Auditing\" />
     <Folder Include="Billing\" />
     <Folder Include="Catalog\" />
     <Folder Include="Chat\" />
     <Folder Include="Files\" />
     <Folder Include="Identity\" />
+    <Folder Include="MarketIntelligence\" />
     <Folder Include="MultiTenancy\" />
     <Folder Include="Webhooks\" />
     <Folder Include="Tickets\" />

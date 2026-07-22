@@ -8,10 +8,21 @@ public sealed class TenantDbContextFactory : IDesignTimeDbContextFactory<TenantD
 {
     public TenantDbContext CreateDbContext(string[] args)
     {
+        var basePath = Directory.GetCurrentDirectory();
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
+            .SetBasePath(basePath)
             .AddJsonFile("appsettings.json", optional: true)
             .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddJsonFile(
+                Path.Combine(
+                    basePath,
+                    "Host",
+                    "FSH.Starter.DbMigrator",
+                    "bin",
+                    "Debug",
+                    "net10.0",
+                    "appsettings.json"),
+                optional: true)
             .AddEnvironmentVariables()
             .Build();
 
