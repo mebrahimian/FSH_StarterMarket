@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    [Migration("20260722204753_InitialMarketIntelligence")]
+    [Migration("20260722235221_InitialMarketIntelligence")]
     partial class InitialMarketIntelligence
     {
         /// <inheritdoc />

@@ -74,7 +74,7 @@ namespace FSH.Starter.Migrations.MSSQL.Catalog
                     b.HasIndex("Slug", "TenantId")
                         .IsUnique()
                         .HasDatabaseName("IX_Brands_Slug")
-                        .HasFilter("\"IsDeleted\" = FALSE");
+                        .HasFilter("[IsDeleted] = 0");
 
                     b.ToTable("Brands", "catalog");
 

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Auditing
 {
     [DbContext(typeof(AuditDbContext))]
-    [Migration("20260722205534_InitialAuditing")]
+    [Migration("20260722233940_InitialAuditing")]
     partial class InitialAuditing
     {
         /// <inheritdoc />

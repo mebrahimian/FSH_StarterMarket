@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FSH.Starter.Migrations.MSSQL.MultiTenancy
+namespace FSH.Starter.Migrations.MSSQL.Migrations
 {
     [DbContext(typeof(TenantDbContext))]
-    [Migration("20260722204819_InitialMultitenancy")]
+    [Migration("20260722222857_InitialMultitenancy")]
     partial class InitialMultitenancy
     {
         /// <inheritdoc />

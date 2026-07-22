@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Files
 {
     [DbContext(typeof(FilesDbContext))]
-    [Migration("20260722204658_InitialFiles")]
+    [Migration("20260722213930_InitialFiles")]
     partial class InitialFiles
     {
         /// <inheritdoc />

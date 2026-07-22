@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Chat
 {
     [DbContext(typeof(ChatDbContext))]
-    [Migration("20260722204630_InitialChat")]
+    [Migration("20260722225035_InitialChat")]
     partial class InitialChat
     {
         /// <inheritdoc />

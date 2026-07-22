@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Tickets
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20260722204915_InitialTickets")]
+    [Migration("20260722234548_InitialTickets")]
     partial class InitialTickets
     {
         /// <inheritdoc />

@@ -31,7 +31,6 @@
     <Folder Include="Files\" />
     <Folder Include="Identity\" />
     <Folder Include="MarketIntelligence\" />
-    <Folder Include="MultiTenancy\" />
     <Folder Include="Webhooks\" />
     <Folder Include="Tickets\" />
     <Folder Include="Notifications\" />

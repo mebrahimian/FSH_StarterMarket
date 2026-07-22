@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Billing
 {
     [DbContext(typeof(BillingDbContext))]
-    [Migration("20260722204536_InitialBilling")]
+    [Migration("20260722233319_InitialBilling")]
     partial class InitialBilling
     {
         /// <inheritdoc />

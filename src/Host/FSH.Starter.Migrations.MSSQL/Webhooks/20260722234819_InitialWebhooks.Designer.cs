@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.Webhooks
 {
     [DbContext(typeof(WebhookDbContext))]
-    [Migration("20260722204941_InitialWebhooks")]
+    [Migration("20260722234819_InitialWebhooks")]
     partial class InitialWebhooks
     {
         /// <inheritdoc />
