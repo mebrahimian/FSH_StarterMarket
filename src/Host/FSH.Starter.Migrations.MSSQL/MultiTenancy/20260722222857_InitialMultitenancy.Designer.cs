@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FSH.Starter.Migrations.MSSQL.Migrations
+namespace FSH.Starter.Migrations.MSSQL.MultiTenancy
 {
     [DbContext(typeof(TenantDbContext))]
     [Migration("20260722222857_InitialMultitenancy")]
