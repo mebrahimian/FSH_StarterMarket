@@ -76,6 +76,14 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     public string? XbrlUrl { get; private set; }
 
     public string? TedanUrl { get; private set; }
+    public short? Let { get; set; }
+    public byte? Rt { get; set; }
+    public byte? Ct { get; set; }
+    public short? Ft { get; set; }
+
+    public byte SalesParseStatus { get; set; }   // 0=New,1=Success,2=Failed,3=Ignored
+
+    public DateTime? SalesParsedAt { get; set; }
 
     private Disclosure()
     {
@@ -102,7 +110,11 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         string? pdfUrl,
         string? excelUrl,
         string? xbrlUrl,
-        string? tedanUrl)
+        string? tedanUrl,
+        short? let,
+        byte? rt,
+        byte? ct,
+        short? ft)
     {
         TracingNo = tracingNo;
         Symbol = symbol;
@@ -125,5 +137,9 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         ExcelUrl = excelUrl;
         XbrlUrl = xbrlUrl;
         TedanUrl = tedanUrl;
+        Let = let;
+        Rt = rt;
+        Ct = ct;
+        Ft = ft;
     }
 }

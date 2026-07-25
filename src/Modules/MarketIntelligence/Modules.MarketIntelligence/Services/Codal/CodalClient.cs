@@ -42,10 +42,52 @@ public sealed class CodalClient : ICodalClient
         
         var url = $"https://search.codal.ir/api/search/v2/q?" +
           string.Join("&", parameters);
-        var response = await _httpClient.GetFromJsonAsync<CodalSearchResponse>(
-            url,
-            cancellationToken);
 
+        CodalSearchResponse? response = null;
+        const int maxRetries = 3;
+        for (int retry = 1; retry <= maxRetries; retry++)
+        {
+            try
+            {
+                response = await _httpClient.GetFromJsonAsync<CodalSearchResponse>(
+                    url,
+                    cancellationToken);
+
+                break;
+            }
+            catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                Console.WriteLine(
+                    $"Codal timeout. Attempt {retry}/{maxRetries}");
+
+                if (retry < maxRetries)
+                {
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(retry * 5),
+                        cancellationToken);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine(
+                    $"Codal request failed. Attempt {retry}/{maxRetries}: {ex.Message}");
+
+                if (retry < maxRetries)
+                {
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(retry * 5),
+                        cancellationToken);
+                }
+                else
+                {
+                    throw;
+                }
+            }
+        }
 
         return response ?? new CodalSearchResponse();
 

@@ -28,8 +28,10 @@ namespace FSH.Modules.MarketIntelligence
 
             builder.Services.AddHeroDbContext<MarketIntelligenceDbContext>();
             builder.Services.AddScoped<IDbInitializer, MarketIntelligenceDbInitializer>();
-
-            builder.Services.AddHttpClient<ICodalClient, CodalClient>();
+            builder.Services.AddHttpClient<ICodalClient, CodalClient>(client =>
+            {
+                client.Timeout = TimeSpan.FromMinutes(3);
+            });
 
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
@@ -63,6 +65,16 @@ namespace FSH.Modules.MarketIntelligence
             group.MapSearchDisclosuresEndpoint();
 
             group.MapPost("/codal/import", async (ICodalCollectorService collector,
+                                                  CancellationToken ct) =>
+            {
+                await collector.CollectAsync2(ct);
+                return Results.Ok(new
+                {
+                    message = "Codal import finished"
+                });
+            }).AllowAnonymous();
+
+            group.MapPost("/codal/importOld", async (ICodalCollectorService collector,
                                                   CancellationToken ct) =>
             {
                 await collector.CollectAsync(ct);

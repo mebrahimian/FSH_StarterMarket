@@ -57,10 +57,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 },
                 cancellationToken);
 
-            Console.WriteLine(
-                $"Reading page {pageNumber}/{result.TotalPages}");
-            Console.WriteLine($"Letters count: {result.Letters.Count}");
-            
+                        
             foreach (var letter in result.Letters)
             {
                 if (string.IsNullOrWhiteSpace(letter.Symbol) || letter.Symbol.Length > 64)
@@ -89,6 +86,10 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     false,
                     false,
                     false,
+                    null,
+                    null,
+                    null,
+                    null,
                     null,
                     null,
                     null,
@@ -122,5 +123,172 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
         NumberRead++;
 
+    }
+    public async Task CollectAsync2(
+    CancellationToken cancellationToken = default)
+    {
+        var lastPublishDateStr = await _dbContext.Disclosures
+            .OrderByDescending(x => x.PublishDateTimeRaw)
+            .Select(x => x.PublishDateTimeRaw)
+            .FirstOrDefaultAsync(cancellationToken);
+
+
+        // فعلاً برای BackFill یک سال قبل
+        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
+
+
+        var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
+
+
+        var pageNumber = 2110;
+        var stop = false;
+
+
+        while (!stop)
+        {
+            var result = await _codalClient.SearchAsync(
+                new()
+                {
+                    // شرطهای خواندن کدال مثلا category=3 ; let58 ;,,,,,
+                    // در اینجا فقط شماره صفحه ملاک است
+                    PageNumber = pageNumber
+                },
+                cancellationToken);
+
+
+            Console.WriteLine(
+                $"Reading page {pageNumber}/{result.TotalPages}");
+
+            Console.WriteLine(
+                $"Letters count: {result.Letters.Count}");
+
+
+            // TracingNo های این صفحه
+            var tracingNos = result.Letters
+                .Select(x => x.TracingNo)
+                .ToList();
+
+
+            // رکوردهایی که قبلاً ذخیره شده‌اند
+            var existingTracingNos = await _dbContext.Disclosures
+                .Where(x => tracingNos.Contains(x.TracingNo))
+                .Select(x => x.TracingNo)
+                .ToHashSetAsync(cancellationToken);
+
+
+            // جلوگیری از Duplicate داخل همین صفحه
+            var pageTracingNos = new HashSet<long>();
+
+
+            var disclosures = new List<Disclosure>();
+
+            DateTime? currentPubDate = null;
+
+
+            foreach (var letter in result.Letters)
+            {
+                if (string.IsNullOrWhiteSpace(letter.Symbol)
+                    || letter.Symbol.Length > 64
+                    || existingTracingNos.Contains(letter.TracingNo)
+                    || !pageTracingNos.Add(letter.TracingNo))
+                {
+                    continue;
+                }
+
+
+                string? sentRaw = letter.SentDateTimeRaw;
+                string? pubRaw = letter.PublishDateTimeRaw;
+
+
+                var sent = PersianDateHelper.ToGregorian(sentRaw);
+                var pub = PersianDateHelper.ToGregorian(pubRaw);
+
+
+                currentPubDate = pub;
+
+
+                // هنوز به اطلاعات قدیمی رسیدیم
+                if (lastPublishDate >= pub)
+                {
+                    stop = true;
+                    break;
+                }
+
+                var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
+                var disclosure = new Disclosure(
+                    letter.TracingNo,
+                    letter.Symbol ?? "",
+                    letter.CompanyName ?? "",
+                    letter.Title ?? "",
+                    letter.LetterCode ?? "",
+                    sentRaw ?? "",
+                    pubRaw ?? "",
+                    sent,
+                    pub,
+                    letter.HasHtml,
+                    false,
+                    letter.Url ?? "",
+                    letter.HasExcel,
+                    false,
+                    false,
+                    false,
+                    null,  // AttachmentUrl
+                    null,  // PdfUrl
+                    null,  // ExcelUrl
+                    null,  // XbrlUrl
+                    null,  // TedanUrl
+                    let,  // Let
+                    rt,  // Rt
+                    ct,  // Ct
+                    ft); // Ft
+
+
+                disclosures.Add(disclosure);
+            }
+
+
+            // ذخیره یکجای صفحه
+            if (disclosures.Count > 0)
+            {
+                await _dbContext.Disclosures.AddRangeAsync(
+                    disclosures,
+                    cancellationToken);
+
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                _dbContext.ChangeTracker.Clear();
+            }
+
+
+            // اگر به رکوردهای قدیمی رسیدیم، توقف
+            if (stop)
+                break;
+
+
+            pageNumber++;
+
+
+            var delay = result.TotalPages > 10
+                ? TimeSpan.FromSeconds(10)
+                : TimeSpan.FromSeconds(1);
+
+
+            await Task.Delay(delay, cancellationToken);
+        }
+    }
+    private static (short? let, byte? rt, byte? ct, short? ft) ParseUrlParameters(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return (null, null, null, null);
+#pragma warning disable S1075
+        var query = System.Web.HttpUtility.ParseQueryString(new Uri("https://dummy.local" + url).Query);
+#pragma warning restore S1075
+        short? let = short.TryParse(query["let"], out var l) ? l : null;
+        byte? rt = byte.TryParse(query["rt"], out var r) ? r : null;
+        byte? ct = byte.TryParse(query["ct"], out var c) ? c : null;
+        short? ft = short.TryParse(query["ft"], out var f) ? f : null;
+
+        return (let, rt, ct, ft);
     }
 }
