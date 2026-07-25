@@ -132,15 +132,14 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .Select(x => x.PublishDateTimeRaw)
             .FirstOrDefaultAsync(cancellationToken);
 
-
+#pragma warning disable S125
         // فعلاً برای BackFill یک سال قبل
-        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
-
-
+        //  lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
+#pragma warning restore S1075
         var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
 
 
-        var pageNumber = 2110;
+        var pageNumber = 1;
         var stop = false;
 
 
@@ -207,7 +206,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 currentPubDate = pub;
 
 
-                // هنوز به اطلاعات قدیمی رسیدیم
+                // هنوز به اطلاعات قدیمی نرسیدیم
                 if (lastPublishDate >= pub)
                 {
                     stop = true;
