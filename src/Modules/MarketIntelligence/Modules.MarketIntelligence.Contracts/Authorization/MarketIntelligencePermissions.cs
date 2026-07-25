@@ -6,7 +6,7 @@ public static class MarketIntelligencePermissions
 {
     public static class Disclosures
     {
-        public const string Resource = "Catalog.Disclosures";
+        public const string Resource = "MarketIntelligence.Disclosures";
         public const string View    = $"Permissions.{Resource}.View";
         public const string Create  = $"Permissions.{Resource}.Create";
         public const string Update  = $"Permissions.{Resource}.Update";

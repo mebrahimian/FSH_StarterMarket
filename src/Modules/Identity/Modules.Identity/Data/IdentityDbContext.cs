@@ -33,7 +33,7 @@ public class IdentityDbContext : MultiTenantIdentityDbContext<FshUser,
     public DbSet<PasswordHistory> PasswordHistories => Set<PasswordHistory>();
 
     public DbSet<UserSession> UserSessions => Set<UserSession>();
-
+   
     public DbSet<Group> Groups => Set<Group>();
 
     public DbSet<GroupRole> GroupRoles => Set<GroupRole>();

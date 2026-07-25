@@ -22,7 +22,8 @@
 		<!-- Docs -->
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<NoWarn>$(NoWarn);CS1591;MSG0005;CA1054;CA1056</NoWarn>
-                          <NoWarn>$(NoWarn);S1186</NoWarn>
+                <NoWarn>$(NoWarn);S1186</NoWarn>
+                         <NoWarn>$(NoWarn);CA1040;CA2007;CA1034;CA1819;CA1724;CA1848</NoWarn>
 		<!-- Suppress warning about missing XML docs -->
 
 		<!-- Container tags (if using container builds) -->

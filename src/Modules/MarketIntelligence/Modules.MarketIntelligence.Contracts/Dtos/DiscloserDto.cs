@@ -6,7 +6,7 @@ public sealed record DisclosureDto(
     string Slug,
     string? Description,
     string? LogoUrl,
-    DateTime CreatedAtUtc,
+    DateTime? CreatedAtUtc,
     DateTime? UpdatedAtUtc,
     DateTimeOffset? DeletedOnUtc = null,
     string? DeletedBy = null);

@@ -38,3 +38,9 @@ Add-Migration InitialTickets       -Context TicketsDbContext       -Project FSH.
 
 Add-Migration InitialWebhooks      -Context WebhookDbContext       -Project FSH.Starter.Migrations.MSSQL -StartupProject FSH.Starter.Api -OutputDir Webhooks
 
+
+
+
+
+TenantDbContextو AuditDbContextوBillingDbContextوCatalogDbContextوChatDbContextوNotificationsDbContextوTicketsDbContextوWebhookDbContext
+

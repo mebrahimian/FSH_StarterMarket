@@ -5,13 +5,13 @@ using FSH.Framework.Web.Modules;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
+using FSH.Modules.MarketIntelligence.Services.Codal;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
-using FSH.Modules.MarketIntelligence.Services.Codal;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -31,12 +31,11 @@ namespace FSH.Modules.MarketIntelligence
 
             builder.Services.AddHttpClient<ICodalClient, CodalClient>();
 
-            builder.Services.AddSingleton<ICodalCollectorState, InMemoryCodalCollectorState>();
-
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
+            builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
         {
@@ -63,7 +62,15 @@ namespace FSH.Modules.MarketIntelligence
            
             group.MapSearchDisclosuresEndpoint();
 
-                      
+            group.MapPost("/codal/import", async (ICodalCollectorService collector,
+                                                  CancellationToken ct) =>
+            {
+                await collector.CollectAsync(ct);
+                return Results.Ok(new
+                {
+                    message = "Codal import finished"
+                });
+            }).AllowAnonymous();
 
         }
 

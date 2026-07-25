@@ -1,4 +1,4 @@
-﻿namespace FSH.Modules.MarketIntelligence.Service.Codal;
+﻿namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public interface ICodalCollectorService
 {

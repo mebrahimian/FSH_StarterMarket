@@ -37,12 +37,21 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     /// <summary>
     /// Date and time when the disclosure was sent to Codal.
     /// </summary>
-    public DateTime SentDateTime { get; private set; }
+    public string? SentDateTimeRaw { get; set; }
 
     /// <summary>
     /// Date and time when the disclosure was published.
     /// </summary>
-    public DateTime PublishDateTime { get; private set; }
+    public string? PublishDateTimeRaw { get;  set; }
+    /// <summary>
+    /// Date and time when the disclosure was sent to Codal.
+    /// </summary>
+    public DateTime? SentDateTime { get; private set; }
+
+    /// <summary>
+    /// Date and time when the disclosure was published.
+    /// </summary>
+    public DateTime? PublishDateTime { get; private set; }
 
     public bool HasHtml { get; private set; }
 
@@ -78,8 +87,10 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         string companyName,
         string title,
         string letterCode,
-        DateTime sentDateTime,
-        DateTime publishDateTime,
+        string sentDateTimeRaw,
+        string publishDateTimeRaw,
+        DateTime? sentDateTime,
+        DateTime? publishDateTime,
         bool hasHtml,
         bool isEstimate,
         string url,
@@ -98,6 +109,8 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         CompanyName = companyName;
         Title = title;
         LetterCode = letterCode;
+        SentDateTimeRaw = sentDateTimeRaw;
+        PublishDateTimeRaw = publishDateTimeRaw;
         SentDateTime = sentDateTime;
         PublishDateTime = publishDateTime;
         HasHtml = hasHtml;

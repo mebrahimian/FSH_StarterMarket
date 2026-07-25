@@ -13,10 +13,12 @@ public sealed class CodalLetterDto
     public string? Title { get; init; }
 
     public string? LetterCode { get; init; }
+  
+    [JsonPropertyName("SentDateTime")]
+    public string? SentDateTimeRaw { get; init; }
 
-    public string? SentDateTime { get; init; }
-
-    public string? PublishDateTime { get; init; }
+    [JsonPropertyName("PublishDateTime")]
+    public string? PublishDateTimeRaw { get; init; }
 
     public string? Url { get; init; }
 
