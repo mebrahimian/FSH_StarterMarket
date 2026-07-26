@@ -61,7 +61,7 @@ MarketIntelligence
         Domain
         Events
         Features
-
+             Services
         MarketIntelligenceModule.cs
 
     Modules.MarketIntelligence.Contracts

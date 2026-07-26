@@ -17,4 +17,8 @@
     <Folder Include="Domain\Events\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" />
+  </ItemGroup>
+
 </Project>

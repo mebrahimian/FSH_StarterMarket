@@ -16,15 +16,17 @@ public sealed class CodalCollectorService : ICodalCollectorService
 {
     private readonly ICodalClient _codalClient;
     private readonly MarketIntelligenceDbContext _dbContext;
-    
+    private readonly IMonthlySalesParser _monthlySalesParser;
+
     public CodalCollectorService(
     ICodalClient codalClient,
     
-    MarketIntelligenceDbContext dbContext)
+    MarketIntelligenceDbContext dbContext, IMonthlySalesParser monthlySalesParser)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
-        
+        _monthlySalesParser = monthlySalesParser;
+
     }
     
     public async Task CollectAsync(
@@ -79,12 +81,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     pubRaw ?? "",
                     sent,
                     pub,
-                    letter.HasHtml,
-                    false,
                     letter.Url ?? "",
                     letter.HasExcel,
                     false,
-                    false,
+                    letter.HasExcel,
+                    letter.HasPdf,
+                    letter.HasXbrl,
                     false,
                     null,
                     null,
@@ -132,10 +134,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .Select(x => x.PublishDateTimeRaw)
             .FirstOrDefaultAsync(cancellationToken);
 
-#pragma warning disable S125
         // فعلاً برای BackFill یک سال قبل
-        //  lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
-#pragma warning restore S1075
+        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-5));
+
         var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
 
 
@@ -150,7 +151,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 {
                     // شرطهای خواندن کدال مثلا category=3 ; let58 ;,,,,,
                     // در اینجا فقط شماره صفحه ملاک است
-                    PageNumber = pageNumber
+                    PageNumber = pageNumber,
+                                      
                 },
                 cancellationToken);
 
@@ -213,7 +215,23 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     break;
                 }
 
+
+
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
+                if (let == 58 && rt == 0)
+                {
+                    var result1 = await _monthlySalesParser.ParseAsync(
+                        letter.Url ?? "",
+                        cancellationToken);
+
+                    if (result1 != null)
+                    {
+                        // فعلا فقط تست
+                        Console.WriteLine(result1.SaleMonthly );
+                        Console.WriteLine(result1.SaleYearly);
+                    }
+                }
+
                 var disclosure = new Disclosure(
                     letter.TracingNo,
                     letter.Symbol ?? "",
@@ -224,18 +242,18 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     pubRaw ?? "",
                     sent,
                     pub,
+                    letter.Url ?? "",
                     letter.HasHtml,
                     false,
-                    letter.Url ?? "",
                     letter.HasExcel,
-                    false,
-                    false,
-                    false,
-                    null,  // AttachmentUrl
-                    null,  // PdfUrl
-                    null,  // ExcelUrl
-                    null,  // XbrlUrl
-                    null,  // TedanUrl
+                    letter.HasPdf,
+                    letter.HasXbrl,
+                    letter.HasAttachment,
+                    letter.AttachmentUrl ?? "",  // AttachmentUrl
+                    letter.PdfUrl ?? "",  // PdfUrl
+                    letter.ExcelUrl ?? "",  // ExcelUrl
+                    letter.XbrlUrl ?? "",  // XbrlUrl
+                    letter.TedanUrl ?? "",  // TedanUrl
                     let,  // Let
                     rt,  // Rt
                     ct,  // Ct
@@ -269,7 +287,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
             var delay = result.TotalPages > 10
-                ? TimeSpan.FromSeconds(10)
+                ? TimeSpan.FromSeconds(3)
                 : TimeSpan.FromSeconds(1);
 
 

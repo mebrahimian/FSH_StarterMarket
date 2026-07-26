@@ -32,7 +32,7 @@ namespace FSH.Modules.MarketIntelligence
             {
                 client.Timeout = TimeSpan.FromMinutes(3);
             });
-
+            builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",

@@ -21,8 +21,17 @@ public sealed class CodalLetterDto
     public string? PublishDateTimeRaw { get; init; }
 
     public string? Url { get; init; }
-
     public bool HasHtml { get; init; }
-
     public bool HasExcel { get; init; }
+    public bool HasPdf { get; init; }
+    public bool HasXbrl { get; init; }
+    public bool HasAttachment { get; init; }
+    public string? AttachmentUrl { get; init; }
+    public string? PdfUrl { get; init; }
+    public string? ExcelUrl { get; init; }
+
+    public string? XbrlUrl { get; init; }
+
+    public string? TedanUrl { get; init; }
+
 }
