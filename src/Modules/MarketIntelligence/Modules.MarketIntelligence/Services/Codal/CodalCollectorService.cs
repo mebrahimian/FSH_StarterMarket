@@ -1,12 +1,15 @@
 ﻿
 using FSH.Framework.Shared.Dates;
+using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Codal;
+using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.Metrics;
 using System.Globalization;
+using System.Net.Http.Json;
 using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
@@ -14,6 +17,10 @@ namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class CodalCollectorService : ICodalCollectorService
 {
+#pragma warning disable S1075
+    private const string CodalBaseUrl = "https://www.codal.ir";
+#pragma warning restore S1075
+    private readonly HttpClient _httpClient;
     private readonly ICodalClient _codalClient;
     private readonly MarketIntelligenceDbContext _dbContext;
     private readonly IMonthlySalesParser _monthlySalesParser;
@@ -21,11 +28,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
     public CodalCollectorService(
     ICodalClient codalClient,
     
-    MarketIntelligenceDbContext dbContext, IMonthlySalesParser monthlySalesParser)
+    MarketIntelligenceDbContext dbContext, IMonthlySalesParser monthlySalesParser, HttpClient httpClient)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
         _monthlySalesParser = monthlySalesParser;
+        _httpClient = httpClient;   
 
     }
     
@@ -139,6 +147,21 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
 
+        var definitions = CodalDefinitionsProvider.Load();
+
+        Console.WriteLine(
+            definitions.ManufacturingMonthlySales.MetaTableId);
+
+        Console.WriteLine(
+            definitions.ManufacturingMonthlySales.MetaTableCode);
+
+        Console.WriteLine(
+            definitions.ManufacturingMonthlySales.SelectedCells["MonthlySales"]);
+
+        Console.WriteLine(
+            definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"]);
+
+
 
         var pageNumber = 1;
         var stop = false;
@@ -220,16 +243,17 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
                 if (let == 58 && rt == 0)
                 {
+                    var uri = new Uri($"{CodalBaseUrl}{letter.Url}");
+                    var html = await _httpClient.GetStringAsync(uri, cancellationToken); 
+
+
+
+
                     var result1 = await _monthlySalesParser.ParseAsync(
                         letter.Url ?? "",
                         cancellationToken);
 
-                    if (result1 != null)
-                    {
-                        // فعلا فقط تست
-                        Console.WriteLine(result1.SaleMonthly );
-                        Console.WriteLine(result1.SaleYearly);
-                    }
+                    
                 }
 
                 var disclosure = new Disclosure(

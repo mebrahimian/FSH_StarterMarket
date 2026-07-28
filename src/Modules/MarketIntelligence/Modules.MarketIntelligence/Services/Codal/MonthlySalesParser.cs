@@ -1,59 +1,37 @@
-﻿using System.Net.Http;
-using HtmlAgilityPack;
-using System.Text.Json;
-using System.Text.RegularExpressions;
-
-
+﻿using System.Text.Json;
+using static FSH.Modules.MarketIntelligence.Services.Codal.CodalTableDefinitions;
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class MonthlySalesParser : IMonthlySalesParser
 {
-    private readonly HttpClient _httpClient;
-
-    public MonthlySalesParser(HttpClient httpClient)
+    public Task<MonthlySalesParseResult?> ParseAsync(
+        string datasourceJson,
+        CancellationToken cancellationToken = default)
     {
-        _httpClient = httpClient;
-    }
-
-    public async Task<MonthlySalesParseResult?> ParseAsync(
-        string url,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(url);
-        var fullUrl = url.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-            ? url
-            : $"https://codal.ir" + url;
-        var html = await _httpClient.GetStringAsync(
-        new Uri(fullUrl),
-        cancellationToken);
-
-        var match = Regex.Match(html, @"var\s+datasource\s*=\s*(\{.*?\});",RegexOptions.Singleline);
-
-        if (!match.Success)
-            return null;
-
-        var datasourceJson = match.Groups[1].Value;
-
-        Console.WriteLine(datasourceJson[..500]);
-
         using var document = JsonDocument.Parse(datasourceJson);
-        var root = document.RootElement;
 
-        Console.WriteLine(root.GetProperty("title_En").GetString());
+        var root = document.RootElement;
 
         var sheets = root.GetProperty("sheets");
 
-        Console.WriteLine(sheets.GetArrayLength());
-
-        var tables = sheets[0].GetProperty("tables");
-
-        Console.WriteLine(tables.GetArrayLength());
-
-        foreach (var table in tables.EnumerateArray())
+        foreach (var sheet in sheets.EnumerateArray())
         {
-            Console.WriteLine(table.GetProperty("aliasName").GetString());
+            var tables = sheet.GetProperty("tables");
+
+            foreach (var table in tables.EnumerateArray())
+            {
+                var metaTableId = table.GetProperty("metaTableId").GetInt32();
+                var metaTableCode = table.GetProperty("code").GetInt32();
+
+                if (IsManufacturingMonthlySalesTable(
+         metaTableId,
+         metaTableCode))
+                {
+                    return Task.FromResult<MonthlySalesParseResult?>(null);
+                }
+            }
         }
-        // فعلاً فقط تست
-        return null;
+
+        return Task.FromResult<MonthlySalesParseResult?>(null);
     }
 }

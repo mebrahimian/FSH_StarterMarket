@@ -1,0 +1,10 @@
+{
+  "ManufacturingMonthlySales": {
+    "MetaTableId": 3465,
+    "MetaTableCode": 1197,
+    "SelectedCells": {
+      "MonthlySales": 17,
+      "YearToDateSales": 21
+    }
+  }
+}

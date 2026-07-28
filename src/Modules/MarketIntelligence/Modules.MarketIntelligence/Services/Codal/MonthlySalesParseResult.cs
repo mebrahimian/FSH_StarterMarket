@@ -1,9 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
-namespace FSH.Modules.MarketIntelligence.Services.Codal;
+public sealed class MonthlySalesParseResult
+{
+    public decimal MonthlySales { get; set; }
 
-public sealed record MonthlySalesParseResult(
-    decimal SaleMonthly,
-    decimal SaleYearly);
+    public decimal YearToDateSales { get; set; }
+
+    public string? PeriodEndToDate { get; set; }
+
+    public string? YearEndToDate { get; set; }
+}
