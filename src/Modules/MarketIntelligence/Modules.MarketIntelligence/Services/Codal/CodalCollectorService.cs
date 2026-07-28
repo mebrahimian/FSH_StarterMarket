@@ -1,16 +1,9 @@
 ﻿
 using FSH.Framework.Shared.Dates;
-using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
-using FSH.Modules.MarketIntelligence.Services.Codal;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics.Metrics;
-using System.Globalization;
-using System.Net.Http.Json;
-using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
@@ -27,16 +20,16 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
     public CodalCollectorService(
     ICodalClient codalClient,
-    
+
     MarketIntelligenceDbContext dbContext, IMonthlySalesParser monthlySalesParser, HttpClient httpClient)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
         _monthlySalesParser = monthlySalesParser;
-        _httpClient = httpClient;   
+        _httpClient = httpClient;
 
     }
-    
+
     public async Task CollectAsync(
     CancellationToken cancellationToken = default)
     {
@@ -45,13 +38,13 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .Select(x => x.PublishDateTimeRaw)
             .FirstOrDefaultAsync(cancellationToken);
 
-        
-            lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
-            
-        
+
+        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
+
+
         var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
-        
-       
+
+
         var pageNumber = 1;
         var stop = false;
         int NumberRead = 0;
@@ -59,7 +52,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         while (!stop)
         {
-            
+
             var result = await _codalClient.SearchAsync(
                 new()
                 {
@@ -67,7 +60,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 },
                 cancellationToken);
 
-                        
+
             foreach (var letter in result.Letters)
             {
                 if (string.IsNullOrWhiteSpace(letter.Symbol) || letter.Symbol.Length > 64)
@@ -106,16 +99,16 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     null,
                     null);
 
-                
+
                 if (lastPublishDate < pub) // به آخرین اعلامیه خوانده شده نرسیدیم 
                 {
                     NumberRead++;
                     _dbContext.Disclosures.Add(disclosure);
                 }
             }
-            
+
             if (NumberRead > 0)
-            {                
+            {
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
             }
@@ -124,7 +117,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             pageNumber++;
             // تاخیر 2 ثانیه
-            
+
             var delay = result.TotalPages > 10
                     ? TimeSpan.FromSeconds(10)
                     : TimeSpan.FromSeconds(1);
@@ -149,23 +142,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var definitions = CodalDefinitionsProvider.Load();
 
-        Console.WriteLine(
-            definitions.ManufacturingMonthlySales.MetaTableId);
-
-        Console.WriteLine(
-            definitions.ManufacturingMonthlySales.MetaTableCode);
-
-        Console.WriteLine(
-            definitions.ManufacturingMonthlySales.SelectedCells["MonthlySales"]);
-
-        Console.WriteLine(
-            definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"]);
-
-
-
         var pageNumber = 1;
         var stop = false;
-
 
         while (!stop)
         {
@@ -175,7 +153,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     // شرطهای خواندن کدال مثلا category=3 ; let58 ;,,,,,
                     // در اینجا فقط شماره صفحه ملاک است
                     PageNumber = pageNumber,
-                                      
+
                 },
                 cancellationToken);
 
@@ -244,16 +222,81 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 if (let == 58 && rt == 0)
                 {
                     var uri = new Uri($"{CodalBaseUrl}{letter.Url}");
-                    var html = await _httpClient.GetStringAsync(uri, cancellationToken); 
+                    var html = await _httpClient.GetStringAsync(uri, cancellationToken);
 
+                    var monthCell = CodalCellFinder.FindCellValue
+                                 (
+                                    html,
+                                    definitions.ManufacturingMonthlySales.MetaTableId,
+                                    definitions.ManufacturingMonthlySales.MetaTableCode,
+                                    definitions.ManufacturingMonthlySales.SelectedCells["MonthlySales"]
+                                 );
+                    var YearToDateCell = CodalCellFinder.FindCellValue
+                                 (
+                                    html,
+                                    definitions.ManufacturingMonthlySales.MetaTableId,
+                                    definitions.ManufacturingMonthlySales.MetaTableCode,
+                                    definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"]
+                                 );
+                    var zero = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 0
+                                );
+                    var one = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 1
+                                );
+                    var two = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 2
+                                );
+                    var tree = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 3
+                                );
+                    var fore = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 4
+                                );
+                    var Fifth = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 5
+                                );
+                    var six = CodalCellFinder.FindCellValue
+                                (
+                                   html,
+                                   definitions.ManufacturingMonthlySales.MetaTableId,
+                                   definitions.ManufacturingMonthlySales.MetaTableCode,
+                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 6
+                                );
 
+                   
 
+                    
 
                     var result1 = await _monthlySalesParser.ParseAsync(
                         letter.Url ?? "",
-                        cancellationToken);
+                            cancellationToken);
 
-                    
+
                 }
 
                 var disclosure = new Disclosure(
