@@ -58,6 +58,10 @@ public sealed class DisclosureConfiguration : IEntityTypeConfiguration<Disclosur
 
         builder.Property(x => x.TedanUrl)
             .HasMaxLength(1024);
+       
+        builder.Property(x => x.SalesParseStatus)
+            .HasConversion<byte>()
+            .HasColumnType("tinyint");
 
         builder.HasIndex(x => x.TracingNo)
             .IsUnique();

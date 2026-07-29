@@ -4,9 +4,9 @@ using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using Microsoft.EntityFrameworkCore;
+using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
-
 
 public sealed class CodalCollectorService : ICodalCollectorService
 {
@@ -16,117 +16,20 @@ public sealed class CodalCollectorService : ICodalCollectorService
     private readonly HttpClient _httpClient;
     private readonly ICodalClient _codalClient;
     private readonly MarketIntelligenceDbContext _dbContext;
-    private readonly IMonthlySalesParser _monthlySalesParser;
+
 
     public CodalCollectorService(
     ICodalClient codalClient,
 
-    MarketIntelligenceDbContext dbContext, IMonthlySalesParser monthlySalesParser, HttpClient httpClient)
+    MarketIntelligenceDbContext dbContext, HttpClient httpClient)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
-        _monthlySalesParser = monthlySalesParser;
         _httpClient = httpClient;
 
     }
 
-    public async Task CollectAsync(
-    CancellationToken cancellationToken = default)
-    {
-        var lastPublishDateStr = await _dbContext.Disclosures
-            .OrderByDescending(x => x.PublishDateTimeRaw)
-            .Select(x => x.PublishDateTimeRaw)
-            .FirstOrDefaultAsync(cancellationToken);
-
-
-        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
-
-
-        var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
-
-
-        var pageNumber = 1;
-        var stop = false;
-        int NumberRead = 0;
-        DateTime? CurrentPubDate = DateTime.Now;
-
-        while (!stop)
-        {
-
-            var result = await _codalClient.SearchAsync(
-                new()
-                {
-                    PageNumber = pageNumber
-                },
-                cancellationToken);
-
-
-            foreach (var letter in result.Letters)
-            {
-                if (string.IsNullOrWhiteSpace(letter.Symbol) || letter.Symbol.Length > 64)
-                {
-                    continue;
-                }
-                string? sentRaw = letter.SentDateTimeRaw;
-                string? pubRaw = letter.PublishDateTimeRaw;
-                var sent = PersianDateHelper.ToGregorian(sentRaw);
-                var pub = PersianDateHelper.ToGregorian(pubRaw);
-                CurrentPubDate = pub;
-                var disclosure = new Disclosure(
-                    letter.TracingNo,
-                    letter.Symbol ?? "",
-                    letter.CompanyName ?? "",
-                    letter.Title ?? "",
-                    letter.LetterCode ?? "",
-                    sentRaw ?? "",
-                    pubRaw ?? "",
-                    sent,
-                    pub,
-                    letter.Url ?? "",
-                    letter.HasExcel,
-                    false,
-                    letter.HasExcel,
-                    letter.HasPdf,
-                    letter.HasXbrl,
-                    false,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null);
-
-
-                if (lastPublishDate < pub) // به آخرین اعلامیه خوانده شده نرسیدیم 
-                {
-                    NumberRead++;
-                    _dbContext.Disclosures.Add(disclosure);
-                }
-            }
-
-            if (NumberRead > 0)
-            {
-                await _dbContext.SaveChangesAsync(cancellationToken);
-                _dbContext.ChangeTracker.Clear();
-            }
-            if (lastPublishDate >= CurrentPubDate)
-                break;
-
-            pageNumber++;
-            // تاخیر 2 ثانیه
-
-            var delay = result.TotalPages > 10
-                    ? TimeSpan.FromSeconds(10)
-                    : TimeSpan.FromSeconds(1);
-            await Task.Delay(delay, cancellationToken);
-
-        }
-        NumberRead++;
-
-    }
+    
     public async Task CollectAsync2(
     CancellationToken cancellationToken = default)
     {
@@ -292,9 +195,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
                     
 
-                    var result1 = await _monthlySalesParser.ParseAsync(
-                        letter.Url ?? "",
-                            cancellationToken);
+                   
 
 
                 }

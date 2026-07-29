@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -73,17 +74,7 @@ namespace FSH.Modules.MarketIntelligence
                     message = "Codal import finished"
                 });
             }).AllowAnonymous();
-
-            group.MapPost("/codal/importOld", async (ICodalCollectorService collector,
-                                                  CancellationToken ct) =>
-            {
-                await collector.CollectAsync(ct);
-                return Results.Ok(new
-                {
-                    message = "Codal import finished"
-                });
-            }).AllowAnonymous();
-
+            
         }
 
     }

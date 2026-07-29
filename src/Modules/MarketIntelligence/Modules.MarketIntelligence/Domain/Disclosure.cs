@@ -1,5 +1,6 @@
 ﻿using FSH.Framework.Core.Domain;
 using FSH.Framework.Shared.Persistence;
+using FSH.Modules.MarketIntelligence.Domain.Enums;
 
 namespace FSH.Modules.MarketIntelligence.Domain;
 
@@ -81,7 +82,7 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     public byte? Ct { get; set; }
     public short? Ft { get; set; }
 
-    public byte SalesParseStatus { get; set; }   // 0=New,1=Success,2=Failed,3=Ignored
+    public DisclosureParseStatus SalesParseStatus { get; set; } = (byte)DisclosureParseStatus.Pending;  // 0=New,1=Success,2=Failed,3=Ignored
 
     public DateTime? SalesParsedAt { get; set; }
 

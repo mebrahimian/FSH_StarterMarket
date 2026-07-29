@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+using System.Text.Json;
 using static FSH.Modules.MarketIntelligence.Services.Codal.CodalTableDefinitions;
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 

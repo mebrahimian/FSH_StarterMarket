@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Modules.MarketIntelligence.Services.Codal;
+namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed record CodalUrlInfo(
     short? Let,

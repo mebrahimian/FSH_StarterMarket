@@ -1,4 +1,6 @@
-﻿namespace FSH.Modules.MarketIntelligence.Services.Codal;
+﻿using FSH.Modules.MarketIntelligence.Services.Codal;
+
+namespace FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 
 public interface IMonthlySalesParser
 {

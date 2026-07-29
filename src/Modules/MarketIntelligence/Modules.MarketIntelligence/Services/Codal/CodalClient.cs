@@ -1,6 +1,7 @@
 ﻿
 using System.Net.Http.Json;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
+using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 

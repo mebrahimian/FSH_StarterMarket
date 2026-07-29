@@ -20,7 +20,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
         IHostEnvironment environment) : base(multiTenantContextAccessor, options, settings, environment) { }
 
     public DbSet<Disclosure> Disclosures => Set<Disclosure>();
-    
+    public DbSet<MonthlySales> MonthlySales => Set<MonthlySales>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

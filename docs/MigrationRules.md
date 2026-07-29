@@ -40,6 +40,12 @@ Add-Migration InitialWebhooks      -Context WebhookDbContext       -Project FSH.
 
 
 
+Add-Migration AddMonthltSale       -Context MarketIntelligenceDbContext    -Project FSH.Starter.Migrations.MSSQL -StartupProject FSH.Starter.Api -OutputDir MarketIntelligence
+
+
+
+
+
 
 
 TenantDbContextو AuditDbContextوBillingDbContextوCatalogDbContextوChatDbContextوNotificationsDbContextوTicketsDbContextوWebhookDbContext
