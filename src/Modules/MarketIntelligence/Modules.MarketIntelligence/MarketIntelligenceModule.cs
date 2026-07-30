@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -33,6 +34,7 @@ namespace FSH.Modules.MarketIntelligence
             {
                 client.Timeout = TimeSpan.FromMinutes(3);
             });
+            builder.Services.AddScoped<ICodalDisclosureProcessor, ManufacturingMonthlyActivityProcessor>();
             builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
@@ -74,7 +76,22 @@ namespace FSH.Modules.MarketIntelligence
                     message = "Codal import finished"
                 });
             }).AllowAnonymous();
-            
+
+            group.MapPost(
+        "/codal/parse-pending",
+        async (
+            ICodalCollectorService collector,
+            CancellationToken ct) =>
+        {
+            await collector.ParsePendingDisclosuresAsync(ct);
+
+            return Results.Ok(new
+            {
+                message = "Pending disclosures parsed successfully"
+            });
+        })
+        .AllowAnonymous();
+
         }
 
     }

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using static FSH.Framework.Shared.Multitenancy.MultitenancyConstants;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
@@ -36,9 +37,16 @@ internal static class CodalCellFinder
             jsonStart,
             jsonEnd - jsonStart + 1);
 
-
+        
         using var document = JsonDocument.Parse(json);
 
+        JsonElement root = document.RootElement;
+        // پیدا کردن tracingNo
+        long tracingNo = root
+            .GetProperty("tracingNo")
+            .GetInt64();
+
+        // پیدا کردن cell مورد نظر
 
         var cells = document.RootElement
             .GetProperty("sheets")
@@ -101,7 +109,7 @@ internal static class CodalCellFinder
                            PeriodEndToDate: GetString(selectedCell, "periodEndToDate"),
                            YearEndToDate: GetString(selectedCell, "yearEndToDate"),
                            Address: GetString(selectedCell, "address"),
-                           RowSequence: GetInt(selectedCell, "rowSequence")
+                           RowSequence: GetInt(selectedCell, "rowSequence")                           
                          );
     }
 

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 public interface ICodalDisclosureProcessor
 {

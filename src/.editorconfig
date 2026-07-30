@@ -266,6 +266,8 @@ dotnet_diagnostic.CA1848.severity = none
 dotnet_diagnostic.CA1054.severity = none
 dotnet_diagnostic.CA1056.severity = none
 dotnet_diagnostic.MSG0005.severity = none
+# Allow commented-out C# code temporarily during refactoring
+dotnet_diagnostic.S125.severity = none
 
 [**/Migrations/**/*.cs]
 dotnet_diagnostic.CA1062.severity = none

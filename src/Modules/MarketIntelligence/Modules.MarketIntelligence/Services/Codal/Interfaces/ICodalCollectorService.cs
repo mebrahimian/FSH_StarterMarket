@@ -4,4 +4,6 @@ public interface ICodalCollectorService
 {
     Task CollectAsync2(
         CancellationToken cancellationToken = default);
+    Task ParsePendingDisclosuresAsync(
+        CancellationToken cancellationToken = default);
 }

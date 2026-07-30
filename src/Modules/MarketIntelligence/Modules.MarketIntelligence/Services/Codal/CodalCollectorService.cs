@@ -2,36 +2,36 @@
 using FSH.Framework.Shared.Dates;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
-using Microsoft.EntityFrameworkCore;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
-
+using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using System.Net;
+using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
+using System.Text.Json;
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class CodalCollectorService : ICodalCollectorService
 {
-#pragma warning disable S1075
-    private const string CodalBaseUrl = "https://www.codal.ir";
-#pragma warning restore S1075
-    private readonly HttpClient _httpClient;
     private readonly ICodalClient _codalClient;
     private readonly MarketIntelligenceDbContext _dbContext;
-
+    private readonly IEnumerable<ICodalDisclosureProcessor> _processors;
 
     public CodalCollectorService(
     ICodalClient codalClient,
-
-    MarketIntelligenceDbContext dbContext, HttpClient httpClient)
+    MarketIntelligenceDbContext dbContext,
+    HttpClient httpClient,
+    IEnumerable<ICodalDisclosureProcessor> processors)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
-        _httpClient = httpClient;
-
+        _processors = processors;
     }
 
-    
-    public async Task CollectAsync2(
-    CancellationToken cancellationToken = default)
+
+    public async Task CollectAsync2(CancellationToken cancellationToken = default)
     {
         var lastPublishDateStr = await _dbContext.Disclosures
             .OrderByDescending(x => x.PublishDateTimeRaw)
@@ -45,7 +45,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var definitions = CodalDefinitionsProvider.Load();
 
-        var pageNumber = 1;
+        var pageNumber = 3667;
         var stop = false;
 
         while (!stop)
@@ -100,7 +100,6 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     continue;
                 }
 
-
                 string? sentRaw = letter.SentDateTimeRaw;
                 string? pubRaw = letter.PublishDateTimeRaw;
 
@@ -122,84 +121,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
-                if (let == 58 && rt == 0)
-                {
-                    var uri = new Uri($"{CodalBaseUrl}{letter.Url}");
-                    var html = await _httpClient.GetStringAsync(uri, cancellationToken);
-
-                    var monthCell = CodalCellFinder.FindCellValue
-                                 (
-                                    html,
-                                    definitions.ManufacturingMonthlySales.MetaTableId,
-                                    definitions.ManufacturingMonthlySales.MetaTableCode,
-                                    definitions.ManufacturingMonthlySales.SelectedCells["MonthlySales"]
-                                 );
-                    var YearToDateCell = CodalCellFinder.FindCellValue
-                                 (
-                                    html,
-                                    definitions.ManufacturingMonthlySales.MetaTableId,
-                                    definitions.ManufacturingMonthlySales.MetaTableCode,
-                                    definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"]
-                                 );
-                    var zero = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 0
-                                );
-                    var one = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 1
-                                );
-                    var two = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 2
-                                );
-                    var tree = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 3
-                                );
-                    var fore = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 4
-                                );
-                    var Fifth = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 5
-                                );
-                    var six = CodalCellFinder.FindCellValue
-                                (
-                                   html,
-                                   definitions.ManufacturingMonthlySales.MetaTableId,
-                                   definitions.ManufacturingMonthlySales.MetaTableCode,
-                                   definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"], 6
-                                );
-
-                   
-
-                    
-
-                   
-
-
-                }
-
+                
                 var disclosure = new Disclosure(
                     letter.TracingNo,
                     letter.Symbol ?? "",
@@ -226,26 +148,18 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     rt,  // Rt
                     ct,  // Ct
                     ft); // Ft
-
-
                 disclosures.Add(disclosure);
-            }
-
-
-            // ذخیره یکجای صفحه
-            if (disclosures.Count > 0)
-            {
-                await _dbContext.Disclosures.AddRangeAsync(
-                    disclosures,
-                    cancellationToken);
-
-
+                _dbContext.Disclosures.Add(disclosure);
                 await _dbContext.SaveChangesAsync(cancellationToken);
+                var processor = _processors.SingleOrDefault(x => x.CanProcess(disclosure));
+                if (processor is not null)
+                {
+                    await processor.ProcessAsync(disclosure, cancellationToken);
+                }
 
-                _dbContext.ChangeTracker.Clear();
             }
-
-
+            // ذخیره یکجای صفحه
+           
             // اگر به رکوردهای قدیمی رسیدیم، توقف
             if (stop)
                 break;
@@ -255,8 +169,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
             var delay = result.TotalPages > 10
-                ? TimeSpan.FromSeconds(3)
-                : TimeSpan.FromSeconds(1);
+                ? TimeSpan.FromSeconds(1)
+                : TimeSpan.FromSeconds(0.2);
 
 
             await Task.Delay(delay, cancellationToken);
@@ -275,5 +189,116 @@ public sealed class CodalCollectorService : ICodalCollectorService
         short? ft = short.TryParse(query["ft"], out var f) ? f : null;
 
         return (let, rt, ct, ft);
+    }
+    public async Task ParsePendingDisclosuresAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const int batchSize = 20;
+
+        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(1);
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            List<Disclosure> disclosures =
+                await _dbContext.Disclosures
+                    .Where(x =>
+                        x.Let == 58
+                        && x.Rt == 0
+                        && x.SalesParseStatus == DisclosureParseStatus.Pending)
+                    .OrderBy(x =>
+                        x.PublishDateTime ?? DateTime.MinValue)
+                    .ThenBy(x => x.Id)
+                    .Take(batchSize)
+                    .ToListAsync(cancellationToken);
+
+            if (disclosures.Count == 0)
+            {
+                break;
+            }
+
+            foreach (Disclosure disclosure in disclosures)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                ICodalDisclosureProcessor? processor =
+                    _processors.SingleOrDefault(
+                        x => x.CanProcess(disclosure));
+
+                if (processor is null)
+                {
+                    throw new InvalidOperationException(
+                        $"No processor was found for disclosure " +
+                        $"{disclosure.TracingNo}.");
+                }
+
+                try
+                {
+                    await processor.ProcessAsync(
+                        disclosure,
+                        cancellationToken);
+                }
+                catch (OperationCanceledException)
+                    when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (HttpRequestException ex)
+                    when (ex.StatusCode ==
+                          HttpStatusCode.TooManyRequests)
+                {
+                    // کدال کد امنیتی درخواست کرده است.
+                    // پردازش متوقف می‌شود و رکورد Pending باقی می‌ماند.
+                    throw;
+                }
+                catch (HttpRequestException)
+                {
+                    // خطای موقت شبکه؛ رکورد Pending باقی بماند.
+                    // برای جلوگیری از انتخاب دوباره همین رکورد
+                    // در حلقه جاری، کل عملیات متوقف می‌شود.
+                    return;
+                }
+                catch (IOException)
+                {
+                    // قطع ارتباط هنگام خواندن پاسخ کدال.
+                    // رکورد Pending باقی می‌ماند.
+                    return;
+                }
+                catch (InvalidOperationException)
+                {
+                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
+
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
+
+                    await _dbContext.SaveChangesAsync(
+                        cancellationToken);
+                }
+                catch (FormatException)
+                {
+                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
+
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
+
+                    await _dbContext.SaveChangesAsync(
+                        cancellationToken);
+                }
+                catch (JsonException)
+                {
+                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
+
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
+
+                    await _dbContext.SaveChangesAsync(
+                        cancellationToken);
+                }
+
+                await Task.Delay(
+                    delayBetweenRequests,
+                    cancellationToken);
+            }
+
+            _dbContext.ChangeTracker.Clear();
+        }
     }
 }
