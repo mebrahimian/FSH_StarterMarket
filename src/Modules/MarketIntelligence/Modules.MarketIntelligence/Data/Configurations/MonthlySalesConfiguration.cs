@@ -1,15 +1,17 @@
-﻿using FSH.Modules.MarketIntelligence.Domain;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 
-namespace FSH.Modules.MarketIntelligence.Domain.Configurations;
-
-public sealed class MonthlySalesConfiguration : IEntityTypeConfiguration<MonthlySales>
+public sealed class MonthlyActivitySummaryConfiguration :
+    IEntityTypeConfiguration<MonthlyActivitySummary>
 {
-    public void Configure(EntityTypeBuilder<MonthlySales> builder)
+    public void Configure(
+        EntityTypeBuilder<MonthlyActivitySummary> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-        builder.ToTable("MonthlySales");
+
+        builder.ToTable("MonthlyActivitySummaries");
+
         builder.Property(x => x.Symbol)
             .HasMaxLength(64)
             .IsRequired();
@@ -21,11 +23,14 @@ public sealed class MonthlySalesConfiguration : IEntityTypeConfiguration<Monthly
         builder.Property(x => x.YearEndDate)
             .HasMaxLength(10);
 
-        builder.Property(x => x.MonthlySalesAmount)
+        builder.Property(x => x.PeriodAmount)
             .HasPrecision(18, 2);
 
-        builder.Property(x => x.YearToDateSalesAmount)
+        builder.Property(x => x.YearToDateAmount)
             .HasPrecision(18, 2);
+
+        builder.Property(x => x.Rt)
+            .IsRequired();
 
         builder.HasIndex(x => new
         {

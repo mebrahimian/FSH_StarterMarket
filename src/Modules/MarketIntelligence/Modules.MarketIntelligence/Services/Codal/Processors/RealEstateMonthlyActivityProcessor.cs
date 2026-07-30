@@ -10,7 +10,7 @@ using System.Net.Http.Json;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
-public sealed class ManufacturingMonthlyActivityProcessor(
+public sealed class RealEstateMonthlyActivityProcessor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext)
     : ICodalDisclosureProcessor
@@ -25,7 +25,7 @@ public sealed class ManufacturingMonthlyActivityProcessor(
         ArgumentNullException.ThrowIfNull(disclosure);
 
         return disclosure.Let == 58
-            && disclosure.Rt == 0
+            && disclosure.Rt == 1
             && disclosure.SalesParseStatus == DisclosureParseStatus.Pending;
     }
 
@@ -56,19 +56,20 @@ public sealed class ManufacturingMonthlyActivityProcessor(
                               cancellationToken);
 
             // از اینجا به بعد CodalCellFinder فعلی بدون تغییر استفاده می‌شود.
+
             CodalCellResult? MonthCell = CodalCellFinder.FindCellValue
                                  (
                                     html,
-                                    definitions.ManufacturingMonthlySales.MetaTableId,
-                                    definitions.ManufacturingMonthlySales.MetaTableCode,
-                                    definitions.ManufacturingMonthlySales.SelectedCells["MonthlySales"]
+                                    definitions.RealEstateMonthlyActivity.MetaTableId,
+                                    definitions.RealEstateMonthlyActivity.MetaTableCode,
+                                    definitions.RealEstateMonthlyActivity.SelectedCells["MonthlyRevenue"]
                                  );
             CodalCellResult? YearToDateCell = CodalCellFinder.FindCellValue
                                  (
                                     html,
-                                    definitions.ManufacturingMonthlySales.MetaTableId,
-                                    definitions.ManufacturingMonthlySales.MetaTableCode,
-                                    definitions.ManufacturingMonthlySales.SelectedCells["YearToDateSales"]
+                                    definitions.RealEstateMonthlyActivity.MetaTableId,
+                                    definitions.RealEstateMonthlyActivity.MetaTableCode,
+                                    definitions.RealEstateMonthlyActivity.SelectedCells["YearToDateRevenue"]
                                  );
 
             ////////
@@ -89,11 +90,11 @@ public sealed class ManufacturingMonthlyActivityProcessor(
 
             decimal monthlySalesAmount = ParseDecimal(MonthCell.Value,
                                                       disclosure.TracingNo,
-                                                      "MonthlySalesAmount");
+                                                      "MonthlyRevenue");
 
             decimal yearToDateSalesAmount = ParseDecimal(YearToDateCell.Value,
                                                          disclosure.TracingNo,
-                                                         "YearToDateSalesAmount");
+                                                         "YearToDateRevenue");
 
             MonthlyActivitySummary? existingSummary =
                      await dbContext.MonthlyActivitySummaries
@@ -128,10 +129,10 @@ public sealed class ManufacturingMonthlyActivityProcessor(
                     cancellationToken);
             }
             else if (
-                    disclosure.PublishDateTime.HasValue &&
-                    (!existingSummary.PublishDateTime.HasValue ||
-                    disclosure.PublishDateTime.Value >
-                    existingSummary.PublishDateTime.Value))
+                      disclosure.PublishDateTime.HasValue &&
+                     (!existingSummary.PublishDateTime.HasValue ||
+                      disclosure.PublishDateTime.Value >
+                      existingSummary.PublishDateTime.Value))
             {
                 existingSummary.Update(
                     yearEndDate: MonthCell.YearEndToDate,

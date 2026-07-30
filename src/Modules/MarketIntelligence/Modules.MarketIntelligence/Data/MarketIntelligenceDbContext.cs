@@ -20,8 +20,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
         IHostEnvironment environment) : base(multiTenantContextAccessor, options, settings, environment) { }
 
     public DbSet<Disclosure> Disclosures => Set<Disclosure>();
-    public DbSet<MonthlySales> MonthlySales => Set<MonthlySales>();
-
+    public DbSet<MonthlyActivitySummary> MonthlyActivitySummaries =>  Set<MonthlyActivitySummary>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

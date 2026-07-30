@@ -2,14 +2,16 @@
 
 public sealed class CodalDefinitions
 {
-    public ManufacturingMonthlySalesDefinition ManufacturingMonthlySales { get; set; } = new();
+    public CodalTableDefinition ManufacturingMonthlySales { get; set; } = new();
+    public CodalTableDefinition RealEstateMonthlyActivity { get; set; } = new();
+
 }
 
-public sealed class ManufacturingMonthlySalesDefinition
+public sealed class CodalTableDefinition
 {
     public int MetaTableId { get; set; }
 
     public int MetaTableCode { get; set; }
 
-    public Dictionary<string, int> SelectedCells { get; init; } = new();
+    public Dictionary<string, int> SelectedCells { get; init; } = [];
 }

@@ -45,7 +45,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var definitions = CodalDefinitionsProvider.Load();
 
-        var pageNumber = 3667;
+        var pageNumber = 1;
         var stop = false;
 
         while (!stop)
@@ -205,9 +205,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 await _dbContext.Disclosures
                     .Where(x =>
                         x.Let == 58
-                        && x.Rt == 0
+                        && (x.Rt == 0 || x.Rt == 1)
                         && x.SalesParseStatus == DisclosureParseStatus.Pending)
-                    .OrderBy(x =>
+                    .OrderByDescending(x =>
                         x.PublishDateTime ?? DateTime.MinValue)
                     .ThenBy(x => x.Id)
                     .Take(batchSize)

@@ -6,5 +6,21 @@
       "MonthlySales": 17,
       "YearToDateSales": 21
     }
+  },
+  "RealEstateMonthlyActivity": {
+    "MetaTableId": 3145,
+    "MetaTableCode": 3145,
+    "SelectedCells": {
+      "MonthlyRevenue": 5,
+      "YearToDateRevenue": 6
+    }
+  },
+  "BankingMonthlyActivity": {
+    "MetaTableId": 2548,
+    "MetaTableCode": 2548,
+    "SelectedCells": {
+      "MonthlyRevenue": 5,
+      "YearToDateRevenue": 6
+    }
   }
 }

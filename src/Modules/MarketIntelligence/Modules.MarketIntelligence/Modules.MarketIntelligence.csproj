@@ -15,6 +15,10 @@
 
   <ItemGroup>
     <Folder Include="Domain\Events\" />
+	<None Update="Services\Codal\Configuration\CodalDefinitions.json">
+	      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	</None>
   </ItemGroup>
 
   <ItemGroup>

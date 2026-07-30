@@ -18,9 +18,13 @@ public static class CodalDefinitionsProvider
             "CodalDefinitions.json");
 
         var json = File.ReadAllText(path);
-
-        return JsonSerializer.Deserialize<CodalDefinitions>(json)
-            ?? throw new InvalidOperationException(
-                "Cannot load CodalDefinitions.json");
+        var ret = JsonSerializer.Deserialize<CodalDefinitions>(json) ?? 
+            throw new InvalidOperationException(
+        "CodalDefinitions.json could not be deserialized."); 
+        Console.WriteLine(ret.RealEstateMonthlyActivity.GetType().FullName);
+        Console.WriteLine(ret.RealEstateMonthlyActivity.MetaTableId);
+        Console.WriteLine(ret.RealEstateMonthlyActivity.MetaTableCode);
+        Console.WriteLine(ret.RealEstateMonthlyActivity.SelectedCells.Count);
+        return ret;
     }
 }
