@@ -81,6 +81,7 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     public byte? Rt { get; set; }
     public byte? Ct { get; set; }
     public short? Ft { get; set; }
+    public int? ReportingTypeCode { set; get; }
 
     public DisclosureParseStatus SalesParseStatus { get; set; } = (byte)DisclosureParseStatus.Pending;  // 0=New,1=Success,2=Failed,3=Ignored
 
@@ -115,7 +116,8 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         short? let,
         byte? rt,
         byte? ct,
-        short? ft)
+        short? ft,
+        int? reportingTypeCode  )
     {
         TracingNo = tracingNo;
         Symbol = symbol;
@@ -142,5 +144,6 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         Rt = rt;
         Ct = ct;
         Ft = ft;
+        ReportingTypeCode = reportingTypeCode;
     }
 }

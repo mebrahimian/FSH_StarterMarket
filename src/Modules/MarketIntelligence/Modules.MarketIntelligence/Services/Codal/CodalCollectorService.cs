@@ -45,21 +45,23 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var definitions = CodalDefinitionsProvider.Load();
 
-        var pageNumber = 1500;
+        var pageNumber =1;
         var stop = false;
 
         while (!stop)
         {
             var result = await _codalClient.SearchAsync(
                 new()
-                {
-                    // شرطهای خواندن کدال مثلا category=3 ; let58 ;,,,,,
-                    // در اینجا فقط شماره صفحه ملاک است
-                    PageNumber = pageNumber,
-                    Category = 3
-
-                },
-                cancellationToken);
+                {                            // 1000000:تولیدی 
+                                             // 1000001:ساختمانی     
+                                             // 1000002:سرمایه گذاری  
+                    PageNumber = pageNumber, // 1000003:بانک            
+                    Category = 3,            // 1000004:لیزینگ   
+                    ReportingType = 1000000, // 1000005:خدماتی 
+                    Symbol = "غبشهر"         // 1000006:بیمه               
+                                             // 1000007:حمل ونقل دریایی
+                },                           // 1000008:کشاورزی          
+                cancellationToken);          // 1000009:تامین سرمایه         
 
 
             Console.WriteLine(
@@ -148,7 +150,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     let,  // Let
                     rt,  // Rt
                     ct,  // Ct
-                    ft); // Ft
+                    ft,null); // Ft
                 disclosures.Add(disclosure);
                 _dbContext.Disclosures.Add(disclosure);
                 await _dbContext.SaveChangesAsync(cancellationToken);
@@ -166,11 +168,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 break;
 
 
-            pageNumber--;
+            pageNumber++;
 
 
             var delay = result.TotalPages > 10
-                ? TimeSpan.FromSeconds(2)
+                ? TimeSpan.FromSeconds(5)
                 : TimeSpan.FromSeconds(0.2);
 
 

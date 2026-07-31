@@ -8,5 +8,7 @@ public enum DisclosureParseStatus
 
     Failed = 2,
 
-    Skipped = 3
+    NoData = 3,
+
+    Skipped = 4
 }

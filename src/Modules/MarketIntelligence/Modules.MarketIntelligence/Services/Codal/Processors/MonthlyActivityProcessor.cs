@@ -6,13 +6,15 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Net;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 public sealed class MonthlyActivityProcessor(
     HttpClient httpClient,
-    MarketIntelligenceDbContext dbContext)
+    MarketIntelligenceDbContext dbContext,
+    ILogger<MonthlyActivityProcessor> logger)
     : ICodalDisclosureProcessor
 {
 
@@ -43,8 +45,7 @@ public sealed class MonthlyActivityProcessor(
             return;
         }
 
-        CodalDefinitions definitions =
-            CodalDefinitionsProvider.Load();
+        CodalDefinitions definitions = CodalDefinitionsProvider.Load();
 
         if (!definitions.MonthlyActivities.TryGetValue(
                 rt,
@@ -56,46 +57,43 @@ public sealed class MonthlyActivityProcessor(
 
         if (string.IsNullOrWhiteSpace(disclosure.Url))
         {
-            disclosure.SalesParseStatus =
-                DisclosureParseStatus.Failed;
+            disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
 
             disclosure.SalesParsedAt = DateTime.UtcNow;
 
-            await dbContext.SaveChangesAsync(
-                cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
             return;
         }
 
         try
         {
-            Uri reportUri =
-                BuildReportUri(disclosure.Url);
+            Uri reportUri = BuildReportUri(disclosure.Url);
 
-            string html =
-                await DownloadHtmlWithRetryAsync(
+            string html = await DownloadHtmlWithRetryAsync(
                     reportUri,
                     cancellationToken);
 
             CodalCellResult? periodCell =
                 CodalCellFinder.FindCellValue(
                     html,
-                    definition.MetaTableId,
                     definition.MetaTableCode,
                     definition.SelectedCells["PeriodAmount"]);
 
             CodalCellResult? yearToDateCell =
                 CodalCellFinder.FindCellValue(
                     html,
-                    definition.MetaTableId,
                     definition.MetaTableCode,
                     definition.SelectedCells["YearToDateAmount"]);
 
-            if (periodCell is null ||
-                yearToDateCell is null)
+            if (periodCell is null || yearToDateCell is null)
             {
-                throw new InvalidOperationException(
-                    $"Monthly activity cells were not found for disclosure {disclosure.TracingNo}.");
+                disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
+
+                disclosure.SalesParsedAt =  DateTime.UtcNow;
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                return;
             }
 
             if (string.IsNullOrWhiteSpace(
@@ -113,11 +111,13 @@ public sealed class MonthlyActivityProcessor(
             }
 
             decimal periodAmount = ParseDecimal(periodCell.Value,
-                                                disclosure.TracingNo,
+                                                disclosure.Symbol,
+                                                disclosure.PublishDateTimeRaw,
                                                 "PeriodAmount");
 
             decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
-                                                    disclosure.TracingNo,
+                                                    disclosure.Symbol,
+                                                    disclosure.PublishDateTimeRaw,
                                                     "YearToDateAmount");
 
             decimal? previousYearToDateAmount = null;
@@ -131,8 +131,7 @@ public sealed class MonthlyActivityProcessor(
             {
                 CodalCellResult? previousYearToDateCell =
                     CodalCellFinder.FindCellValue(
-                        html,
-                        definition.MetaTableId,
+                        html,                        
                         definition.MetaTableCode,
                         previousYearToDateCellIndex);
 
@@ -143,7 +142,8 @@ public sealed class MonthlyActivityProcessor(
                     previousYearToDateAmount =
                         ParseDecimal(
                             previousYearToDateCell.Value,
-                            disclosure.TracingNo,
+                            disclosure.Symbol,
+                            disclosure.PublishDateTimeRaw,
                             "PreviousYearToDateAmount");
                 }
             }
@@ -235,21 +235,35 @@ public sealed class MonthlyActivityProcessor(
                     tracingNo: disclosure.TracingNo);
             }
 
-            disclosure.SalesParseStatus =
-                DisclosureParseStatus.Success;
+            disclosure.SalesParseStatus = DisclosureParseStatus.Success;
 
-            disclosure.SalesParsedAt =
-                DateTime.UtcNow;
-
+            disclosure.SalesParsedAt = DateTime.UtcNow;
+            disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
             await dbContext.SaveChangesAsync(
                 cancellationToken);
         }
         catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested)
+    when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
-        catch
+        catch (HttpRequestException ex)
+            when (ex.StatusCode is
+                System.Net.HttpStatusCode.NotFound or
+                System.Net.HttpStatusCode.Gone)
+        {
+            disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
+
+            disclosure.SalesParsedAt = DateTime.UtcNow;
+
+            logger.LogWarning(
+                ex,
+                "Codal report was not found. TracingNo: {TracingNo}",
+                disclosure.TracingNo);
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (HttpRequestException ex)
         {
             disclosure.SalesParseStatus =
                 DisclosureParseStatus.Failed;
@@ -257,11 +271,44 @@ public sealed class MonthlyActivityProcessor(
             disclosure.SalesParsedAt =
                 DateTime.UtcNow;
 
-            await dbContext.SaveChangesAsync(
-                cancellationToken);
+            logger.LogError(
+                ex,
+                "Downloading Codal report failed. TracingNo: {TracingNo}",
+                disclosure.TracingNo);
 
-            throw;
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
+        catch (FormatException ex)
+        {
+            disclosure.SalesParseStatus =
+                DisclosureParseStatus.Failed;
+
+            disclosure.SalesParsedAt =
+                DateTime.UtcNow;
+
+            logger.LogError(
+                ex,
+                "Invalid numeric value in Codal report. TracingNo: {TracingNo}",
+                disclosure.TracingNo);
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (System.Text.Json.JsonException ex)
+        {
+            disclosure.SalesParseStatus =
+                DisclosureParseStatus.Failed;
+
+            disclosure.SalesParsedAt =
+                DateTime.UtcNow;
+
+            logger.LogError(
+                ex,
+                "Codal datasource JSON could not be parsed. TracingNo: {TracingNo}",
+                disclosure.TracingNo);
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
     }
 
     private static Uri BuildReportUri(string disclosureUrl)
@@ -336,13 +383,14 @@ public sealed class MonthlyActivityProcessor(
             lastException);
     }
     private static decimal ParseDecimal(string? value,
-                                        long tracingNo,
+                                        string? symbol,
+                                        string? pubDate,
                                         string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             throw new InvalidOperationException(
-                $"{fieldName} is empty for disclosure {tracingNo}.");
+                $"{fieldName} is empty for disclosure {symbol}{pubDate}.");
         }
 
         string normalizedValue = value
@@ -380,7 +428,7 @@ public sealed class MonthlyActivityProcessor(
         {
             throw new InvalidOperationException(
                 $"{fieldName} value '{value}' is invalid " +
-                $"for disclosure {tracingNo}.");
+                $"for disclosure {symbol}{pubDate}.");
         }
 
         return result;

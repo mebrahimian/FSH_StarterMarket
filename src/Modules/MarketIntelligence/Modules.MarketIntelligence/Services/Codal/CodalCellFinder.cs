@@ -7,7 +7,6 @@ internal static class CodalCellFinder
 {
     public static CodalCellResult? FindCellValue(
         string html,
-        int metaTableId,
         int metaTableCode,
         int columnCode,
         int? occurrence = null)
@@ -45,6 +44,11 @@ internal static class CodalCellFinder
         long tracingNo = root
             .GetProperty("tracingNo")
             .GetInt64();
+        // پیداکردن ReportingType : نوع شرکتها 1000000:تولیدی و 1000001: ساختمانی و...
+        int reportingTypeCode = root
+            .GetProperty("sheets")[0]
+            .GetProperty("code")
+            .GetInt32();
 
         // پیدا کردن cell مورد نظر
 
@@ -61,11 +65,6 @@ internal static class CodalCellFinder
 
         var matchedCells = cells
             .Where(cell =>
-                cell.TryGetProperty(
-                    "metaTableId",
-                    out var tableId) &&
-                tableId.GetInt32() == metaTableId &&
-
                 cell.TryGetProperty(
                     "metaTableCode",
                     out var tableCode) &&
@@ -109,7 +108,8 @@ internal static class CodalCellFinder
                            PeriodEndToDate: GetString(selectedCell, "periodEndToDate"),
                            YearEndToDate: GetString(selectedCell, "yearEndToDate"),
                            Address: GetString(selectedCell, "address"),
-                           RowSequence: GetInt(selectedCell, "rowSequence")                           
+                           RowSequence: GetInt(selectedCell, "rowSequence"),
+                           ReportingTypeCode: reportingTypeCode
                          );
     }
 

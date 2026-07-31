@@ -40,6 +40,7 @@ public sealed class CodalClient : ICodalClient
         AddParameter("ReportingType", request.ReportingType);
         AddParameter("TracingNo", request.TracingNo);
         AddParameter("search", true);
+        AddParameter("symbol", request.Symbol);
         
         var url = $"https://search.codal.ir/api/search/v2/q?" +
           string.Join("&", parameters);

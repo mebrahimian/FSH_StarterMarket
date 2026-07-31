@@ -6,4 +6,5 @@ public sealed record CodalCellResult(
     string? PeriodEndToDate,
     string? YearEndToDate,
     string? Address,
-    int RowSequence);
+    int RowSequence,
+    int? ReportingTypeCode);

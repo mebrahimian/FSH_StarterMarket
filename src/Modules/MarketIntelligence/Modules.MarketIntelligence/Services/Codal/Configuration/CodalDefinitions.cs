@@ -15,8 +15,6 @@ public sealed class CodalDefinitions
 
 public sealed class CodalTableDefinition
 {
-    public int MetaTableId { get; set; }
-
     public int MetaTableCode { get; set; }
 
     public Dictionary<string, int> SelectedCells { get; init; } = [];

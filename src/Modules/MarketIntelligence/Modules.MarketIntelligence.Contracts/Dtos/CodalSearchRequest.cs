@@ -23,7 +23,6 @@ public sealed class CodalSearchRequest
     public int Length { get; init; } = -1;
 
     public int LetterType { get; init; } = -1;
-
     public bool Mains { get; init; } = true;
 
     public bool NotAudited { get; init; } = true;
@@ -35,4 +34,5 @@ public sealed class CodalSearchRequest
     public int ReportingType { get; init; } = -1;
 
     public long TracingNo { get; init; } = -1;
+    public string? Symbol { get; init; }
 }
