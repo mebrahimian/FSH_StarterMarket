@@ -1,26 +1,31 @@
 ﻿{
-  "ManufacturingMonthlySales": {
-    "MetaTableId": 3465,
-    "MetaTableCode": 1197,
-    "SelectedCells": {
-      "MonthlySales": 17,
-      "YearToDateSales": 21
-    }
-  },
-  "RealEstateMonthlyActivity": {
-    "MetaTableId": 3145,
-    "MetaTableCode": 3145,
-    "SelectedCells": {
-      "MonthlyRevenue": 5,
-      "YearToDateRevenue": 6
-    }
-  },
-  "BankingMonthlyActivity": {
-    "MetaTableId": 2548,
-    "MetaTableCode": 2548,
-    "SelectedCells": {
-      "MonthlyRevenue": 5,
-      "YearToDateRevenue": 6
+  "MonthlyActivities": {
+    "0": {
+      "MetaTableId": 3465,
+      "MetaTableCode": 1197,
+      "SelectedCells": {
+        "PeriodAmount": 17,
+        "YearToDateAmount": 21,
+        "PreviousYearToDateAmount": 25
+      }
+    },
+    "1": {
+      "MetaTableId": 3148,
+      "MetaTableCode": 1713,
+      "SelectedCells": {
+        "PeriodAmount": 5,
+        "YearToDateAmount": 6,
+        "PreviousYearToDateAmount": 7
+      }
+    },
+    "3": {
+      "MetaTableId": 2548,
+      "MetaTableCode": 2548,
+      "SelectedCells": {
+        "PeriodAmount": 5,
+        "YearToDateAmount": 6,
+        "PreviousYearToDateAmount": 7
+      }
     }
   }
 }

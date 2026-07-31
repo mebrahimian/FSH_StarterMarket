@@ -16,6 +16,7 @@ public sealed class MonthlyActivitySummary :
         byte? rt,
         decimal? periodAmount,
         decimal? yearToDateAmount,
+        decimal? previousYearToDateAmount,
         string? periodFormula,
         string? periodAddress,
         int periodRowSequence,
@@ -40,6 +41,7 @@ public sealed class MonthlyActivitySummary :
         PeriodRowSequence = periodRowSequence;
 
         YearToDateAmount = yearToDateAmount;
+        PreviousYearToDateAmount = previousYearToDateAmount;
         YearToDateFormula = yearToDateFormula;
         YearToDateAddress = yearToDateAddress;
         YearToDateRowSequence = yearToDateRowSequence;
@@ -67,7 +69,7 @@ public sealed class MonthlyActivitySummary :
     public int PeriodRowSequence { get; private set; }
 
     public decimal? YearToDateAmount { get; private set; }
-
+    public decimal? PreviousYearToDateAmount {  get; private set; }
     public string? YearToDateFormula { get; private set; }
 
     public string? YearToDateAddress { get; private set; }
@@ -87,6 +89,7 @@ public sealed class MonthlyActivitySummary :
         byte? rt,
         decimal? periodAmount,
         decimal? yearToDateAmount,
+        decimal? previousYearToDateAmount,
         string? periodFormula,
         string? periodAddress,
         int periodRowSequence,
@@ -106,6 +109,7 @@ public sealed class MonthlyActivitySummary :
         PeriodRowSequence = periodRowSequence;
 
         YearToDateAmount = yearToDateAmount;
+        PreviousYearToDateAmount = previousYearToDateAmount;    
         YearToDateFormula = yearToDateFormula;
         YearToDateAddress = yearToDateAddress;
         YearToDateRowSequence = yearToDateRowSequence;

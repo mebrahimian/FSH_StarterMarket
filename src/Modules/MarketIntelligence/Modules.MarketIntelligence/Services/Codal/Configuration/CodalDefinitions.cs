@@ -1,9 +1,15 @@
-﻿namespace FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
+﻿using System.Text.Json.Serialization;
+
+namespace FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
+
 
 public sealed class CodalDefinitions
 {
-    public CodalTableDefinition ManufacturingMonthlySales { get; set; } = new();
-    public CodalTableDefinition RealEstateMonthlyActivity { get; set; } = new();
+    [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+    public Dictionary<byte, CodalTableDefinition> MonthlyActivities
+    {
+        get;
+    } = [];
 
 }
 

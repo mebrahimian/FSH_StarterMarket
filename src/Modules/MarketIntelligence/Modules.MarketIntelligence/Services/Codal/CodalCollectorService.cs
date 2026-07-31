@@ -45,7 +45,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var definitions = CodalDefinitionsProvider.Load();
 
-        var pageNumber = 1;
+        var pageNumber = 1500;
         var stop = false;
 
         while (!stop)
@@ -56,6 +56,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     // شرطهای خواندن کدال مثلا category=3 ; let58 ;,,,,,
                     // در اینجا فقط شماره صفحه ملاک است
                     PageNumber = pageNumber,
+                    Category = 3
 
                 },
                 cancellationToken);
@@ -121,7 +122,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
-                
+
                 var disclosure = new Disclosure(
                     letter.TracingNo,
                     letter.Symbol ?? "",
@@ -159,17 +160,17 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             }
             // ذخیره یکجای صفحه
-           
+
             // اگر به رکوردهای قدیمی رسیدیم، توقف
             if (stop)
                 break;
 
 
-            pageNumber++;
+            pageNumber--;
 
 
             var delay = result.TotalPages > 10
-                ? TimeSpan.FromSeconds(1)
+                ? TimeSpan.FromSeconds(2)
                 : TimeSpan.FromSeconds(0.2);
 
 
@@ -197,21 +198,24 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(1);
 
+        var definitions = CodalDefinitionsProvider.Load();
+        byte[] supportedReportTypes = definitions.MonthlyActivities.Keys.ToArray();
+
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             List<Disclosure> disclosures =
                 await _dbContext.Disclosures
-                    .Where(x =>
-                        x.Let == 58
-                        && (x.Rt == 0 || x.Rt == 1)
-                        && x.SalesParseStatus == DisclosureParseStatus.Pending)
-                    .OrderByDescending(x =>
-                        x.PublishDateTime ?? DateTime.MinValue)
-                    .ThenBy(x => x.Id)
-                    .Take(batchSize)
-                    .ToListAsync(cancellationToken);
+                      .Where(x => x.Let == 58 &&
+                                  x.Rt.HasValue &&
+                                  supportedReportTypes.Contains(x.Rt.Value) &&
+                                  x.SalesParseStatus == DisclosureParseStatus.Pending
+                            )
+                      .OrderBy(x => x.PublishDateTime ?? DateTime.MinValue)
+                      .ThenBy(x => x.Id)
+                      .Take(batchSize)
+                      .ToListAsync(cancellationToken);
 
             if (disclosures.Count == 0)
             {

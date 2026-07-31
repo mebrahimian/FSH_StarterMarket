@@ -34,9 +34,10 @@ namespace FSH.Modules.MarketIntelligence
             {
                 client.Timeout = TimeSpan.FromMinutes(3);
             });
-            builder.Services.AddScoped<ICodalDisclosureProcessor, ManufacturingMonthlyActivityProcessor>();
-            builder.Services.AddScoped<ICodalDisclosureProcessor, RealEstateMonthlyActivityProcessor>();
-        //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
+            //    builder.Services.AddScoped<ICodalDisclosureProcessor, ManufacturingMonthlyActivityProcessor>();
+            //    builder.Services.AddScoped<ICodalDisclosureProcessor, RealEstateMonthlyActivityProcessor>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityProcessor>();
+            //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",
