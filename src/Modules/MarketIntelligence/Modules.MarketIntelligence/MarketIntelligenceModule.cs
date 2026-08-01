@@ -69,21 +69,28 @@ namespace FSH.Modules.MarketIntelligence
            
             group.MapSearchDisclosuresEndpoint();
 
-            group.MapPost("/codal/import", async (ICodalCollectorService collector,
+            group.MapPost("/codal/newRead", async (ICodalCollectorService collector,
                                                   CancellationToken ct) =>
             {
-                await collector.CollectAsync2(ct);
+                await collector.CollectIncrementalAsync(ct);
                 return Results.Ok(new
                 {
                     message = "Codal import finished"
                 });
             }).AllowAnonymous();
 
-            group.MapPost(
-        "/codal/parse-pending",
-        async (
-            ICodalCollectorService collector,
-            CancellationToken ct) =>
+            group.MapPost("/codal/import", async (ICodalCollectorService collector,
+                                                  CancellationToken ct) =>
+            {
+                await collector.CollectBackfillAsync(ct);
+                return Results.Ok(new
+                {
+                    message = "Codal import finished"
+                });
+            }).AllowAnonymous();
+
+            group.MapPost("/codal/parse-pending",  
+                async (ICodalCollectorService collector, CancellationToken ct) =>
         {
             await collector.ParsePendingDisclosuresAsync(ct);
 

@@ -3,10 +3,11 @@ using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
-using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
@@ -96,25 +97,24 @@ public sealed class MonthlyActivityProcessor(
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(
-                    periodCell.PeriodEndToDate))
+            if (string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
             {
                 throw new InvalidOperationException(
                     $"Period end date was not found for disclosure {disclosure.TracingNo}.");
             }
 
-            if (string.IsNullOrWhiteSpace(
-                    disclosure.Symbol))
+            if (string.IsNullOrWhiteSpace(disclosure.Symbol))
             {
                 throw new InvalidOperationException(
                     $"Disclosure {disclosure.TracingNo} does not have a symbol.");
             }
-
+           
             decimal periodAmount = ParseDecimal(periodCell.Value,
                                                 disclosure.Symbol,
                                                 disclosure.PublishDateTimeRaw,
                                                 "PeriodAmount");
-
+            
+                
             decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
                                                     disclosure.Symbol,
                                                     disclosure.PublishDateTimeRaw,
@@ -389,8 +389,7 @@ public sealed class MonthlyActivityProcessor(
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            throw new InvalidOperationException(
-                $"{fieldName} is empty for disclosure {symbol}{pubDate}.");
+            return 0;
         }
 
         string normalizedValue = value

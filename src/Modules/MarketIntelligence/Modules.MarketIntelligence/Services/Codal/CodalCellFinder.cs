@@ -66,11 +66,6 @@ internal static class CodalCellFinder
         var matchedCells = cells
             .Where(cell =>
                 cell.TryGetProperty(
-                    "metaTableCode",
-                    out var tableCode) &&
-                tableCode.GetInt32() == metaTableCode &&
-
-                cell.TryGetProperty(
                     "columnCode",
                     out var column) &&
                 column.GetInt32() == columnCode)

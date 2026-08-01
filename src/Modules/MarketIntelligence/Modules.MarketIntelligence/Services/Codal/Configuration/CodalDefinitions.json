@@ -9,12 +9,10 @@
       }
     },
     "1": {
-      "MetaTableId": 3148,
-      "MetaTableCode": 1713,
+      "MetaTableCode": 3145,
       "SelectedCells": {
         "PeriodAmount": 5,
-        "YearToDateAmount": 6,
-        "PreviousYearToDateAmount": 7
+        "YearToDateAmount": 6
       }
     },
     "3": {
@@ -24,6 +22,29 @@
         "PeriodAmount": 5,
         "YearToDateAmount": 6,
         "PreviousYearToDateAmount": 7
+      }
+    },
+    "4": {
+      "MetaTableCode": 1713,
+      "SelectedCells": {
+        "PeriodAmount": 5,
+        "YearToDateAmount": 6
+      }
+    },
+    "5": {
+      "MetaTableCode": 1704,
+      "SelectedCells": {
+        "PeriodAmount": 7,
+        "YearToDateAmount": 8,
+        "PreviousYearToDateAmount": 9
+      }
+    },
+    "8": {
+      "MetaTableCode": 1197,
+      "SelectedCells": {
+        "PeriodAmount": 17,
+        "YearToDateAmount": 21,
+        "PreviousYearToDateAmount": 25
       }
     }
   }
