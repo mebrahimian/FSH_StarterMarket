@@ -12,26 +12,26 @@ using System.Net.Http.Json;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
-public sealed class MonthlyActivityProcessor(
+public sealed class MonthlyActivityType2Processor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
-    ILogger<MonthlyActivityProcessor> logger)
+    ILogger<MonthlyActivityType2Processor> logger)
     : ICodalDisclosureProcessor
 {
 
 #pragma warning disable S1075
     private const string CodalBaseUrl = "https://www.codal.ir";
 #pragma warning restore S1075
-    // || (disclosure.Rt == 2 && disclosure.Let == 8))
+
     public bool CanProcess(Disclosure disclosure)
     {
         ArgumentNullException.ThrowIfNull(disclosure);
 
         CodalDefinitions definitions = CodalDefinitionsProvider.Load();
 
-        return disclosure.Let == 58  && 
-               disclosure.Rt is byte rt  && 
-               rt != 2 && rt != 6 && 
+        return disclosure.Let == 58 && 
+               disclosure.Rt is byte rt && 
+               rt == 6 && 
                definitions.MonthlyActivities.ContainsKey(rt);
     }
 
@@ -81,14 +81,24 @@ public sealed class MonthlyActivityProcessor(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["PeriodAmount"]);
+            CodalCellResult? periodCellPlus2 =
+                CodalCellFinder.FindCellValue(
+                    html,
+                    definition.MetaTableCode,
+                    definition.SelectedCells["PeriodAmount"] + 2);
 
             CodalCellResult? yearToDateCell =
                 CodalCellFinder.FindCellValue(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["YearToDateAmount"]);
+            CodalCellResult? yearToDateCellPlus2 =
+                CodalCellFinder.FindCellValue(
+                    html,
+                    definition.MetaTableCode,
+                    definition.SelectedCells["YearToDateAmount"] + 2);
 
-            if (periodCell is null || yearToDateCell is null || string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
+            if (periodCell is null || yearToDateCell is null)
             {
                 disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
 
@@ -97,8 +107,22 @@ public sealed class MonthlyActivityProcessor(
 
                 return;
             }
+            if (periodCellPlus2 is null || yearToDateCellPlus2 is null)
+            {
+                disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
 
-            
+                disclosure.SalesParsedAt = DateTime.UtcNow;
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
+            {
+                throw new InvalidOperationException(
+                    $"Period end date was not found for disclosure {disclosure.TracingNo}.");
+            }
+
             if (string.IsNullOrWhiteSpace(disclosure.Symbol))
             {
                 throw new InvalidOperationException(
@@ -108,13 +132,21 @@ public sealed class MonthlyActivityProcessor(
             decimal periodAmount = ParseDecimal(periodCell.Value,
                                                 disclosure.Symbol,
                                                 disclosure.PublishDateTimeRaw,
-                                                "PeriodAmount");
+                                                "PeriodBimeh") -
+                                   ParseDecimal(periodCellPlus2.Value,
+                                                disclosure.Symbol,
+                                                disclosure.PublishDateTimeRaw,
+                                                "PeriodKhesarat");
             
                 
             decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
                                                     disclosure.Symbol,
                                                     disclosure.PublishDateTimeRaw,
-                                                    "YearToDateAmount");
+                                                    "YearToDateBimeh") -
+                                       ParseDecimal(yearToDateCellPlus2.Value,
+                                                    disclosure.Symbol,
+                                                    disclosure.PublishDateTimeRaw,
+                                                    "YearToDateBimeh");
 
             decimal? previousYearToDateAmount = null;
 

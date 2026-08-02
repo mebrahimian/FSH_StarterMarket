@@ -37,6 +37,8 @@ namespace FSH.Modules.MarketIntelligence
             //    builder.Services.AddScoped<ICodalDisclosureProcessor, ManufacturingMonthlyActivityProcessor>();
             //    builder.Services.AddScoped<ICodalDisclosureProcessor, RealEstateMonthlyActivityProcessor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityProcessor>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType2Processor>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
             //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(

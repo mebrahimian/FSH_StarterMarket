@@ -1,5 +1,4 @@
 ﻿using System.Text.Json;
-using static FSH.Framework.Shared.Multitenancy.MultitenancyConstants;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
@@ -8,7 +7,7 @@ internal static class CodalCellFinder
     public static CodalCellResult? FindCellValue(
         string html,
         int metaTableCode,
-        int columnCode,
+        int columnSequence,
         int? occurrence = null)
     {
         var datasourceStart = html.IndexOf(
@@ -36,7 +35,7 @@ internal static class CodalCellFinder
             jsonStart,
             jsonEnd - jsonStart + 1);
 
-        
+
         using var document = JsonDocument.Parse(json);
 
         JsonElement root = document.RootElement;
@@ -53,22 +52,25 @@ internal static class CodalCellFinder
         // پیدا کردن cell مورد نظر
 
         var cells = document.RootElement
-            .GetProperty("sheets")
-            .EnumerateArray()
-            .SelectMany(sheet =>
-                sheet.GetProperty("tables")
-                    .EnumerateArray())
-            .SelectMany(table =>
-                table.GetProperty("cells")
-                    .EnumerateArray());
+           .GetProperty("sheets")
+           .EnumerateArray()
+           .SelectMany(sheet =>
+                       sheet.GetProperty("tables")
+                            .EnumerateArray())
+           .Where(table =>
+                  table.TryGetProperty("code", out var tableCode) &&
+                  tableCode.GetInt32() == metaTableCode)
+           .SelectMany(table =>
+                       table.GetProperty("cells")
+           .EnumerateArray());
 
 
         var matchedCells = cells
             .Where(cell =>
                 cell.TryGetProperty(
-                    "columnCode",
+                    "columnSequence",
                     out var column) &&
-                column.GetInt32() == columnCode)
+                column.GetInt32() == columnSequence)
             .OrderBy(cell =>
                 cell.GetProperty("rowSequence")
                     .GetInt32())

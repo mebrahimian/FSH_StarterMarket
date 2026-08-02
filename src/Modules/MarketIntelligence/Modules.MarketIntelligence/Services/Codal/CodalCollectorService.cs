@@ -245,7 +245,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .FirstOrDefaultAsync(cancellationToken);
 
         // فعلاً برای BackFill یک سال قبل
-        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-5));
+        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-4));
 
         var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
 
@@ -262,7 +262,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                              // 1000001:ساختمانی     
                                              // 1000002:سرمایه گذاری  
                     PageNumber = pageNumber ,// 1000003:بانک            
-                    ReportingType = 1000000, // 1000004:لیزینگ   
+                    ReportingType = 1000002, // 1000004:لیزینگ   
                     Category = 3 ,           // 1000005:خدماتی 
                                              // 1000006:بیمه               
                                              // 1000007:حمل ونقل دریایی
@@ -326,11 +326,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     stop = true;
                     break;
                 }
-
-
-
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
-
+                if (rt is null) 
+                {
+                    continue;
+                }
                 var disclosure = new Disclosure(
                     letter.TracingNo,
                     letter.Symbol ?? "",
@@ -398,28 +398,29 @@ public sealed class CodalCollectorService : ICodalCollectorService
         byte? rt = byte.TryParse(query["rt"], out var r) ? r : null;
         byte? ct = byte.TryParse(query["ct"], out var c) ? c : null;
         short? ft = short.TryParse(query["ft"], out var f) ? f : null;
-
+        if (rt is null && 
+            int.TryParse(query["ReportingType"], out var reportingType) && 
+            reportingType == 1000002)  rt = 2;
         return (let, rt, ct, ft);
     }
     public async Task ParsePendingDisclosuresAsync(
     CancellationToken cancellationToken = default)
     {
-        const int batchSize = 50;
+        const int batchSize = 20;
 
         TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(1);
 
         var definitions = CodalDefinitionsProvider.Load();
         byte[] supportedReportTypes = definitions.MonthlyActivities.Keys.ToArray();
-
+        var pageNumber = 1;
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             List<Disclosure> disclosures =
                 await _dbContext.Disclosures
-                      .Where(x => x.Let == 58 &&
+                      .Where(x => (x.Let == 58 || (x.Rt == 2 && x.Let == 8)) &&
                                   x.Rt.HasValue &&
-                                  x.Rt == 0 &&
                                   supportedReportTypes.Contains(x.Rt.Value) &&
                                   x.SalesParseStatus == DisclosureParseStatus.Pending
                             )
@@ -514,6 +515,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
             }
 
             _dbContext.ChangeTracker.Clear();
+            Console.WriteLine($"Page Saved: {pageNumber}");
+            pageNumber++;
         }
         _logger.LogInformation("End Of Parse Pending Disclosures.");
     }
