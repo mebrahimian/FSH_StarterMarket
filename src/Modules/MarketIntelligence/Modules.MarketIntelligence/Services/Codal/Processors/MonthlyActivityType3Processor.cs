@@ -41,7 +41,7 @@ public sealed class MonthlyActivityType3Processor(
     {
         ArgumentNullException.ThrowIfNull(disclosure);
 
-        if (disclosure.Let != 58 ||
+        if (disclosure.Let != 8 ||
             disclosure.Rt is not byte rt)
         {
             return;
@@ -81,33 +81,14 @@ public sealed class MonthlyActivityType3Processor(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["PeriodAmount"]);
-            CodalCellResult? periodCellPlus2 =
-                CodalCellFinder.FindCellValue(
-                    html,
-                    definition.MetaTableCode,
-                    definition.SelectedCells["PeriodAmount"] + 2);
 
             CodalCellResult? yearToDateCell =
                 CodalCellFinder.FindCellValue(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["YearToDateAmount"]);
-            CodalCellResult? yearToDateCellPlus2 =
-                CodalCellFinder.FindCellValue(
-                    html,
-                    definition.MetaTableCode,
-                    definition.SelectedCells["YearToDateAmount"] + 2);
 
-            if (periodCell is null || yearToDateCell is null)
-            {
-                disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
-
-                disclosure.SalesParsedAt =  DateTime.UtcNow;
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                return;
-            }
-            if (periodCellPlus2 is null || yearToDateCellPlus2 is null)
+            if (periodCell is null || yearToDateCell is null || string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
             {
                 disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
 
@@ -117,36 +98,23 @@ public sealed class MonthlyActivityType3Processor(
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
-            {
-                throw new InvalidOperationException(
-                    $"Period end date was not found for disclosure {disclosure.TracingNo}.");
-            }
 
             if (string.IsNullOrWhiteSpace(disclosure.Symbol))
             {
                 throw new InvalidOperationException(
                     $"Disclosure {disclosure.TracingNo} does not have a symbol.");
             }
-           
+
             decimal periodAmount = ParseDecimal(periodCell.Value,
                                                 disclosure.Symbol,
                                                 disclosure.PublishDateTimeRaw,
-                                                "PeriodBimeh") -
-                                   ParseDecimal(periodCellPlus2.Value,
-                                                disclosure.Symbol,
-                                                disclosure.PublishDateTimeRaw,
-                                                "PeriodKhesarat");
-            
-                
+                                                "PeriodAmount");
+
+
             decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
                                                     disclosure.Symbol,
                                                     disclosure.PublishDateTimeRaw,
-                                                    "YearToDateBimeh") -
-                                       ParseDecimal(yearToDateCellPlus2.Value,
-                                                    disclosure.Symbol,
-                                                    disclosure.PublishDateTimeRaw,
-                                                    "YearToDateBimeh");
+                                                    "YearToDateAmount");
 
             decimal? previousYearToDateAmount = null;
 
@@ -159,7 +127,7 @@ public sealed class MonthlyActivityType3Processor(
             {
                 CodalCellResult? previousYearToDateCell =
                     CodalCellFinder.FindCellValue(
-                        html,                        
+                        html,
                         definition.MetaTableCode,
                         previousYearToDateCellIndex);
 

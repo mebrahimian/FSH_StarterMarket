@@ -16,10 +16,11 @@
       }
     },
     "2": {
-      "MetaTableCode": 3657,
+      "MetaTableCode": 2568,
       "SelectedCells": {
-        "PeriodAmount": 18,
-        "YearToDateAmount": 21
+        "PeriodAmount": 5,
+        "YearToDateAmount": 6,
+        "PreviousYearToDateAmount": 7
       }
     },
     "3": {

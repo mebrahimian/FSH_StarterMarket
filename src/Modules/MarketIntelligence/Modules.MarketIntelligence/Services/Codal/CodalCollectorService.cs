@@ -262,7 +262,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                              // 1000001:ساختمانی     
                                              // 1000002:سرمایه گذاری  
                     PageNumber = pageNumber ,// 1000003:بانک            
-                    ReportingType = 1000002, // 1000004:لیزینگ   
+                    ReportingType = 1000009, // 1000004:لیزینگ   
                     Category = 3 ,           // 1000005:خدماتی 
                                              // 1000006:بیمه               
                                              // 1000007:حمل ونقل دریایی
@@ -421,10 +421,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 await _dbContext.Disclosures
                       .Where(x => (x.Let == 58 || (x.Rt == 2 && x.Let == 8)) &&
                                   x.Rt.HasValue &&
+                                  x.Rt == 9 &&
                                   supportedReportTypes.Contains(x.Rt.Value) &&
                                   x.SalesParseStatus == DisclosureParseStatus.Pending
                             )
-                      .OrderBy(x => x.PublishDateTime ?? DateTime.MinValue)
+                      .OrderByDescending(x => x.PublishDateTime ?? DateTime.MinValue)
                       .ThenBy(x => x.Id)
                       .Take(batchSize)
                       .ToListAsync(cancellationToken);
