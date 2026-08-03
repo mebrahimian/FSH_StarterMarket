@@ -1,8 +1,9 @@
-﻿using System.Text.Json;
+﻿using System.Globalization;
+using System.Text.Json;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
-internal static class CodalCellFinder
+internal static class CodalCellReader
 {
     public static CodalCellResult? FindCellValue(
         string html,
@@ -48,6 +49,13 @@ internal static class CodalCellFinder
             .GetProperty("sheets")[0]
             .GetProperty("code")
             .GetInt32();
+        string? periodETD = root
+            .GetProperty("periodEndToDate")
+            .GetString();
+        string? yearETD = root
+            .GetProperty("yearEndToDate")
+            .GetString();
+
 
         // پیدا کردن cell مورد نظر
 
@@ -98,17 +106,162 @@ internal static class CodalCellFinder
 
             selectedCell = matchedCells[index];
         }
+
         return new CodalCellResult
                          (
                            Value: GetString(selectedCell, "value"),
                            Formula: GetString(selectedCell, "formula"),
-                           PeriodEndToDate: GetString(selectedCell, "periodEndToDate"),
-                           YearEndToDate: GetString(selectedCell, "yearEndToDate"),
+                           PeriodEndToDate: periodETD,
+                           YearEndToDate: yearETD,
                            Address: GetString(selectedCell, "address"),
                            RowSequence: GetInt(selectedCell, "rowSequence"),
                            ReportingTypeCode: reportingTypeCode
                          );
     }
+
+    public static CodalCellResult? SumColumnValues(
+    string html,
+    int metaTableCode,
+    int columnSequence)
+    {
+        int datasourceStart = html.IndexOf(
+            "var datasource",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (datasourceStart < 0)
+            return null;
+
+        int jsonStart = html.IndexOf(
+            '{',
+            datasourceStart);
+
+        if (jsonStart < 0)
+            return null;
+
+        int jsonEnd = FindJsonObjectEnd(
+            html,
+            jsonStart);
+
+        if (jsonEnd < 0)
+            return null;
+
+        string json = html.Substring(
+            jsonStart,
+            jsonEnd - jsonStart + 1);
+
+        using var document = JsonDocument.Parse(json);
+
+        JsonElement root = document.RootElement;
+
+        int reportingTypeCode = root
+            .GetProperty("sheets")[0]
+            .GetProperty("code")
+            .GetInt32();
+        string? periodETD = root
+            .GetProperty("periodEndToDate")
+            .GetString();
+        string? yearETD = root
+            .GetProperty("yearEndToDate")
+            .GetString();
+        var matchedCells = root
+            .GetProperty("sheets")
+            .EnumerateArray()
+            .SelectMany(sheet =>
+                sheet.GetProperty("tables")
+                    .EnumerateArray())
+            .Where(table =>
+                table.TryGetProperty(
+                    "code",
+                    out JsonElement tableCode) &&
+                tableCode.GetInt32() == metaTableCode)
+            .SelectMany(table =>
+                table.GetProperty("cells")
+                    .EnumerateArray())
+            .Where(cell =>
+                cell.TryGetProperty(
+                    "columnSequence",
+                    out JsonElement column) &&
+                column.GetInt32() == columnSequence)
+            .OrderBy(cell =>
+                cell.GetProperty("rowSequence")
+                    .GetInt32())
+            .ToList();
+
+        // حداقل یک ردیف جزئی و یک ردیف جمع کل لازم است.
+        if (matchedCells.Count <= 1)
+            return null;
+
+        JsonElement totalCell = matchedCells[^1];
+
+        decimal sum = 0m;
+        bool hasValue = false;
+
+        // آخرین ردیف جمع کل است و دوباره جمع نمی‌شود.
+        foreach (JsonElement cell in matchedCells.Take(
+                     matchedCells.Count - 1))
+        {
+            if (!cell.TryGetProperty(
+                    "value",
+                    out JsonElement valueElement))
+            {
+                continue;
+            }
+
+            decimal numericValue;
+
+            if (valueElement.ValueKind == JsonValueKind.String)
+            {
+                string? rawValue = valueElement.GetString();
+
+                if (!decimal.TryParse(
+                        rawValue,
+                        NumberStyles.Number,
+                        CultureInfo.InvariantCulture,
+                        out numericValue))
+                {
+                    continue;
+                }
+            }
+            else if (valueElement.ValueKind == JsonValueKind.Number)
+            {
+                if (!valueElement.TryGetDecimal(
+                        out numericValue))
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                continue;
+            }
+
+            sum += numericValue;
+            hasValue = true;
+        }
+
+        if (!hasValue)
+            return null;
+
+        return new CodalCellResult(
+            Value: sum.ToString(
+                CultureInfo.InvariantCulture),
+            Formula: GetString(
+                totalCell,
+                "formula"),
+            PeriodEndToDate: periodETD,
+            YearEndToDate: yearETD,
+            Address: GetString(
+                totalCell,
+                "address"),
+            RowSequence: GetInt(
+                totalCell,
+                "rowSequence"),
+            ReportingTypeCode: reportingTypeCode);
+    }
+
+
+
+
 
 
     private static int FindJsonObjectEnd(

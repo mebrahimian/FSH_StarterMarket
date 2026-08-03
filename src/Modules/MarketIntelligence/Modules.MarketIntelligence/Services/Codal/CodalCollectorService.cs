@@ -141,6 +141,20 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 var sent = PersianDateHelper.ToGregorian(sentRaw);
 
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
+                int? RepTypCode = rt switch
+                {
+                    0 => 1000000,
+                    1 => 1000001,
+                    2 => 1000002,
+                    3 => 1000003,
+                    4 => 1000004,
+                    5 => 1000005,
+                    6 => 1000006,
+                    7 => 1000007,
+                    8 => 1000008,
+                    9 => 1000009,
+                    _ => null
+                };
 
                 var disclosure = new Disclosure(
                     letter.TracingNo,
@@ -168,7 +182,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     rt,
                     ct,
                     ft,
-                    null);
+                    RepTypCode);
 
                 collectedDisclosures.Add((disclosure, pub.Value));
             }
@@ -262,8 +276,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                              // 1000001:ساختمانی     
                                              // 1000002:سرمایه گذاری  
                     PageNumber = pageNumber ,// 1000003:بانک            
-                    ReportingType = 1000009, // 1000004:لیزینگ   
-                    Category = 3 ,           // 1000005:خدماتی 
+                    Category = 3,            // 1000004:لیزینگ   
+                                             // 1000005:خدماتی 
                                              // 1000006:بیمه               
                                              // 1000007:حمل ونقل دریایی
                 },                           // 1000008:کشاورزی          
@@ -331,6 +345,20 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 {
                     continue;
                 }
+                int? RepTypCode = rt switch
+                {
+                    0 => 1000000,
+                    1 => 1000001,
+                    2 => 1000002,
+                    3 => 1000003,
+                    4 => 1000004,
+                    5 => 1000005,
+                    6 => 1000006,
+                    7 => 1000007,
+                    8 => 1000008,
+                    9 => 1000009,
+                    _ => null
+                };
                 var disclosure = new Disclosure(
                     letter.TracingNo,
                     letter.Symbol ?? "",
@@ -356,7 +384,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     let,  // Let
                     rt,  // Rt
                     ct,  // Ct
-                    ft, null); // Ft
+                    ft, RepTypCode); // Ft
                 disclosures.Add(disclosure);
                 _dbContext.Disclosures.Add(disclosure);
                 await _dbContext.SaveChangesAsync(cancellationToken);
@@ -421,11 +449,10 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 await _dbContext.Disclosures
                       .Where(x => (x.Let == 58 || (x.Rt == 2 && x.Let == 8)) &&
                                   x.Rt.HasValue &&
-                                  x.Rt == 9 &&
                                   supportedReportTypes.Contains(x.Rt.Value) &&
                                   x.SalesParseStatus == DisclosureParseStatus.Pending
                             )
-                      .OrderByDescending(x => x.PublishDateTime ?? DateTime.MinValue)
+                      .OrderBy(x => x.PublishDateTime ?? DateTime.MinValue)
                       .ThenBy(x => x.Id)
                       .Take(batchSize)
                       .ToListAsync(cancellationToken);

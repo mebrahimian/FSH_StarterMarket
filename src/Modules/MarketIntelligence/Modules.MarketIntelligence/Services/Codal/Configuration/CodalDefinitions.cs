@@ -1,5 +1,5 @@
 ﻿using System.Text.Json.Serialization;
-
+using System.Collections.ObjectModel;
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 
 
@@ -17,5 +17,8 @@ public sealed class CodalTableDefinition
 {
     public int MetaTableCode { get; set; }
 
+    public bool UseColumnSum { get; init; }
     public Dictionary<string, int> SelectedCells { get; init; } = [];
+
+    public Collection<CodalTableDefinition> AlternativeLayouts {get; init;} = [];
 }

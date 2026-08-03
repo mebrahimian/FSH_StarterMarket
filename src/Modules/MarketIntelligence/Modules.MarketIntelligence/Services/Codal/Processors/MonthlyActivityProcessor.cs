@@ -77,13 +77,13 @@ public sealed class MonthlyActivityProcessor(
                     cancellationToken);
 
             CodalCellResult? periodCell =
-                CodalCellFinder.FindCellValue(
+                CodalCellReader.FindCellValue(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["PeriodAmount"]);
 
             CodalCellResult? yearToDateCell =
-                CodalCellFinder.FindCellValue(
+                CodalCellReader.FindCellValue(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["YearToDateAmount"]);
@@ -126,7 +126,7 @@ public sealed class MonthlyActivityProcessor(
             if (hasPreviousYearCellDefinition)
             {
                 CodalCellResult? previousYearToDateCell =
-                    CodalCellFinder.FindCellValue(
+                    CodalCellReader.FindCellValue(
                         html,                        
                         definition.MetaTableCode,
                         previousYearToDateCellIndex);
