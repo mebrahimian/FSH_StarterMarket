@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "@/App";
+import "@/i18n";
 import { installImpersonationFromHash } from "@/auth/impersonation-handoff";
 import { loadRuntimeConfig } from "@/env";
 import "@/styles/globals.css";

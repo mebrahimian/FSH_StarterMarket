@@ -1,0 +1,33 @@
+{
+  "dashboard": "داشبورد",
+  "items": {
+    "overview": "نمای کلی",
+    "chat": "گفتگو",
+    "myFiles": "فایل‌های من",
+    "settings": "تنظیمات",
+    "liveActivity": "فعالیت زنده",
+    "subscription": "اشتراک",
+    "whatsAppWallet": "کیف پول واتساپ",
+    "invoices": "صورتحساب‌ها",
+    "disclosures": "اطلاعیه‌های کدال",
+    "products": "محصولات",
+    "brands": "برندها",
+    "categories": "دسته‌بندی‌ها",
+    "tickets": "تیکت‌ها",
+    "users": "کاربران",
+    "roles": "نقش‌ها",
+    "groups": "گروه‌ها",
+    "health": "سلامت سیستم",
+    "auditTrail": "ردپای ممیزی",
+    "sessions": "نشست‌ها",
+    "trash": "سطل زباله"
+  },
+  "sections": {
+    "operations": "عملیات",
+    "marketIntelligence": "هوشمندی بازار",
+    "catalog": "کاتالوگ",
+    "helpdesk": "پشتیبانی",
+    "identity": "مدیریت هویت",
+    "system": "سیستم"
+  }
+}

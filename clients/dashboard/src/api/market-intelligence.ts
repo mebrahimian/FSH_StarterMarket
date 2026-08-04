@@ -123,5 +123,36 @@ export function searchDisclosures(
 
   return apiFetch<PagedResponse<DisclosureDto>>(
     `/api/v1/marketintelligence/disclosures?${query.toString()}`,
-  );
+    );
+
+}
+export type CodalOperationResponse = {
+    jobId: string;
+    message: string;
+}
+export function collectNewCodalDisclosures(): Promise<CodalOperationResponse> {
+    return apiFetch<CodalOperationResponse>(
+        "/api/v1/marketintelligence/codal/newRead",
+        {
+            method: "POST",
+        },
+    );
+}
+
+export function collectCodalBackfill(): Promise<CodalOperationResponse> {
+    return apiFetch<CodalOperationResponse>(
+        "/api/v1/marketintelligence/codal/import",
+        {
+            method: "POST",
+        },
+    );
+}
+
+export function parsePendingCodalDisclosures(): Promise<CodalOperationResponse> {
+    return apiFetch<CodalOperationResponse>(
+        "/api/v1/marketintelligence/codal/parse-pending",
+        {
+            method: "POST",
+        },
+    );
 }

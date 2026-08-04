@@ -2,6 +2,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useTranslation } from "react-i18next";
 import { ToneIconTile, type ToneIconTileTone } from "./tone-icon-tile";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -41,7 +42,7 @@ export function EntityPageHeader({
             </h1>
             {total !== undefined && total !== null && (
               <span className="font-mono text-[11px] text-[var(--color-muted-foreground)]">
-                {total} {total === 1 ? unit : `${unit}s`}
+                   {total} {unit}
               </span>
             )}
           </div>
@@ -158,48 +159,58 @@ export function EntityFilterPill<T extends string | boolean | null>({
 // ───────────────────────────────────────────────────────────────────────
 
 export function EntityPager({
-  page,
-  totalPages,
-  hasPrev,
-  hasNext,
-  onPrev,
-  onNext,
+    page,
+    totalPages,
+    hasPrev,
+    hasNext,
+    onPrev,
+    onNext,
 }: {
-  page: number;
-  totalPages: number;
-  hasPrev: boolean;
-  hasNext: boolean;
-  onPrev: () => void;
-  onNext: () => void;
+    page: number;
+    totalPages: number;
+    hasPrev: boolean;
+    hasNext: boolean;
+    onPrev: () => void;
+    onNext: () => void;
 }) {
-  if (totalPages <= 1) return null;
-  return (
-    <div className="mt-3 flex items-center justify-between">
-      <p className="text-[11px] text-[var(--color-muted-foreground)]">
-        Page {page} of {totalPages}
-      </p>
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          disabled={!hasPrev}
-          onClick={onPrev}
-          aria-label="Previous page"
-          className="grid size-8 cursor-pointer place-items-center rounded-lg text-[var(--color-muted-foreground)] transition-colors hover:bg-[oklch(from_var(--color-muted)_l_c_h_/_0.5)] hover:text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <button
-          type="button"
-          disabled={!hasNext}
-          onClick={onNext}
-          aria-label="Next page"
-          className="grid size-8 cursor-pointer place-items-center rounded-lg text-[var(--color-muted-foreground)] transition-colors hover:bg-[oklch(from_var(--color-muted)_l_c_h_/_0.5)] hover:text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
-    </div>
-  );
+    const { t } = useTranslation("common");
+
+    if (totalPages <= 1) return null;
+
+    return (
+        <div className="mt-4 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
+            <p className="text-sm font-medium text-[var(--color-foreground)]">
+                {t("pagination.pageOf", {
+                    page,
+                    totalPages,
+                })}
+            </p>
+
+            <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    disabled={!hasPrev}
+                    onClick={onPrev}
+                    aria-label={t("actions.previous")}
+                    className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 text-sm font-medium text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    <ChevronLeft className="size-4 rtl:rotate-180" />
+                    {t("actions.previous")}
+                </button>
+
+                <button
+                    type="button"
+                    disabled={!hasNext}
+                    onClick={onNext}
+                    aria-label={t("actions.next")}
+                    className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[var(--color-border)] px-4 text-sm font-medium text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-accent)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                    {t("actions.next")}
+                    <ChevronRight className="size-4 rtl:rotate-180" />
+                </button>
+            </div>
+        </div>
+    );
 }
 
 // ───────────────────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -44,6 +45,7 @@ function useCollapsedSidebar() {
 }
 
 export function Sidebar() {
+  const { t } = useTranslation("navigation");
   const { collapsed, toggle } = useCollapsedSidebar();
   const location = useLocation();
 
@@ -104,7 +106,7 @@ export function Sidebar() {
                 fullstack<span className="text-[var(--color-primary)]">hero</span>
               </span>
               <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.7)]">
-                Dashboard
+                   {t("dashboard")}
               </span>
             </div>
           )}
@@ -160,7 +162,7 @@ export function Sidebar() {
           </button>
         ) : (
           <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--color-muted-foreground)]">
-            v0.1 · dashboard
+             v0.1 · {t("dashboard")}
           </p>
         )}
       </div>
@@ -286,7 +288,13 @@ function AccordionSection({
   isOpen: boolean;
   onToggle: () => void;
   onNavigate?: () => void;
-}) {
+    }) {
+  const { t } = useTranslation("navigation");
+
+  const sectionCaption =
+        section.captionKey
+            ? t(section.captionKey)
+            : section.caption;
   const SectionIcon = section.icon;
   return (
     <div
@@ -317,7 +325,7 @@ function AccordionSection({
         aria-controls={`nav-section-${section.id}`}
         className={cn(
           "flex h-9 w-full cursor-pointer items-center gap-3 rounded-md px-3",
-          "text-left text-sm font-medium",
+          "text-start text-sm font-medium",
           "transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-cubic)]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]",
           isOpen
@@ -326,7 +334,9 @@ function AccordionSection({
         )}
       >
         <SectionIcon className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="flex-1 truncate">{section.caption}</span>
+              <span className="flex-1 truncate">
+                  {sectionCaption}
+              </span>
         <ChevronDown
           aria-hidden
           className={cn(
@@ -394,16 +404,22 @@ function NavItemLink({
   /** Fired after the link click. Used by the mobile sheet to close
    *  itself once the user navigates somewhere. */
   onNavigate?: () => void;
-}) {
+    }) {
+  const { t } = useTranslation("navigation");
+
+  const itemLabel =
+        item.labelKey
+            ? t(item.labelKey)
+            : item.label;
   const Icon = item.icon;
   return (
     <NavLink
       to={item.to}
       end={item.to === "/"}
-      title={collapsed ? item.label : undefined}
+          title={collapsed ? itemLabel : undefined}
       // When collapsed the text label is hidden, so the icon-only link needs
       // an explicit accessible name (title alone is the weakest AT signal).
-      aria-label={collapsed ? item.label : undefined}
+          aria-label={collapsed ? itemLabel : undefined}
       onClick={onNavigate}
       className={({ isActive }) =>
         cn(
@@ -432,7 +448,7 @@ function NavItemLink({
           <Icon className="h-4 w-4 shrink-0" />
 
           {!collapsed && (
-            <span className="whitespace-nowrap">{item.label}</span>
+                      <span className="whitespace-nowrap">{itemLabel}</span>
           )}
 
           {/* Tooltip in collapsed mode — surfaces on hover OR keyboard
@@ -450,7 +466,7 @@ function NavItemLink({
                 "group-hover/nav:opacity-100 group-focus-visible/nav:opacity-100",
               )}
             >
-              {item.label}
+            {itemLabel}
             </span>
           )}
         </>

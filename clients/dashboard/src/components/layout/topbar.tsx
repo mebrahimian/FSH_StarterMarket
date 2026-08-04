@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { getMyProfile } from "@/api/identity";
 import { useAuth } from "@/auth/use-auth";
 import { useSseStatus } from "@/sse/sse-context";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { useTheme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/cn";
 
@@ -147,6 +149,7 @@ function SimpleMenuItem({
 // ─────────────────────────────────────────────────────────────────────
 
 export function Topbar() {
+  const { t } = useTranslation("common");
   const { user, logout } = useAuth();
   // Shared with the Profile settings page (same query key), so changing the
   // photo there invalidates this and the topbar avatar updates live.
@@ -207,7 +210,7 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        aria-label="Open command palette"
+        aria-label={t("commandPalette.open")}
         className={cn(
           "grid h-9 w-9 cursor-pointer place-items-center rounded-md md:hidden",
           "text-[var(--color-muted-foreground)] hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]",
@@ -223,7 +226,7 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        title="Open command palette"
+        title={t("commandPalette.open")}
         className={cn(
           "hidden h-8 cursor-pointer items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-muted)] px-2.5 text-xs",
           "text-[var(--color-muted-foreground)]",
@@ -233,12 +236,12 @@ export function Topbar() {
         )}
       >
         <Search className="h-3.5 w-3.5" />
-        <span>Search</span>
+              <span>{t("commandPalette.search")}</span>
         <kbd className="ml-2 rounded border border-[var(--color-border)] bg-[var(--color-card)] px-1.5 py-px font-mono text-[10px] font-medium tracking-tight">
           ⌘K
         </kbd>
       </button>
-
+      <LanguageSwitcher />
       {/* Chat unread badge — sums unreadCount across the user's channels.
           Brand-primary chip to distinguish from the destructive-red bell. */}
       <ChatUnreadBadge />
@@ -260,7 +263,7 @@ export function Topbar() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label="Open profile menu"
+            aria-label={t("commandPalette.open")}
             className={cn(
               "group flex cursor-pointer items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 outline-none",
               "transition-colors duration-[var(--duration-fast)] ease-[var(--ease-out-cubic)]",

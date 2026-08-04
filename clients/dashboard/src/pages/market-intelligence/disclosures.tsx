@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   useEffect,
   useState,
@@ -57,6 +58,7 @@ const sortOptions: Array<{
 ];
 
 export function DisclosuresPage() {
+  const { t } = useTranslation("disclosures");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -115,20 +117,25 @@ export function DisclosuresPage() {
       }),
     placeholderData: keepPreviousData,
   });
-
   const data = query.data;
   const items = data?.items ?? [];
 
-  const filtersApplied =
+  const totalCount = data?.totalCount ?? 0;
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(totalCount / PAGE_SIZE),
+   );
+ const filtersApplied =
     rtFilter.trim() !== "" ||
     letFilter.trim() !== "" ||
     statusFilter !== null;
 
-  const searchActive =
+ const searchActive =
     debouncedSearch.length > 0 ||
     filtersApplied;
 
-  const clearFilters = () => {
+ const clearFilters = () => {
     setSearch("");
     setRtFilter("");
     setLetFilter("");
@@ -139,10 +146,11 @@ export function DisclosuresPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <EntityPageHeader
-        icon={Newspaper}
-        title="Codal disclosures"
-        total={data?.totalCount ?? null}
-        description="Search and review Codal announcements, source formats, report types, and monthly-sales parse status."
+              icon={Newspaper}
+              title={t("page.title")}
+              total={data?.totalCount ?? null}
+              description={t("page.description")}
+              unit={t("page.unit")}
       >
         <Button
           type="button"
@@ -194,22 +202,24 @@ export function DisclosuresPage() {
         />
       )}
 
-      {items.length > 0 && (
-        <EntityPager
-          page={page}
-          totalPages={data?.totalPages ?? 1}
-          hasPrev={data?.hasPrevious ?? false}
-          hasNext={data?.hasNext ?? false}
-          onPrev={() =>
-            setPage((current) =>
-              Math.max(1, current - 1),
-            )
-          }
-          onNext={() =>
-            setPage((current) => current + 1)
-          }
-        />
-      )}
+          {items.length > 0 && (
+              <EntityPager
+                  page={page}
+                  totalPages={totalPages}
+                  hasPrev={page > 1}
+                  hasNext={page < totalPages}
+                  onPrev={() =>
+                      setPage((current) =>
+                          Math.max(1, current - 1),
+                      )
+                  }
+                  onNext={() =>
+                      setPage((current) =>
+                          Math.min(totalPages, current + 1),
+                      )
+                  }
+              />
+          )}
 
       {query.isError && (
         <div
@@ -228,9 +238,12 @@ function SearchBox({
   value,
   onChange,
 }: {
+
   value: string;
-  onChange: (value: string) => void;
+    onChange: (value: string) => void;
 }) {
+    const { t } = useTranslation("disclosures");
+       
   return (
     <div className="relative">
       <Search className="absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.5)]" />
@@ -241,7 +254,8 @@ function SearchBox({
         onChange={(event) =>
           onChange(event.target.value)
         }
-        placeholder="Search by symbol, company, title, or letter code…"
+        placeholder={t("search.placeholder")}
+
         className={cn(
           "h-[46px] w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]",
           "pl-12 pr-16 text-[14px] text-[var(--color-foreground)] outline-none shadow-xs",
@@ -392,11 +406,22 @@ function DisclosureResults({
 }: {
   items: DisclosureDto[];
   totalCount: number;
-}) {
+    }) {
+    const { t, i18n } = useTranslation("disclosures");
+    const numberLocale =
+        i18n.resolvedLanguage
+            ?.toLowerCase()
+            .startsWith("fa")
+            ? "fa-IR"
+            : "en-US";
+
+    const formattedTotalCount =
+        new Intl.NumberFormat(numberLocale)
+            .format(totalCount);
   return (
     <div>
       <p className="mb-3 text-[12px] font-medium text-[var(--color-muted-foreground)]">
-        {totalCount.toLocaleString()} disclosures found
+              {t("results.found", { formattedCount: formattedTotalCount })}
       </p>
 
       <div className="space-y-2 md:hidden">

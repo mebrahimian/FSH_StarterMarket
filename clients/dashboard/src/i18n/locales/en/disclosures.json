@@ -1,0 +1,74 @@
+{
+  "page": {
+    "items": "Items",
+    "unit": "Items",
+    "title": "Codal disclosures",
+    "description": "Search and review Codal announcements, source formats, report types, and monthly-sales parse status."
+  },
+  "results": {
+    "found": "{{formattedCount}} disclosures found"
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "clearFilters": "Clear filters",
+    "openCodal": "Open in Codal"
+  },
+  "search": {
+    "label": "Search disclosures",
+    "placeholder": "Search by symbol, company, title, or letter code..."
+  },
+  "filters": {
+    "rt": "RT",
+    "let": "LET",
+    "parseStatus": "Parse status",
+    "allStatuses": "All statuses",
+    "sortBy": "Sort by",
+    "sortDirection": "Sort direction",
+    "ascending": "Ascending",
+    "descending": "Descending"
+  },
+  "sort": {
+    "publishDate": "Publish date",
+    "tracingNo": "Tracing number",
+    "symbol": "Symbol",
+    "company": "Company",
+    "parseDate": "Parse date"
+  },
+  "status": {
+    "Pending": "Pending",
+    "Success": "Success",
+    "Failed": "Failed",
+    "NoData": "No data",
+    "Skipped": "Skipped"
+  },
+  "table": {
+    "symbol": "Symbol",
+    "company": "Company",
+    "title": "Title",
+    "publishDate": "Publish date",
+    "sentDate": "Sent date",
+    "letterCode": "Letter code",
+    "reportType": "Report type",
+    "formats": "Formats",
+    "parseStatus": "Parse status",
+    "tracingNo": "Tracing number",
+    "actions": "Actions"
+  },
+  "formats": {
+    "html": "HTML",
+    "excel": "Excel",
+    "pdf": "PDF",
+    "xbrl": "XBRL",
+    "attachment": "Attachment",
+    "none": "No source file"
+  },
+  "empty": {
+    "title": "No disclosures found",
+    "filtered": "No disclosures match the current search and filters.",
+    "default": "No Codal disclosures have been loaded yet."
+  },
+  "errors": {
+    "load": "Could not load disclosures."
+  }
+}

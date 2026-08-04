@@ -1,0 +1,22 @@
+{
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "persian": "فارسی"
+  },
+  "commandPalette": {
+    "search": "Search",
+    "open": "Open command palette"
+  },
+  "actions": {
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "pagination": {
+    "pageOf": "Page {{page}} of {{totalPages}}"
+  },
+  "status": {
+    "loading": "Loading...",
+    "error": "Something went wrong."
+  }
+}

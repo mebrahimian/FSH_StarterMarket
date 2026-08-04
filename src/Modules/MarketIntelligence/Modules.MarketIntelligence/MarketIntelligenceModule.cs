@@ -14,6 +14,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
+using FSH.Framework.Jobs.Services;
+using FSH.Framework.Shared.Identity.Authorization;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -45,6 +48,7 @@ namespace FSH.Modules.MarketIntelligence
                     name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
+            builder.Services.AddTransient<CodalBackgroundJob>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
         {

@@ -1,0 +1,74 @@
+{
+  "page": {
+    "items": "اعلامیه",
+    "unit":  "اطلاعیه",
+    "title": "اطلاعیه‌های کدال",
+    "description": "جستجو و بررسی اطلاعیه‌های کدال، فایل‌های منبع، نوع گزارش و وضعیت پردازش فروش ماهانه."
+  },
+  "results": {
+    "found": "{{formattedCount}} اطلاعیه یافت شد"
+  },
+  "actions": {
+    "refresh": "تازه‌سازی",
+    "refreshing": "در حال تازه‌سازی...",
+    "clearFilters": "پاک‌کردن فیلترها",
+    "openCodal": "مشاهده در کدال"
+  },
+  "search": {
+    "label": "جستجوی اطلاعیه‌ها",
+    "placeholder": "جستجو براساس نماد، شرکت، عنوان یا کد نامه..."
+  },
+  "filters": {
+    "rt": "RT",
+    "let": "LET",
+    "parseStatus": "وضعیت پردازش",
+    "allStatuses": "همه وضعیت‌ها",
+    "sortBy": "مرتب‌سازی براساس",
+    "sortDirection": "جهت مرتب‌سازی",
+    "ascending": "صعودی",
+    "descending": "نزولی"
+  },
+  "sort": {
+    "publishDate": "تاریخ انتشار",
+    "tracingNo": "شماره پیگیری",
+    "symbol": "نماد",
+    "company": "شرکت",
+    "parseDate": "تاریخ پردازش"
+  },
+  "status": {
+    "Pending": "در انتظار",
+    "Success": "موفق",
+    "Failed": "ناموفق",
+    "NoData": "بدون داده",
+    "Skipped": "ردشده"
+  },
+  "table": {
+    "symbol": "نماد",
+    "company": "شرکت",
+    "title": "عنوان",
+    "publishDate": "تاریخ انتشار",
+    "sentDate": "تاریخ ارسال",
+    "letterCode": "کد نامه",
+    "reportType": "نوع گزارش",
+    "formats": "فایل‌ها",
+    "parseStatus": "وضعیت پردازش",
+    "tracingNo": "شماره پیگیری",
+    "actions": "عملیات"
+  },
+  "formats": {
+    "html": "HTML",
+    "excel": "Excel",
+    "pdf": "PDF",
+    "xbrl": "XBRL",
+    "attachment": "پیوست",
+    "none": "بدون فایل منبع"
+  },
+  "empty": {
+    "title": "اطلاعیه‌ای پیدا نشد",
+    "filtered": "هیچ اطلاعیه‌ای با جستجو و فیلترهای فعلی مطابقت ندارد.",
+    "default": "هنوز اطلاعیه‌ای از کدال بارگذاری نشده است."
+  },
+  "errors": {
+    "load": "بارگذاری اطلاعیه‌ها انجام نشد."
+  }
+}
