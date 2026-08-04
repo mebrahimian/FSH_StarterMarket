@@ -18,6 +18,7 @@ import {
   UsersRound,
   Wallet,
   Wifi,
+  Newspaper,
 } from "lucide-react";
 import { ALL_TRASH_PERMISSIONS } from "@/lib/trash-permissions";
 
@@ -79,6 +80,16 @@ export const sections: NavSection[] = [
       { to: "/invoices", label: "Invoices", icon: Receipt, perm: "Permissions.Billing.View" },
     ],
   },
+{
+    id: "market-intelligence",
+    caption: "Market Intelligence",
+    icon: Newspaper,
+    items: [
+      { to: "/market-intelligence/disclosures", label: "Disclosures", icon: Newspaper,  
+            perm: "Permissions.MarketIntelligence.Disclosures.View",
+      },
+  ],
+},
   {
     id: "catalog",
     caption: "Catalog",

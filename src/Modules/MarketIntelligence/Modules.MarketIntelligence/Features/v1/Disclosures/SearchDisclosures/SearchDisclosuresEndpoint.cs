@@ -12,21 +12,39 @@ namespace FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosur
 
 public static class SearchDisclosuresEndpoint
 {
-    internal static RouteHandlerBuilder MapSearchDisclosuresEndpoint(this IEndpointRouteBuilder endpoints)
+    internal static RouteHandlerBuilder MapSearchDisclosuresEndpoint(
+    this IEndpointRouteBuilder endpoints)
     {
-        return endpoints.MapGet("/disclosures",
-                (string? search, int pageNumber, int pageSize, string? sortBy, string? sortDir,
-                 IMediator mediator, CancellationToken ct) =>
+        return endpoints
+            .MapGet(
+                "/disclosures",
+                (
+                    string? search,
+                    short? let,
+                    byte? rt,
+                    int? reportingTypeCode,
+                    string? salesParseStatus,
+                    int pageNumber,
+                    int pageSize,
+                    string? sortBy,
+                    string? sortDir,
+                    IMediator mediator,
+                    CancellationToken cancellationToken) =>
                     mediator.Send(
                         new SearchDisclosuresQuery(
-                            search,
-                            pageNumber == 0 ? 1 : pageNumber,
-                            pageSize == 0 ? 20 : pageSize,
-                            sortBy,
-                            sortDir),
-                        ct))
+                            Search: search,
+                            Let: let,
+                            Rt: rt,
+                            ReportingTypeCode: reportingTypeCode,
+                            SalesParseStatus: salesParseStatus,
+                            PageNumber: pageNumber == 0 ? 1 : pageNumber,
+                            PageSize: pageSize == 0 ? 20 : pageSize,
+                            SortBy: sortBy,
+                            SortDir: sortDir),
+                        cancellationToken))
             .WithName("SearchDisclosures")
-            .WithSummary("Search disclosures (paged, sortable)")
-            .RequirePermission(MarketIntelligencePermissions.Disclosures.View);
+            .WithSummary("Search Codal disclosures with filtering, pagination and sorting")
+            .RequirePermission(
+                MarketIntelligencePermissions.Disclosures.View);
     }
 }

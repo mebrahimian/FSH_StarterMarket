@@ -79,7 +79,7 @@ namespace FSH.Modules.MarketIntelligence
                 {
                     message = "Codal import finished"
                 });
-            }).AllowAnonymous();
+            });     //     .AllowAnonymous();
 
             group.MapPost("/codal/import", async (ICodalCollectorService collector,
                                                   CancellationToken ct) =>
@@ -89,9 +89,9 @@ namespace FSH.Modules.MarketIntelligence
                 {
                     message = "Codal import finished"
                 });
-            }).AllowAnonymous();
+            });    //     .AllowAnonymous();
 
-            group.MapPost("/codal/parse-pending",  
+            group.MapPost("/codal/parse-pending",
                 async (ICodalCollectorService collector, CancellationToken ct) =>
         {
             await collector.ParsePendingDisclosuresAsync(ct);
@@ -100,8 +100,7 @@ namespace FSH.Modules.MarketIntelligence
             {
                 message = "Pending disclosures parsed successfully"
             });
-        })
-        .AllowAnonymous();
+        });       //    .AllowAnonymous();
 
         }
 

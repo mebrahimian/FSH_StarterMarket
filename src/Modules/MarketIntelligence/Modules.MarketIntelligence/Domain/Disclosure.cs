@@ -83,7 +83,7 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     public short? Ft { get; set; }
     public int? ReportingTypeCode { set; get; }
 
-    public DisclosureParseStatus SalesParseStatus { get; set; } = (byte)DisclosureParseStatus.Pending;  // 0=New,1=Success,2=Failed,3=Ignored
+    public DisclosureParseStatus SalesParseStatus { get; set; } = DisclosureParseStatus.Pending;  // 0=New,1=Success,2=Failed,3=Ignored
 
     public DateTime? SalesParsedAt { get; set; }
 

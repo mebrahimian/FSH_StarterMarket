@@ -208,19 +208,21 @@ internal sealed class IdentityDbInitializer(
                 logger.LogInformation("Seeding Default Admin User for '{TenantId}' Tenant.", multiTenantContextAccessor.MultiTenantContext.TenantInfo?.Id);
             }
             var initialPassword = ResolveInitialAdminPassword(multiTenantContextAccessor.MultiTenantContext.TenantInfo!.Id!);
-            var password = new PasswordHasher<FshUser>();
-            adminUser.PasswordHash = password.HashPassword(adminUser, initialPassword);
-            // MUST check IdentityResult: a silent failure (password-policy reject, transient DB error)
-            // would mark provisioning "Completed" with no admin user; throwing makes it a retryable Failed.
-            var createResult = await userManager.CreateAsync(adminUser);
+            var createResult = await userManager.CreateAsync(adminUser, initialPassword);
+
             if (!createResult.Succeeded)
             {
                 throw new InvalidOperationException(
-                    $"Failed to seed admin user for tenant '{multiTenantContextAccessor.MultiTenantContext.TenantInfo!.Id}': "
-                    + string.Join("; ", createResult.Errors.Select(e => e.Description)));
+                    $"Failed to seed admin user for tenant " +
+                    $"'{multiTenantContextAccessor.MultiTenantContext.TenantInfo!.Id}': " +
+                    string.Join(
+                        "; ",
+                        createResult.Errors.Select(e => e.Description)));
             }
+
         }
 
+        
         // Assign role to user
         if (!await userManager.IsInRoleAsync(adminUser, RoleConstants.Admin))
         {

@@ -56,6 +56,13 @@ const WalletPage = lazyNamed(() => import("@/pages/wallet"), "WalletPage");
 const BrandsPage = lazyNamed(() => import("@/pages/catalog/brands"), "BrandsPage");
 const CategoriesPage = lazyNamed(() => import("@/pages/catalog/categories"), "CategoriesPage");
 const ProductsPage = lazyNamed(() => import("@/pages/catalog/products"), "ProductsPage");
+const DisclosuresPage = lazyNamed(
+  () =>
+    import(
+      "@/pages/market-intelligence/disclosures"
+    ),
+  "DisclosuresPage",
+);
 const ProductDetailPage = lazyNamed(
   () => import("@/pages/catalog/product-detail"),
   "ProductDetailPage",
@@ -223,6 +230,14 @@ export const router = createBrowserRouter([
           {
             path: "catalog/products/:productId",
             element: withSuspense(<ProductDetailPage />),
+          },
+          {
+            path: "market-intelligence",
+            element: (<Navigate to="/market-intelligence/disclosures"  replace   />),
+          },
+          {
+            path: "market-intelligence/disclosures",
+            element: withSuspense(<DisclosuresPage />,),
           },
           {
             path: "settings",

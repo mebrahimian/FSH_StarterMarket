@@ -1,8 +1,9 @@
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
-using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Contracts.v1.Disclosures;
 using FSH.Modules.MarketIntelligence.Data;
+using FSH.Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain.Enums;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,16 +19,53 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         int page = query.PageNumber < 1 ? 1 : query.PageNumber;
         int size = query.PageSize is < 1 or > 200 ? 20 : query.PageSize;
 
-        var q = dbContext.Disclosures.AsNoTracking().AsQueryable();
-        
+        IQueryable<Disclosure> q =
+    dbContext.Disclosures.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             string term = query.Search.Trim();
-            q = q.Where(b =>
-                    b.CompanyName.Contains(term) ||
-                    b.Title.Contains(term));
+
+            q = q.Where(disclosure =>
+                disclosure.Symbol.Contains(term) ||
+                disclosure.CompanyName.Contains(term) ||
+                disclosure.Title.Contains(term) ||
+                disclosure.LetterCode.Contains(term));
         }
+
+        if (query.Let.HasValue)
+        {
+            q = q.Where(disclosure =>
+                disclosure.Let == query.Let.Value);
+        }
+
+        if (query.Rt.HasValue)
+        {
+            q = q.Where(disclosure =>
+                disclosure.Rt == query.Rt.Value);
+        }
+
+        if (query.ReportingTypeCode.HasValue)
+        {
+            q = q.Where(disclosure =>
+                disclosure.ReportingTypeCode ==
+                query.ReportingTypeCode.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.SalesParseStatus) &&
+            System.Enum.TryParse(
+                query.SalesParseStatus,
+                ignoreCase: true,
+                out DisclosureParseStatus parseStatus))
+        {
+            q = q.Where(disclosure =>
+                disclosure.SalesParseStatus == parseStatus);
+        }
+
+        q = ApplySort(
+            q,
+            query.SortBy,
+            query.SortDir);
 
         q = ApplySort(q, query.SortBy, query.SortDir);
 
@@ -40,9 +78,37 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
 
         return new PagedResponse<DisclosureDto>
         {
-            Items = disclosures
-                .Select(b => new DisclosureDto(b.Id, b.CompanyName, b.Title, b.Symbol, b.LetterCode, b.PublishDateTime, b.SentDateTime))
-                .ToList(),
+            Items = disclosures.Select(disclosure => new DisclosureDto(
+                Id: disclosure.Id,
+                TracingNo: disclosure.TracingNo,
+                Symbol: disclosure.Symbol,
+                CompanyName: disclosure.CompanyName,
+                Title: disclosure.Title,
+                LetterCode: disclosure.LetterCode,
+                SentDateTimeRaw: disclosure.SentDateTimeRaw,
+                PublishDateTimeRaw: disclosure.PublishDateTimeRaw,
+                SentDateTime: disclosure.SentDateTime,
+                PublishDateTime: disclosure.PublishDateTime,
+                HasHtml: disclosure.HasHtml,
+                IsEstimate: disclosure.IsEstimate,
+                Url: disclosure.Url,
+                HasExcel: disclosure.HasExcel,
+                HasPdf: disclosure.HasPdf,
+                HasXbrl: disclosure.HasXbrl,
+                HasAttachment: disclosure.HasAttachment,
+                AttachmentUrl: disclosure.AttachmentUrl,
+                PdfUrl: disclosure.PdfUrl,
+                ExcelUrl: disclosure.ExcelUrl,
+                XbrlUrl: disclosure.XbrlUrl,
+                TedanUrl: disclosure.TedanUrl,
+                Let: disclosure.Let,
+                Rt: disclosure.Rt,
+                Ct: disclosure.Ct,
+                Ft: disclosure.Ft,
+                ReportingTypeCode: disclosure.ReportingTypeCode,
+                SalesParseStatus: disclosure.SalesParseStatus.ToString(),
+                SalesParsedAt: disclosure.SalesParsedAt))
+            .ToList(),
             PageNumber = page,
             PageSize = size,
             TotalCount = total,
@@ -52,16 +118,69 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
 
     // Whitelist + safe default: unknown columns/directions fall back to (name asc) so callers
     // can't trigger a server error or probe the entity shape via reflection-style sort keys.
-    private static IQueryable<Disclosure> ApplySort(IQueryable<Disclosure> q, string? sortBy, string? sortDir)
+    private static IQueryable<Disclosure> ApplySort(
+    IQueryable<Disclosure> query,
+    string? sortBy,
+    string? sortDir)
     {
-        bool desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
-        return (sortBy?.ToUpperInvariant()) switch
+        string normalizedSortBy =
+            sortBy?.Trim().ToUpperInvariant() ??
+            "PUBLISHDATETIME";
+
+        bool descending =
+            string.IsNullOrWhiteSpace(sortDir) ||
+            string.Equals(
+                sortDir,
+                "desc",
+                StringComparison.OrdinalIgnoreCase);
+
+        return normalizedSortBy switch
         {
-            "SLUG" => desc ? q.OrderByDescending(b => b.Title) : q.OrderBy(b => b.Title),
-            "CREATEDATUTC" or "CREATED" => desc
-                ? q.OrderByDescending(b => b.PublishDateTime)
-                : q.OrderBy(b => b.SentDateTime),
-            _ => desc ? q.OrderByDescending(b => b.Symbol) : q.OrderBy(b => b.Symbol),
+            "TRACINGNO" => descending
+                ? query
+                    .OrderByDescending(disclosure => disclosure.TracingNo)
+                : query
+                    .OrderBy(disclosure => disclosure.TracingNo),
+
+            "SYMBOL" => descending
+                ? query
+                    .OrderByDescending(disclosure => disclosure.Symbol)
+                    .ThenByDescending(disclosure => disclosure.TracingNo)
+                : query
+                    .OrderBy(disclosure => disclosure.Symbol)
+                    .ThenByDescending(disclosure => disclosure.TracingNo),
+
+            "COMPANYNAME" => descending
+                ? query
+                    .OrderByDescending(disclosure => disclosure.CompanyName)
+                    .ThenByDescending(disclosure => disclosure.TracingNo)
+                : query
+                    .OrderBy(disclosure => disclosure.CompanyName)
+                    .ThenByDescending(disclosure => disclosure.TracingNo),
+
+            "SENTDATETIME" => descending
+                ? query
+                    .OrderByDescending(disclosure => disclosure.SentDateTime)
+                    .ThenByDescending(disclosure => disclosure.TracingNo)
+                : query
+                    .OrderBy(disclosure => disclosure.SentDateTime)
+                    .ThenByDescending(disclosure => disclosure.TracingNo),
+
+            "SALESPARSEDAT" => descending
+                ? query
+                    .OrderByDescending(disclosure => disclosure.SalesParsedAt)
+                    .ThenByDescending(disclosure => disclosure.TracingNo)
+                : query
+                    .OrderBy(disclosure => disclosure.SalesParsedAt)
+                    .ThenByDescending(disclosure => disclosure.TracingNo),
+
+            _ => descending
+                ? query
+                    .OrderByDescending(disclosure => disclosure.PublishDateTime)
+                    .ThenByDescending(disclosure => disclosure.TracingNo)
+                : query
+                    .OrderBy(disclosure => disclosure.PublishDateTime)
+                    .ThenByDescending(disclosure => disclosure.TracingNo)
         };
     }
 }
