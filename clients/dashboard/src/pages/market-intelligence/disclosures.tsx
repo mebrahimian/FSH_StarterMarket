@@ -31,7 +31,7 @@ import {
 } from "@/components/list";
 import { cn } from "@/lib/cn";
 import { describe } from "@/lib/list-helpers";
-
+import { CodalOperationsPanel } from "./codal-operations-panel";
 const PAGE_SIZE = 25;
 
 const statusOptions: Array<{
@@ -168,7 +168,9 @@ export function DisclosuresPage() {
           Refresh
         </Button>
       </EntityPageHeader>
-
+          <CodalOperationsPanel
+              onQueued={() => void query.refetch()}
+          />
       <SearchBox
         value={search}
         onChange={setSearch}

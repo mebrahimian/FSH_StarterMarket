@@ -70,5 +70,15 @@
   },
   "errors": {
     "load": "Could not load disclosures."
+  },
+  "codalOperations": {
+    "title": "Codal operations",
+    "collectNew": "Read new disclosures",
+    "parsePending": "Parse pending",
+    "backfill": "Historical backfill",
+    "queueing": "Queuing...",
+    "queued": "Job {{jobId}} was queued.",
+    "failed": "Could not queue the Codal operation.",
+    "confirmBackfill": "Historical backfill may take a long time and send many requests to Codal. Do you want to continue?"
   }
 }

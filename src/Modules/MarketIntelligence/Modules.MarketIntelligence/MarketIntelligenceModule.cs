@@ -75,36 +75,71 @@ namespace FSH.Modules.MarketIntelligence
            
             group.MapSearchDisclosuresEndpoint();
 
-            group.MapPost("/codal/newRead", async (ICodalCollectorService collector,
-                                                  CancellationToken ct) =>
-            {
-                await collector.CollectIncrementalAsync(ct);
-                return Results.Ok(new
-                {
-                    message = "Codal import finished"
-                });
-            });     //     .AllowAnonymous();
+            group.MapPost(
+    "/codal/newRead",
+    (IJobService jobService) =>
+    {
+        string jobId =
+            jobService.Enqueue<CodalBackgroundJob>(
+                job =>
+                    job.RunIncrementalAsync());
 
-            group.MapPost("/codal/import", async (ICodalCollectorService collector,
-                                                  CancellationToken ct) =>
+        return Results.Accepted(
+            value: new
             {
-                await collector.CollectBackfillAsync(ct);
-                return Results.Ok(new
-                {
-                    message = "Codal import finished"
-                });
-            });    //     .AllowAnonymous();
-
-            group.MapPost("/codal/parse-pending",
-                async (ICodalCollectorService collector, CancellationToken ct) =>
-        {
-            await collector.ParsePendingDisclosuresAsync(ct);
-
-            return Results.Ok(new
-            {
-                message = "Pending disclosures parsed successfully"
+                jobId,
+                message =
+                    "Codal incremental import queued."
             });
-        });       //    .AllowAnonymous();
+    })
+    .RequirePermission(
+        MarketIntelligencePermissions
+            .CodalOperations
+            .Execute);
+
+            group.MapPost(
+                "/codal/import",
+                (IJobService jobService) =>
+                {
+                    string jobId =
+                        jobService.Enqueue<CodalBackgroundJob>(
+                            job =>
+                                job.RunBackfillAsync());
+
+                    return Results.Accepted(
+                        value: new
+                        {
+                            jobId,
+                            message =
+                                "Codal backfill queued."
+                        });
+                })
+                .RequirePermission(
+                    MarketIntelligencePermissions
+                        .CodalOperations
+                        .Execute);
+
+            group.MapPost(
+                "/codal/parse-pending",
+                (IJobService jobService) =>
+                {
+                    string jobId =
+                        jobService.Enqueue<CodalBackgroundJob>(
+                            job =>
+                                job.RunParsePendingAsync());
+
+                    return Results.Accepted(
+                        value: new
+                        {
+                            jobId,
+                            message =
+                                "Pending disclosure parsing queued."
+                        });
+                })
+                .RequirePermission(
+                    MarketIntelligencePermissions
+                        .CodalOperations
+                        .Execute);
 
         }
 
