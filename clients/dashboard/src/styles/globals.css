@@ -293,7 +293,12 @@
   --brand-900:  oklch(0.355 0.105  76);
   --brand-950:  oklch(0.255 0.075  76);
 }
-/* ─────────────────────────────────────────────────────────────────────────
+/* Persian typography — applied only while the document is RTL. */
+html[dir="rtl"] {
+    --font-sans: "Vazirmatn Variable", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Vazirmatn Variable", ui-sans-serif, system-ui, sans-serif;
+    font-family: "Vazirmatn Variable", ui-sans-serif, system-ui, sans-serif;
+}/* ─────────────────────────────────────────────────────────────────────────
    DARK MODE — values flip; semantic names stay.
    ─────────────────────────────────────────────────────────────────────── */
 .dark {

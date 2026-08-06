@@ -44,7 +44,85 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
-    },
+      },
+      build: {
+          rollupOptions: {
+              onwarn(warning, warn) {
+                  if (
+                      warning.code ===
+                      "INVALID_ANNOTATION" &&
+                      warning.id?.includes(
+                          "@microsoft/signalr",
+                      )
+                  ) {
+                      return;
+                  }
+
+                  warn(warning);
+              },
+
+              output: {
+                  manualChunks(id) {
+                      const moduleId =
+                          id.replaceAll("\\", "/");
+
+                      if (
+                          moduleId.includes(
+                              "/node_modules/react/",
+                          ) ||
+                          moduleId.includes(
+                              "/node_modules/react-dom/",
+                          ) ||
+                          moduleId.includes(
+                              "/node_modules/scheduler/",
+                          )
+                      ) {
+                          return "react-vendor";
+                      }
+
+                      if (
+                          moduleId.includes(
+                              "/node_modules/react-router/",
+                          ) ||
+                          moduleId.includes(
+                              "/node_modules/react-router-dom/",
+                          )
+                      ) {
+                          return "router-vendor";
+                      }
+
+                      if (
+                          moduleId.includes(
+                              "/node_modules/@tanstack/react-query/",
+                          )
+                      ) {
+                          return "query-vendor";
+                      }
+
+                      if (
+                          moduleId.includes(
+                              "/node_modules/@microsoft/signalr/",
+                          )
+                      ) {
+                          return "realtime-vendor";
+                      }
+
+                      if (
+                          moduleId.includes(
+                              "/node_modules/i18next/",
+                          ) ||
+                          moduleId.includes(
+                              "/node_modules/react-i18next/",
+                          )
+                      ) {
+                          return "i18n-vendor";
+                      }
+
+                      return undefined;
+                  },
+              },
+          },
+      },
     server: {
       port: 5174,
       strictPort: true,

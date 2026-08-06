@@ -105,6 +105,7 @@
     <File Path="../docs/01-Architecture.md" />
     <File Path="../docs/02-Roadmap.md" />
     <File Path="../docs/03-DevelopmentGuide.md" />
+    <File Path="../docs/branding.md" />
     <File Path="StartProjectsManualy.txt" />
   </Folder>
   <Folder Name="/_SystemDocument/04-ADR/">
