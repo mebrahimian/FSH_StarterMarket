@@ -1,4 +1,5 @@
-﻿using Asp.Versioning;
+﻿using Hangfire;
+using Asp.Versioning;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Web.Modules;
@@ -72,30 +73,19 @@ namespace FSH.Modules.MarketIntelligence
 
             // Trash routes registered first so the literal `/trash` segment wins
             // over the catch-all `/{id:guid}`.
-           
+
             group.MapSearchDisclosuresEndpoint();
 
-            group.MapPost(
-    "/codal/newRead",
-    (IJobService jobService) =>
-    {
-        string jobId =
-            jobService.Enqueue<CodalBackgroundJob>(
-                job =>
-                    job.RunIncrementalAsync(CancellationToken.None));
+            group.MapPost("/codal/newRead", (IJobService jobService) =>
+              {
+                  string jobId = jobService.Enqueue<CodalBackgroundJob>
+                    (job => job.RunIncrementalAsync(CancellationToken.None));
 
-        return Results.Accepted(
-            value: new
-            {
-                jobId,
-                message =
-                    "Codal incremental import queued."
-            });
-    })
-    .RequirePermission(
-        MarketIntelligencePermissions
-            .CodalOperations
-            .Execute);
+                  return Results.Accepted(value: new
+                  { jobId, message = "Codal incremental import queued." });
+              }).RequirePermission(MarketIntelligencePermissions
+                .CodalOperations
+                .Execute);
 
             group.MapPost(
                 "/codal/import",
@@ -136,11 +126,41 @@ namespace FSH.Modules.MarketIntelligence
                                 "Pending disclosure parsing queued."
                         });
                 })
-                .RequirePermission(
-                    MarketIntelligencePermissions
-                        .CodalOperations
-                        .Execute);
+                .RequirePermission(MarketIntelligencePermissions
+                                  .CodalOperations
+                                  .Execute);
 
+            group.MapGet(
+                "/codal/jobs/{jobId}/status",
+                (string jobId) =>
+                {
+                    using var connection = JobStorage.Current.GetConnection();
+
+                    var jobData = connection.GetJobData(jobId);
+
+                    if (jobData is null)
+                    {
+                        return Results.NotFound(
+                            new
+                            {
+                                jobId,
+                                message = "Job not found."
+                            });
+                    }
+
+                    var state = connection.GetStateData(jobId);
+
+                    return Results.Ok(
+                        new
+                        {
+                            jobId,
+                            status = state?.Name ?? "Unknown",
+                            reason = state?.Reason,
+                            createdAt = jobData.CreatedAt
+                        });
+                }).RequirePermission(MarketIntelligencePermissions
+                                    .CodalOperations
+                                    .Execute);
         }
 
     }

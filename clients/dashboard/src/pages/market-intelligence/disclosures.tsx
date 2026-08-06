@@ -187,7 +187,7 @@ export function DisclosuresPage() {
                 </Button>
             </EntityPageHeader>
             <CodalOperationsPanel
-                onQueued={() => void query.refetch()}
+                onCompleted={query.refetch}
             />
             <SearchBox
                 value={search}

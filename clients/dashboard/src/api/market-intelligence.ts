@@ -150,6 +150,29 @@ export function collectNewCodalDisclosures(): Promise<CodalOperationResponse> {
         },
     );
 }
+export type CodalJobStatus =
+    | "Enqueued"
+    | "Scheduled"
+    | "Processing"
+    | "Succeeded"
+    | "Failed"
+    | "Deleted"
+    | "Unknown";
+
+export type CodalJobStatusResponse = {
+    jobId: string;
+    status: CodalJobStatus;
+    reason?: string | null;
+    createdAt: string;
+};
+
+export function getCodalJobStatus(
+    jobId: string,
+): Promise<CodalJobStatusResponse> {
+    return apiFetch<CodalJobStatusResponse>(
+        `/api/v1/marketintelligence/codal/jobs/${encodeURIComponent(jobId)}/status`,
+    );
+}
 
 export function collectCodalBackfill(): Promise<CodalOperationResponse> {
     return apiFetch<CodalOperationResponse>(

@@ -83,6 +83,26 @@
     "queueing": "Queuing...",
     "queued": "Job {{jobId}} was queued.",
     "failed": "Could not queue the Codal operation.",
-    "confirmBackfill": "Historical backfill may take a long time and send many requests to Codal. Do you want to continue?"
+    "confirmIncremental": "Start collecting new Codal disclosures?",
+    "confirmParsePending": "Start processing pending disclosures? This operation may take a long time.",
+    "confirmBackfill": "Start the historical Codal backfill? This operation may take a long time.",
+    "confirmTitle": "Confirm operation",
+    "cancel": "Cancel",
+    "confirm": "Run",
+    "jobNumber": "Job #{{jobId}}",
+    "progressLabel": "Codal operation progress",
+    "checkingStatus": "Checking operation status…",
+    "statusUnavailable": "Could not read the operation status.",
+    "status": {
+      "enqueued": "Enqueued",
+      "scheduled": "Scheduled",
+      "processing": "Processing",
+      "succeeded": "Completed successfully",
+      "failed": "Failed",
+      "deleted": "Stopped",
+      "unknown": "Unknown status"
+    }
+    
+    
   }
 }
