@@ -33,8 +33,33 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
                 disclosure.LetterCode.Contains(term));
         }
 
-        if (query.Let.HasValue)
+        if (query.Lets is { Length: > 0 })
         {
+            short[] letCodes = query.Lets;
+
+            if (query.IncludeNullLet)
+            {
+                q = q.Where(disclosure =>
+                    !disclosure.Let.HasValue ||
+                    letCodes.Contains(
+                        disclosure.Let.Value));
+            }
+            else
+            {
+                q = q.Where(disclosure =>
+                    disclosure.Let.HasValue &&
+                    letCodes.Contains(
+                        disclosure.Let.Value));
+            }
+        }
+        else if (query.IncludeNullLet)
+        {
+            q = q.Where(disclosure =>
+                !disclosure.Let.HasValue);
+        }
+        else if (query.Let.HasValue)
+        {
+            // پشتیبانی موقت از فیلتر قدیمی تک‌کدی
             q = q.Where(disclosure =>
                 disclosure.Let == query.Let.Value);
         }

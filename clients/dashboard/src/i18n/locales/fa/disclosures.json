@@ -9,8 +9,8 @@
     "found": "{{formattedCount}} اطلاعیه یافت شد"
   },
   "actions": {
-    "refresh": "تازه‌سازی",
-    "refreshing": "در حال تازه‌سازی...",
+    "refresh": "بروزرسانی",
+    "refreshing": "در حال بروزرسانی...",
     "clearFilters": "پاک‌کردن فیلترها",
     "openCodal": "مشاهده در کدال"
   },
@@ -26,7 +26,9 @@
     "sortBy": "مرتب‌سازی براساس",
     "sortDirection": "جهت مرتب‌سازی",
     "ascending": "صعودی",
-    "descending": "نزولی"
+    "descending": "نزولی",
+    "asc": "صعودی",
+    "desc": "نزولی"
   },
   "sort": {
     "publishDate": "تاریخ انتشار",
@@ -36,17 +38,19 @@
     "parseDate": "تاریخ پردازش"
   },
   "status": {
-    "Pending": "در انتظار",
-    "Success": "موفق",
-    "Failed": "ناموفق",
-    "NoData": "بدون داده",
-    "Skipped": "ردشده"
+    "pending": "در انتظار",
+    "success": "موفق",
+    "failed": "ناموفق",
+    "noData": "بدون داده",
+    "skipped": "ردشده"
   },
   "table": {
     "symbol": "نماد",
     "company": "شرکت",
+    "disclosure": "اطــلاعیــه",
     "title": "عنوان",
     "publishDate": "تاریخ انتشار",
+    "published": "تاریخ انتشار",
     "sentDate": "تاریخ ارسال",
     "letterCode": "کد نامه",
     "reportType": "نوع گزارش",

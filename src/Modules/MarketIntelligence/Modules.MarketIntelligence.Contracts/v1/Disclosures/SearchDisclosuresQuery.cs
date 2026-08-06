@@ -25,9 +25,17 @@ namespace FSH.Modules.MarketIntelligence.Contracts.v1.Disclosures;
 /// sentDateTime or salesParsedAt.
 /// </param>
 /// <param name="SortDir">Sort direction: asc or desc.</param>
+/// /// <param name="Lets">
+/// LET codes used for grouped filtering.
+/// </param>
+/// <param name="IncludeNullLet">
+/// Whether disclosures with a null LET value should be included.
+/// </param>
 public sealed record SearchDisclosuresQuery(
     string? Search = null,
     short? Let = null,
+    short[]? Lets = null,
+    bool IncludeNullLet = false,
     byte? Rt = null,
     int? ReportingTypeCode = null,
     string? SalesParseStatus = null,

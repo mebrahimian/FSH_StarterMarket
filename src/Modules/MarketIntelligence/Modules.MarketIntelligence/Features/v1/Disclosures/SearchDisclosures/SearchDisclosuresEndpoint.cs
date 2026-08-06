@@ -21,6 +21,8 @@ public static class SearchDisclosuresEndpoint
                 (
                     string? search,
                     short? let,
+                    short[]? lets,
+                    bool? includeNullLet,
                     byte? rt,
                     int? reportingTypeCode,
                     string? salesParseStatus,
@@ -34,6 +36,8 @@ public static class SearchDisclosuresEndpoint
                         new SearchDisclosuresQuery(
                             Search: search,
                             Let: let,
+                            Lets: lets,
+                            IncludeNullLet: includeNullLet == true,
                             Rt: rt,
                             ReportingTypeCode: reportingTypeCode,
                             SalesParseStatus: salesParseStatus,

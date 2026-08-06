@@ -1,0 +1,27 @@
+{
+  "filters": {
+    "reportType": "Activity type",
+    "reportLet" : "Letter Category"
+  },
+  "reportTypes": {
+    "0": "Manufacturing",
+    "1": "Construction",
+    "2": "Investment",
+    "3": "Banking",
+    "4": "Leasing",
+    "5": "Services",
+    "6": "Insurance",
+    "7": "Maritime transportation",
+    "8": "Agriculture",
+    "9": "Investment banking"
+  },
+  "letterCategories": {
+    "materialInformation": "Disclosure of material information",
+    "monthlyActivity": "Monthly activity reports",
+    "boardAndAuditCommittee": "Board and audit committee information",
+    "generalMeetings": "General meeting notices and resolutions",
+    "capitalIncrease": "Capital increase",
+    "clarifications": "Clarification disclosures",
+    "other": "Other"
+  }
+}

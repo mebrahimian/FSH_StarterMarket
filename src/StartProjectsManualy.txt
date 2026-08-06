@@ -1,0 +1,26 @@
+راه اجرای دستی پروژه 
+1) 3 عدد powershell باز میکنیم
+2) پنجره اول : cd D:\MyAppFSH.MarketIntelligence\src
+               dotnet run --project .\Host\FSH.Starter.Api\FSH.Starter.Api.csproj
+صبر میکنیم تا Now listening on: http://localhost:5030 بیاد
+3) پنجره دوم : cd D:\MyAppFSH.MarketIntelligence\clients\dashboard
+               npm.cmd run dev
+رفتن به آدرس : http://localhost:5174 
+4) پنجره سوم : cd D:\MyAppFSH.MarketIntelligence\clients\admin
+               npm.cmd run dev
+
+آدرس پنل مدیریت : http://localhost:5173
+
+==============================================
+متوقف‌کردن برنامه‌ها وقتی Ctrl+C کار نمی‌کند
+توقف Dashboard
+Get-NetTCPConnection -LocalPort 5174 -State Listen -ErrorAction SilentlyContinue |ForEach-Object {Stop-Process -Id $_.OwningProcess -Force}
+
+توقف Admin
+Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue |ForEach-Object {Stop-Process -Id $_.OwningProcess -Force}
+
+توقف API
+Get-NetTCPConnection -LocalPort 5030 -State Listen -ErrorAction SilentlyContinue |ForEach-Object {Stop-Process -Id $_.OwningProcess -Force}
+
+
+

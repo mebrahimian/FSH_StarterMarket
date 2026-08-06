@@ -5,24 +5,27 @@ namespace FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 public sealed class CodalBackgroundJob(
     ICodalCollectorService collectorService)
 {
-    public Task RunIncrementalAsync()
+    public Task RunIncrementalAsync(
+    CancellationToken cancellationToken)
     {
         return collectorService
             .CollectIncrementalAsync(
-                CancellationToken.None);
+                cancellationToken);
     }
 
-    public Task RunBackfillAsync()
+    public Task RunBackfillAsync(
+        CancellationToken cancellationToken)
     {
         return collectorService
             .CollectBackfillAsync(
-                CancellationToken.None);
+                cancellationToken);
     }
 
-    public Task RunParsePendingAsync()
+    public Task RunParsePendingAsync(
+        CancellationToken cancellationToken)
     {
         return collectorService
             .ParsePendingDisclosuresAsync(
-                CancellationToken.None);
+                cancellationToken);
     }
 }

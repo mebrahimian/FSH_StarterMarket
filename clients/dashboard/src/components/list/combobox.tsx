@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/cn";
+import { useTranslation } from "react-i18next";
 
 export type ComboboxOption = {
   value: string;
@@ -66,6 +67,8 @@ export function Combobox({
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { i18n } = useTranslation();
+  const direction = i18n.dir();
 
   // Reset filter and focus search whenever the popover opens.
   useEffect(() => {
@@ -88,7 +91,7 @@ export function Combobox({
   const showFieldClear = clearable && hasValue && !disabled;
 
   return (
-    <DropdownMenu open={open} onOpenChange={(o) => !disabled && setOpen(o)}>
+      <DropdownMenu open={open} onOpenChange={(o) => !disabled && setOpen(o)} dir={direction}>
       {variant === "filter" ? (
         <DropdownMenuTrigger asChild disabled={disabled}>
           <FilterTrigger
@@ -177,7 +180,7 @@ export function Combobox({
           </DropdownMenuRow>
         )}
 
-        <ul role="none" className="max-h-[300px] overflow-y-auto py-1">
+        <ul role="none" dir={direction} className="max-h-[300px] overflow-y-auto py-1">
           {emptyOptionLabel && (!filter || emptyOptionLabel.toLowerCase().includes(filter.toLowerCase())) && (
             <Option
               selected={value === null || value === ""}
@@ -239,7 +242,7 @@ function Option({
         role="menuitemradio"
         aria-checked={selected}
         className={cn(
-          "group/opt flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-left text-sm",
+          "group/opt flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-start text-sm",
           "transition-colors duration-[var(--duration-fast)]",
           selected
             ? "bg-[var(--color-primary-soft)] text-[var(--color-primary)]"
@@ -279,7 +282,9 @@ const FilterTrigger = ({
   onClear: () => void;
   disabled?: boolean;
   className?: string;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
+    } & React.ButtonHTMLAttributes<HTMLButtonElement>) =>
+{
+   const { t } = useTranslation("common");  
   return (
     <span className={cn("relative inline-flex items-center", className)}>
       <button
@@ -300,7 +305,7 @@ const FilterTrigger = ({
         {...props}
       >
         <span className="opacity-70">{label.toUpperCase()}:</span>
-        <span className="truncate">{selected?.label.toUpperCase() ?? "ALL"}</span>
+              <span className="truncate">{selected?.label.toUpperCase() ?? t("combobox.all")} </span>
         <ChevronDown
           aria-hidden
           className="h-3 w-3 transition-transform duration-[var(--duration-fast)] data-[state=open]:rotate-180"
@@ -352,7 +357,7 @@ const FieldTrigger = ({
       disabled={disabled}
       className={cn(
         "group/field relative flex h-9 w-full cursor-pointer items-center justify-between gap-2",
-        "rounded-md border border-[var(--color-input)] bg-transparent px-3 text-left text-sm shadow-sm",
+        "rounded-md border border-[var(--color-input)] bg-transparent px-3 text-start text-sm shadow-sm",
         "transition-colors duration-[var(--duration-fast)]",
         "hover:border-[var(--color-border-strong)]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2",

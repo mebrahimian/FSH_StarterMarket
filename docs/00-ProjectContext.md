@@ -17,8 +17,21 @@ Update Database
 dotnet ef database update --context "FSH.Modules.Identity.Data.IdentityDbContext" 
                           --project ".\Host\FSH.Starter.Migrations.MSSQL\FSH.Starter.Migrations.MSSQL.csproj" 
                           --startup-project ".\Host\FSH.Starter.Api\FSH.Starter.Api.csproj"
-=========================
+============API==Stop==========
+$dashboardListener =
+    Get-NetTCPConnection `
+        -LocalPort 5174 `
+        -State Listen `
+        -ErrorAction SilentlyContinue |
+    Select-Object -First 1
 
+if ($dashboardListener) {
+    Stop-Process `
+        -Id $dashboardListener.OwningProcess `
+        -Force
+}
+
+====================
 # FSH.MarketIntelligence
 
 **Version:** 1.0  

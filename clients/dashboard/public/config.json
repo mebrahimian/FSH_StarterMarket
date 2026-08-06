@@ -2,6 +2,6 @@
   "apiBase": "",
   "defaultTenant": "marketintelligence",
   "demoMode": false,
-  "inactivityIdleMs": 1200000,
+  "inactivityIdleMs": 28800000,
   "inactivityWarningMs": 60000
 }

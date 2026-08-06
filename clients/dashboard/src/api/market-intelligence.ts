@@ -59,7 +59,9 @@ export type DisclosureDto = {
 
 export type SearchDisclosuresParams = {
   search?: string;
-  let?: number | null;
+    let?: number | null;
+    lets?: readonly number[];
+    includeNullLet?: boolean;
   rt?: number | null;
   reportingTypeCode?: number | null;
   salesParseStatus?: DisclosureParseStatus | null;
@@ -78,13 +80,23 @@ export function searchDisclosures(
     query.set("search", params.search);
   }
 
-  if (params.let !== undefined && params.let !== null) {
-    query.set("let", String(params.let));
-  }
+    if (params.let !== undefined && params.let !== null) {
+        query.set("let", String(params.let));
+    }
 
-  if (params.rt !== undefined && params.rt !== null) {
-    query.set("rt", String(params.rt));
-  }
+    if (params.lets?.length) {
+        params.lets.forEach((letCode) => {
+            query.append("lets", String(letCode));
+        });
+    }
+
+    if (params.includeNullLet) {
+        query.set("includeNullLet", "true");
+    }
+
+    if (params.rt !== undefined && params.rt !== null) {
+        query.set("rt", String(params.rt));
+    }
 
   if (
     params.reportingTypeCode !== undefined &&

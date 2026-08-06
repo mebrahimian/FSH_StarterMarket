@@ -15,9 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { describe } from "@/lib/list-helpers";
 
-const CODAL_OPERATIONS_PERMISSION =
-    "Permissions.MarketIntelligence.CodalOperations.Execute";
-
 type CodalOperation =
     | "incremental"
     | "parsePending"

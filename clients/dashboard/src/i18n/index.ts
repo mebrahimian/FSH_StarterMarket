@@ -7,6 +7,8 @@ import navigationEn from "./locales/en/navigation.json";
 import navigationFa from "./locales/fa/navigation.json";
 import disclosuresEn from "./locales/en/disclosures.json";
 import disclosuresFa from "./locales/fa/disclosures.json";
+import enMarketIntelligence from "./locales/en/market-intelligence.json";
+import faMarketIntelligence from "./locales/fa/market-intelligence.json";
 
 export const appLanguages = ["en", "fa"] as const;
 
@@ -92,11 +94,13 @@ void i18n
                 common: commonEn,
                 navigation: navigationEn,
                 disclosures: disclosuresEn,
+                marketIntelligence: enMarketIntelligence
             },
             fa: {
                 common: commonFa,
                 navigation: navigationFa,
                 disclosures: disclosuresFa,
+                marketIntelligence: faMarketIntelligence,
             },
         },
         lng: initialLanguage,
@@ -107,6 +111,7 @@ void i18n
             "common",
             "navigation",
             "disclosures",
+            "marketIntelligence"
         ],
         interpolation: {
             escapeValue: false,

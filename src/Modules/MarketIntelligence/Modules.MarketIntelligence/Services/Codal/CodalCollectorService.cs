@@ -259,7 +259,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .FirstOrDefaultAsync(cancellationToken);
 
         // فعلاً برای BackFill یک سال قبل
-        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-4));
+        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-1));
 
         var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
 
@@ -276,7 +276,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                              // 1000001:ساختمانی     
                                              // 1000002:سرمایه گذاری  
                     PageNumber = pageNumber ,// 1000003:بانک            
-                    Category = 3,            // 1000004:لیزینگ   
+                                             // 1000004:لیزینگ   
                                              // 1000005:خدماتی 
                                              // 1000006:بیمه               
                                              // 1000007:حمل ونقل دریایی
@@ -436,7 +436,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
     {
         const int batchSize = 20;
 
-        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(1);
+        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(10);
 
         var definitions = CodalDefinitionsProvider.Load();
         byte[] supportedReportTypes = definitions.MonthlyActivities.Keys.ToArray();

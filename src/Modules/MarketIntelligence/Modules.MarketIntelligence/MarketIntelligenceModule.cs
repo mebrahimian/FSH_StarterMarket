@@ -82,7 +82,7 @@ namespace FSH.Modules.MarketIntelligence
         string jobId =
             jobService.Enqueue<CodalBackgroundJob>(
                 job =>
-                    job.RunIncrementalAsync());
+                    job.RunIncrementalAsync(CancellationToken.None));
 
         return Results.Accepted(
             value: new
@@ -104,7 +104,7 @@ namespace FSH.Modules.MarketIntelligence
                     string jobId =
                         jobService.Enqueue<CodalBackgroundJob>(
                             job =>
-                                job.RunBackfillAsync());
+                                job.RunBackfillAsync(CancellationToken.None));
 
                     return Results.Accepted(
                         value: new
@@ -126,7 +126,7 @@ namespace FSH.Modules.MarketIntelligence
                     string jobId =
                         jobService.Enqueue<CodalBackgroundJob>(
                             job =>
-                                job.RunParsePendingAsync());
+                                job.RunParsePendingAsync(CancellationToken.None));
 
                     return Results.Accepted(
                         value: new

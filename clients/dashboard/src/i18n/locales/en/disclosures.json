@@ -26,7 +26,9 @@
     "sortBy": "Sort by",
     "sortDirection": "Sort direction",
     "ascending": "Ascending",
-    "descending": "Descending"
+    "descending": "Descending",
+    "asc": "ASC",
+    "desc": "DESC"
   },
   "sort": {
     "publishDate": "Publish date",
@@ -36,17 +38,19 @@
     "parseDate": "Parse date"
   },
   "status": {
-    "Pending": "Pending",
-    "Success": "Success",
-    "Failed": "Failed",
-    "NoData": "No data",
-    "Skipped": "Skipped"
+    "pending": "Pending",
+    "puccess": "Success",
+    "failed": "Failed",
+    "noData": "No data",
+    "skipped": "Skipped"
   },
   "table": {
     "symbol": "Symbol",
     "company": "Company",
+    "disclosure": "Disclosure",
     "title": "Title",
     "publishDate": "Publish date",
+    "published": "Published",
     "sentDate": "Sent date",
     "letterCode": "Letter code",
     "reportType": "Report type",
