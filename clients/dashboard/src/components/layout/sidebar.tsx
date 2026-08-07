@@ -45,7 +45,9 @@ function useCollapsedSidebar() {
 }
 
 export function Sidebar() {
-  const { t } = useTranslation("navigation");
+    const { t } = useTranslation("navigation");
+    const { t: tCommon } = useTranslation("common");
+  
   const { collapsed, toggle } = useCollapsedSidebar();
   const location = useLocation();
 
@@ -90,27 +92,40 @@ export function Sidebar() {
           collapsed ? "justify-center px-0" : "justify-between px-4",
         )}
       >
-        <div className={cn("flex items-center", collapsed ? "" : "gap-2.5")}>
-          <span
-            aria-hidden
-            className={cn(
-              "brand-mark grid size-8 place-items-center rounded-lg shrink-0",
-              "font-display text-[12px] font-bold text-[var(--color-primary-foreground)]",
-            )}
-          >
-            F
-          </span>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="whitespace-nowrap font-display text-[15px] font-bold leading-none tracking-tight text-[var(--color-foreground)]">
-                fullstack<span className="text-[var(--color-primary)]">hero</span>
-              </span>
-              <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.7)]">
-                   {t("dashboard")}
-              </span>
-            </div>
-          )}
-        </div>
+              <div
+                  className={cn(
+                      "flex min-w-0 items-center",
+                      collapsed ? "" : "gap-2.5",
+                  )}
+              >
+                  {/* نسخهٔ اصلی برای Light Mode */}
+                  <img
+                      src="/branding/sadaf/sadaf-mark-primary.svg"
+                      alt=""
+                      aria-hidden
+                      className="size-8 shrink-0 dark:hidden"
+                  />
+
+                  {/* نسخهٔ روشن برای Dark Mode */}
+                  <img
+                      src="/branding/sadaf/sadaf-mark-dark.svg"
+                      alt=""
+                      aria-hidden
+                      className="hidden size-8 shrink-0 dark:block"
+                  />
+
+                  {!collapsed && (
+                      <div className="flex min-w-0 flex-col">
+                          <span className="whitespace-nowrap font-display text-[15px] font-bold leading-none tracking-tight text-[var(--color-foreground)]">
+                              {tCommon("brand.name")}
+                          </span>
+
+                          <span className="mt-1 whitespace-nowrap text-[10px] font-semibold tracking-wider text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.7)]">
+                              {tCommon("brand.subtitle")}
+                          </span>
+                      </div>
+                  )}
+              </div>
 
         {!collapsed && (
           <button

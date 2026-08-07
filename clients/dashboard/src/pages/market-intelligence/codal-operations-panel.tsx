@@ -36,16 +36,80 @@ type CodalOperation =
     | "parsePending"
     | "backfill";
 
+type ActiveCodalJob = {
+    jobId: string;
+    operation: CodalOperation;
+};
+
+const ACTIVE_CODAL_JOB_KEY =
+    "fsh.dashboard.codal.activeJob";
+
+function readStoredActiveJob():
+    ActiveCodalJob | null {
+    if (typeof window === "undefined") {
+        return null;
+    }
+
+    try {
+        const stored =
+            window.localStorage.getItem(
+                ACTIVE_CODAL_JOB_KEY,
+            );
+
+        if (!stored) {
+            return null;
+        }
+
+        const parsed =
+            JSON.parse(stored) as Partial<ActiveCodalJob>;
+
+        const operation = parsed.operation;
+
+        if (
+            typeof parsed.jobId !== "string" ||
+            (
+                operation !== "incremental" &&
+                operation !== "parsePending" &&
+                operation !== "backfill"
+            )
+        ) {
+            return null;
+        }
+
+        return {
+            jobId: parsed.jobId,
+            operation,
+        };
+    } catch {
+        // Storage may be unavailable or contain invalid JSON.
+        return null;
+    }
+}
 export function CodalOperationsPanel({
     onCompleted,
 }: {
     onCompleted?: () => void;
 }) {
     const [activeJob, setActiveJob] =
-        useState<{
-            jobId: string;
-            operation: CodalOperation;
-        } | null>(null);
+        useState<ActiveCodalJob | null>(
+            readStoredActiveJob,
+        );
+    useEffect(() => {
+        try {
+            if (activeJob) {
+                window.localStorage.setItem(
+                    ACTIVE_CODAL_JOB_KEY,
+                    JSON.stringify(activeJob),
+                );
+            } else {
+                window.localStorage.removeItem(
+                    ACTIVE_CODAL_JOB_KEY,
+                );
+            }
+        } catch {
+            // The job still runs even when browser storage is unavailable.
+        }
+    }, [activeJob]);
 
     const [
         operationToConfirm,

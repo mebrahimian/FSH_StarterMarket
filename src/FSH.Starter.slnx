@@ -105,7 +105,6 @@
     <File Path="../docs/01-Architecture.md" />
     <File Path="../docs/02-Roadmap.md" />
     <File Path="../docs/03-DevelopmentGuide.md" />
-    <File Path="../docs/branding.md" />
     <File Path="StartProjectsManualy.txt" />
   </Folder>
   <Folder Name="/_SystemDocument/04-ADR/">
@@ -114,6 +113,23 @@
     <File Path="../docs/04-ADR/ADR-002.md" />
     <File Path="../docs/04-ADR/ADR-003.md" />
     <File Path="../docs/04-ADR/ADR-004.md" />
+  </Folder>
+  <Folder Name="/_SystemDocument/Branding/">
+    <File Path="../docs/branding.md" />
+  </Folder>
+  <Folder Name="/_SystemDocument/Branding/logo/">
+    <File Path="../docs/logo/README.md" />
+    <File Path="../docs/logo/sadaf-favicon-16.png" />
+    <File Path="../docs/logo/sadaf-favicon-256.png" />
+    <File Path="../docs/logo/sadaf-favicon-32.png" />
+    <File Path="../docs/logo/sadaf-favicon.ico" />
+    <File Path="../docs/logo/sadaf-favicon.svg" />
+    <File Path="../docs/logo/sadaf-mark-dark-1024.png" />
+    <File Path="../docs/logo/sadaf-mark-dark.svg" />
+    <File Path="../docs/logo/sadaf-mark-monochrome-1024.png" />
+    <File Path="../docs/logo/sadaf-mark-monochrome.svg" />
+    <File Path="../docs/logo/sadaf-mark-primary-1024.png" />
+    <File Path="../docs/logo/sadaf-mark-primary.svg" />
   </Folder>
   <Project Path="../clients/admin/FSH.Starter.Admin.esproj">
     <Build />

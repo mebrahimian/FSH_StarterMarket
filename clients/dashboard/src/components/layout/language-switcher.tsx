@@ -51,7 +51,7 @@ export function LanguageSwitcher() {
 
             <span>
                 {nextLanguage === "fa"
-                    ? "فا"
+                    ? "FA"
                     : "EN"}
             </span>
         </button>

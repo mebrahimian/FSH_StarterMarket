@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 16 364 364" role="img" aria-labelledby="title desc">
+  <title id="title">Sadaf logo mark — faithful vector version</title>
+  <desc id="desc">The selected fan-shell concept with graphite and rose blades, a pearl, and two data paths.</desc>
+  <defs>
+    <linearGradient id="graphite" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3E4448" />
+      <stop offset="1" stop-color="#292E31" />
+    </linearGradient>
+    <linearGradient id="rose" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#D38A96" />
+      <stop offset="1" stop-color="#BE6E7C" />
+    </linearGradient>
+    <radialGradient id="pearl" cx="34%" cy="28%" r="78%">
+      <stop offset="0" stop-color="#FFFFFF" />
+      <stop offset="0.48" stop-color="#F3F1ED" />
+      <stop offset="1" stop-color="#DCDAD6" />
+    </radialGradient>
+  </defs>
+
+  <!-- Five graphite blades, traced from the approved concept. -->
+  <path fill="url(#graphite)" d="M163 30c18-1 39 3 49 10 4 3 5 7 4 23 0 16-5 38-9 60l-13 66-13 54c-1 6-5 10-9 12l-20 4c-4-3-5-8-6-15l-6-35-6-37-4-33-6-36-5-50c0-6 4-11 8-13 11-6 23-9 36-10Z" />
+  <path fill="url(#graphite)" d="M91 58c5-2 8 0 9 4 5 22 10 48 16 78l13 76 6 45c0 5-2 8-6 11l-10 10-24-49-56-110c-2-5-2-10-1-13 8-19 17-29 28-36 8-7 17-14 25-16Z" />
+  <path fill="url(#graphite)" d="M23 136c4-2 7 0 8 4l50 88 24 50c5 10 7 19 3 32l-16-14-25-28-58-59c-6-6-7-14-5-24 2-18 8-37 15-45 1-2 2-3 4-4Z" />
+  <path fill="url(#graphite)" d="M9 230c2 0 4 1 5 2l56 53c14 13 27 31 39 55-12-9-21-18-30-26l-34-25c-15-11-26-23-33-37-3-5-4-12-5-20l2-2Z" />
+
+  <!-- Three rose blades; their cut-outs form the data paths. -->
+  <path fill="url(#rose)" d="M237 49c24 8 46 23 60 41l13 18c3 5 2 11 1 15-11 22-25 43-40 63-4-2-9-2-12-1-7 2-11 6-13 12-1 5 0 10 2 15l-25 26c-4-2-8-2-11-1-6 2-9 6-9 12 0 4 1 7 3 10l-4 4-11-4c0-4 1-7 2-11l7-25 4-17 12-54 10-53 6-39c1-5 2-8 5-11Z" />
+  <path fill="url(#rose)" d="M320 140c5-1 7 1 8 4l5 11 7 24v45l-8 8-61 37-5 1c-3-4-8-4-11-3-6 1-9 5-9 10-1 4 0 7 1 11l-13 14-2-1c-5-18-12-24-18-28l-6-6c0-4 1-5 4-6l6 1 8-6c3-3 3-6 2-10l-1-3 28-26c4 3 9 4 13 2l9-6c4-4 4-9 3-14l-2-6 42-53Z" />
+  <path fill="url(#rose)" d="M326 251c3-1 4 0 4 2v5l-8 14-20 20-45 31-25 21v-4c5-10 5-18 3-27l17-21 8 1c6-1 8-2 10-6 2-4 2-7 1-11l55-25Z" />
+
+  <!-- Lower shell crescent. -->
+  <path fill="url(#graphite)" d="M28 318c45 22 92 35 140 38 49-3 98-16 146-38-16 31-62 49-146 51-82-2-124-20-140-51Z" />
+
+  <!-- White data paths and nodes, matching the original two-branch motif. -->
+  <path d="m197 263 18-14 48-48" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="215" cy="249" r="13.5" fill="#FFFFFF" />
+  <circle cx="263" cy="201" r="19.5" fill="#FFFFFF" />
+  <path d="m226 315 32-35 68-28" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="258" cy="280" r="15.5" fill="#FFFFFF" />
+
+  <!-- Pearl, kept smaller than in v1 to preserve the approved proportions. -->
+  <circle cx="168" cy="319" r="54" fill="#FFFFFF" />
+  <circle cx="168" cy="319" r="45" fill="url(#pearl)" />
+  <path d="M145 310c2-13 9-23 21-28" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.9" />
+</svg>

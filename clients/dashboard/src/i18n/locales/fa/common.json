@@ -4,6 +4,10 @@
     "english": "English",
     "persian": "فارسی"
   },
+  "brand": {
+    "name": "صدف بورس",
+    "subtitle": "هوشمندی بازار سرمایه"
+  },
   "commandPalette": {
     "search": "جستجو",
     "open": "بازکردن جستجوی سریع"

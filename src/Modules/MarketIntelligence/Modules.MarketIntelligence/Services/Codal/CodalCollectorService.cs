@@ -436,7 +436,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
     {
         const int batchSize = 20;
 
-        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(10);
+        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(5);
 
         var definitions = CodalDefinitionsProvider.Load();
         byte[] supportedReportTypes = definitions.MonthlyActivities.Keys.ToArray();

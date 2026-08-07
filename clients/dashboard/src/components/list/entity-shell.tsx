@@ -41,9 +41,13 @@ export function EntityPageHeader({
               {title}
             </h1>
             {total !== undefined && total !== null && (
-              <span className="font-mono text-[11px] text-[var(--color-muted-foreground)]">
-                   {total} {unit}
-              </span>
+                          <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                              <span className="font-mono">
+                                  {total}
+                              </span>
+                              {" "}
+                              <span>{unit}</span>
+                          </span>
             )}
           </div>
           {description && (

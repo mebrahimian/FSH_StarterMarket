@@ -4,6 +4,10 @@
     "english": "English",
     "persian": "فارسی"
   },
+  "brand": {
+    "name": "Sadaf Bourse",
+    "subtitle": "Capital Market Intelligence"
+  },
   "commandPalette": {
     "search": "Search",
     "open": "Open command palette"
@@ -20,6 +24,6 @@
     "error": "Something went wrong."
   },
   "combobox": {
-    "all" :  "ALL"
+    "all": "ALL"
   }
 }

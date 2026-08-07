@@ -9,4 +9,7 @@
   <ItemGroup>
     <None Include=".vscode\launch.json" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="public\branding\sadaf\" />
+  </ItemGroup>
 </Project>
