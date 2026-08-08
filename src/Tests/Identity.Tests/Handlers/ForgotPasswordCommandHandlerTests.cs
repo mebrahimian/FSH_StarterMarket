@@ -1,9 +1,7 @@
 using AutoFixture;
-using FSH.Framework.Web.Origin;
 using FSH.Modules.Identity.Contracts.Services;
 using FSH.Modules.Identity.Contracts.v1.Users.ForgotPassword;
 using FSH.Modules.Identity.Features.v1.Users.ForgotPassword;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -13,15 +11,13 @@ namespace Identity.Tests.Handlers;
 public sealed class ForgotPasswordCommandHandlerTests
 {
     private readonly IUserService _userService;
-    private readonly IOptions<OriginOptions> _originOptions;
     private readonly ForgotPasswordCommandHandler _sut;
     private readonly IFixture _fixture;
-
     public ForgotPasswordCommandHandlerTests()
     {
         _userService = Substitute.For<IUserService>();
-        _originOptions = Substitute.For<IOptions<OriginOptions>>();
-        _sut = new ForgotPasswordCommandHandler(_userService, _originOptions);
+        
+        _sut = new ForgotPasswordCommandHandler(_userService);
         _fixture = new Fixture();
     }
 
@@ -31,7 +27,7 @@ public sealed class ForgotPasswordCommandHandlerTests
         // Arrange
         var command = _fixture.Create<ForgotPasswordCommand>();
         var originUrl = "https://test.com";
-        _originOptions.Value.Returns(new OriginOptions { OriginUrl = new Uri(originUrl) });
+        
 
         // Act
         var result = await _sut.Handle(command, CancellationToken.None);
@@ -46,7 +42,7 @@ public sealed class ForgotPasswordCommandHandlerTests
     {
         // Arrange
         var command = _fixture.Create<ForgotPasswordCommand>();
-        _originOptions.Value.Returns(new OriginOptions { OriginUrl = null });
+        
 
         // Act & Assert
         await Should.ThrowAsync<InvalidOperationException>(async () =>
@@ -67,7 +63,7 @@ public sealed class ForgotPasswordCommandHandlerTests
         // Arrange
         var command = _fixture.Create<ForgotPasswordCommand>();
         var originUrl = "https://test.com";
-        _originOptions.Value.Returns(new OriginOptions { OriginUrl = new Uri(originUrl) });
+        
         using var cts = new CancellationTokenSource();
 
         // Act

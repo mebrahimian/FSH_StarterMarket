@@ -1,5 +1,6 @@
 ﻿
 using FSH.Framework.Shared.Dates;
+using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
@@ -8,9 +9,11 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
+using FSH.Modules.MarketIntelligence.Utilities;
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class CodalCollectorService : ICodalCollectorService
@@ -141,20 +144,10 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 var sent = PersianDateHelper.ToGregorian(sentRaw);
 
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
-                int? RepTypCode = rt switch
-                {
-                    0 => 1000000,
-                    1 => 1000001,
-                    2 => 1000002,
-                    3 => 1000003,
-                    4 => 1000004,
-                    5 => 1000005,
-                    6 => 1000006,
-                    7 => 1000007,
-                    8 => 1000008,
-                    9 => 1000009,
-                    _ => null
-                };
+                int? RepTypCode =
+                rt is >= 0 and <= 9
+                   ? 1000000 + rt
+                   : null;
 
                 var disclosure = new Disclosure(
                     letter.TracingNo,
@@ -251,6 +244,342 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _logger.LogInformation("Disclosure Reading is completed.");
     }
 
+    public async Task CollectSymbolBackfillAsync(string symbol, string fromDate, string toDate,
+                                             CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(toDate);
+
+        string normalizedSymbol = symbol.Trim();
+
+        string normalizedFromDate = PersianTextNormalizer.NormalizeDigits(
+        fromDate.Trim());
+
+        string normalizedToDate = PersianTextNormalizer.NormalizeDigits(
+                toDate.Trim());
+
+        if (!IsValidPersianDate(
+                normalizedFromDate))
+        {
+            throw new ArgumentException(
+                "From date is not a valid Persian date.",
+                nameof(fromDate));
+        }
+
+        if (!IsValidPersianDate(
+                normalizedToDate))
+        {
+            throw new ArgumentException(
+                "To date is not a valid Persian date.",
+                nameof(toDate));
+        }
+
+        if (
+            string.CompareOrdinal(
+                normalizedFromDate,
+                normalizedToDate) > 0)
+        {
+            throw new ArgumentException(
+                "From date cannot be after to date.",
+                nameof(fromDate));
+        }
+
+        string searchFromDate =
+            AddYearsToPersianDate(
+                normalizedFromDate,
+                -2);
+
+        string maximumSearchToDate =
+            AddYearsToPersianDate(
+                normalizedToDate,
+                2);
+
+        string todayPersianDateWithTime = 
+              PersianTextNormalizer.NormalizeDigits(PersianDateHelper.ToPersian(DateTime.Today));
+
+        string todayPersianDate =
+            todayPersianDateWithTime.Length >= 10
+                ? todayPersianDateWithTime[..10]
+                : todayPersianDateWithTime;
+
+        string searchToDate =
+            string.CompareOrdinal(
+                maximumSearchToDate,
+                todayPersianDate) > 0
+                    ? todayPersianDate
+                    : maximumSearchToDate;
+        TimeSpan requestDelay = TimeSpan.FromSeconds(5);
+
+        List<CodalLetterDto> letters = [];
+
+        string windowFromDate =
+            searchFromDate;
+
+        bool isFirstRequest = true;
+
+        while (
+            string.CompareOrdinal(
+                windowFromDate,
+                searchToDate) <= 0)
+        {
+            string nextYearDate =
+                AddYearsToPersianDate(
+                    windowFromDate,
+                    1);
+
+            string windowToDate =
+                string.CompareOrdinal(
+                    nextYearDate,
+                    searchToDate) > 0
+                        ? searchToDate
+                        : nextYearDate;
+
+            if (!isFirstRequest)
+            {
+                await Task.Delay(
+                    requestDelay,
+                    cancellationToken);
+            }
+            if (_logger.IsEnabled(
+        LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Searching Codal for {Symbol}, publication window {FromDate} to {ToDate}, page {PageNumber}.",
+                    normalizedSymbol,
+                    windowFromDate,
+                    windowToDate,
+                    1);
+            }
+
+
+            CodalSearchResponse firstPage =
+                await _codalClient.SearchAsync(
+                    new CodalSearchRequest
+                    {
+                        Category = 3,
+                        Symbol = normalizedSymbol,
+                        FromDate = windowFromDate,
+                        ToDate = windowToDate,
+                        PageNumber = 1,
+                    },
+                    cancellationToken);
+
+            isFirstRequest = false;
+
+            letters.AddRange(
+                firstPage.Letters);
+
+            for (
+                int pageNumber = 2;
+                pageNumber <= firstPage.TotalPages;
+                pageNumber++)
+            {
+                await Task.Delay(
+                    requestDelay,
+                    cancellationToken);
+
+                CodalSearchResponse page =
+                    await _codalClient.SearchAsync(
+                        new CodalSearchRequest
+                        {
+                            Category = 3,
+                            Symbol = normalizedSymbol,
+                            FromDate = windowFromDate,
+                            ToDate = windowToDate,
+                            PageNumber = pageNumber,
+                        },
+                        cancellationToken);
+
+                letters.AddRange(
+                    page.Letters);
+            }
+
+            if (
+                string.Equals(
+                    windowToDate,
+                    searchToDate,
+                    StringComparison.Ordinal))
+            {
+                break;
+            }
+
+            windowFromDate =
+                windowToDate;
+        }
+
+        HashSet<long> processedTracingNos = [];
+
+        int createdCount = 0;
+        int processedCount = 0;
+        int missingPeriodCount = 0;
+        int outsidePeriodCount = 0;
+
+        foreach (
+            CodalLetterDto letter in
+            letters.OrderBy(letter =>
+                PersianDateHelper.ToGregorian(
+                    letter.PublishDateTimeRaw)))
+        {
+            if (
+                string.IsNullOrWhiteSpace(
+                    letter.Symbol) ||
+                letter.Symbol.Length > 64 ||
+                !processedTracingNos.Add(
+                    letter.TracingNo))
+            {
+                continue;
+            }
+
+            
+
+            var (let, rt, ct, ft) =
+                ParseUrlParameters(
+                    letter.Url);
+
+            if (rt is null)
+            {
+                continue;
+            }
+
+            int? reportingTypeCode =
+                rt is >= 0 and <= 9
+                   ? 1000000 + rt
+                   : null;
+
+            Disclosure? disclosure =
+                await _dbContext.Disclosures
+                    .SingleOrDefaultAsync(
+                        item =>
+                            item.TracingNo ==
+                            letter.TracingNo,
+                        cancellationToken);
+
+            if (disclosure is null)
+            {
+                string? sentRaw = letter.SentDateTimeRaw;
+
+                string? publishRaw = letter.PublishDateTimeRaw;
+
+                DateTime? sent = PersianDateHelper.ToGregorian(sentRaw);
+
+                DateTime? published = PersianDateHelper.ToGregorian(publishRaw);
+
+                disclosure =
+                    new Disclosure(
+                        letter.TracingNo,
+                        letter.Symbol,
+                        letter.CompanyName ?? string.Empty,
+                        letter.Title ?? string.Empty,
+                        letter.LetterCode ?? string.Empty,
+                        sentRaw ?? string.Empty,
+                        publishRaw ?? string.Empty,
+                        sent,
+                        published,
+                        letter.Url ?? string.Empty,
+                        letter.HasHtml,
+                        false,
+                        letter.HasExcel,
+                        letter.HasPdf,
+                        letter.HasXbrl,
+                        letter.HasAttachment,
+                        letter.AttachmentUrl ?? string.Empty,
+                        letter.PdfUrl ?? string.Empty,
+                        letter.ExcelUrl ?? string.Empty,
+                        letter.XbrlUrl ?? string.Empty,
+                        letter.TedanUrl ?? string.Empty,
+                        let,
+                        rt,
+                        ct,
+                        ft,
+                        reportingTypeCode);
+
+                _dbContext.Disclosures.Add(disclosure);
+
+                await _dbContext.SaveChangesAsync(
+                    cancellationToken);
+
+                createdCount++;
+            }
+            else if (
+                disclosure.Let is null ||
+                disclosure.Rt is null ||
+                disclosure.ReportingTypeCode is null)
+            {
+                disclosure.Let = let;
+                disclosure.Rt = rt;
+                disclosure.Ct = ct;
+                disclosure.Ft = ft;
+                disclosure.ReportingTypeCode =
+                    reportingTypeCode;
+
+                await _dbContext.SaveChangesAsync(
+                    cancellationToken);
+            }
+
+            ICodalDisclosureProcessor? processor =
+                _processors.SingleOrDefault(
+                    item =>
+                        item.CanProcess(
+                            disclosure));
+
+            if (processor is null)
+            {
+                continue;
+            }
+            string? periodDate = ExtractPeriodDateFromTitle(letter.Title);
+
+            if (periodDate is null)
+            {
+                missingPeriodCount++;
+                continue;
+            }
+
+            if (
+                string.CompareOrdinal(
+                    periodDate,
+                    normalizedFromDate) < 0 ||
+                string.CompareOrdinal(
+                    periodDate,
+                    normalizedToDate) > 0)
+            {
+                outsidePeriodCount++;
+                continue;
+            }
+
+            await Task.Delay(
+                requestDelay,
+                cancellationToken);
+
+            await processor.ProcessAsync(
+                disclosure,
+                cancellationToken);
+
+            processedCount++;
+        }
+
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation("Targeted Codal backfill completed for {Symbol}. " +
+                    "Requested period: {FromDate} to {ToDate}. " +
+                    "Search publication window: {SearchFromDate} to {SearchToDate}. " +
+                    "Created: {CreatedCount}, processed: {ProcessedCount}, " +
+                    "missing period in title: {MissingPeriodCount}, " +
+                    "outside requested period: {OutsidePeriodCount}.",
+               normalizedSymbol,
+               normalizedFromDate,
+               normalizedToDate,
+               searchFromDate,
+               searchToDate,
+               createdCount,
+               processedCount,
+               missingPeriodCount,
+               outsidePeriodCount);
+        }
+
+    }
     public async Task CollectBackfillAsync(CancellationToken cancellationToken = default)
     {
         var lastPublishDateStr = await _dbContext.Disclosures
@@ -275,11 +604,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 {                            // 1000000:تولیدی 
                                              // 1000001:ساختمانی     
                                              // 1000002:سرمایه گذاری  
-                    PageNumber = pageNumber ,// 1000003:بانک            
-                                             // 1000004:لیزینگ   
-                                             // 1000005:خدماتی 
-                                             // 1000006:بیمه               
-                                             // 1000007:حمل ونقل دریایی
+                    PageNumber = pageNumber,// 1000003:بانک            
+                                            // 1000004:لیزینگ   
+                                            // 1000005:خدماتی 
+                                            // 1000006:بیمه               
+                                            // 1000007:حمل ونقل دریایی
                 },                           // 1000008:کشاورزی          
                 cancellationToken);          // 1000009:تامین سرمایه         
 
@@ -341,24 +670,15 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     break;
                 }
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
-                if (rt is null) 
+                if (rt is null)
                 {
                     continue;
                 }
-                int? RepTypCode = rt switch
-                {
-                    0 => 1000000,
-                    1 => 1000001,
-                    2 => 1000002,
-                    3 => 1000003,
-                    4 => 1000004,
-                    5 => 1000005,
-                    6 => 1000006,
-                    7 => 1000007,
-                    8 => 1000008,
-                    9 => 1000009,
-                    _ => null
-                };
+                int? RepTypCode =
+                rt is >= 0 and <= 9
+                   ? 1000000 + rt
+                   : null;
+
                 var disclosure = new Disclosure(
                     letter.TracingNo,
                     letter.Symbol ?? "",
@@ -426,9 +746,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
         byte? rt = byte.TryParse(query["rt"], out var r) ? r : null;
         byte? ct = byte.TryParse(query["ct"], out var c) ? c : null;
         short? ft = short.TryParse(query["ft"], out var f) ? f : null;
-        if (rt is null && 
-            int.TryParse(query["ReportingType"], out var reportingType) && 
-            reportingType == 1000002)  rt = 2;
+        if (rt is null &&
+            int.TryParse(query["ReportingType"], out var reportingType) &&
+            reportingType == 1000002) rt = 2;
         return (let, rt, ct, ft);
     }
     public async Task ParsePendingDisclosuresAsync(
@@ -547,5 +867,163 @@ public sealed class CodalCollectorService : ICodalCollectorService
             pageNumber++;
         }
         _logger.LogInformation("End Of Parse Pending Disclosures.");
+    }
+    private static string?
+    ExtractPeriodDateFromTitle(
+        string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return null;
+        }
+
+        string normalizedTitle =
+            NormalizeDigits(title);
+
+        const int dateLength = 10;
+
+        string? lastValidDate = null;
+
+        for (
+            int index = 0;
+            index <=
+                normalizedTitle.Length -
+                dateLength;
+            index++)
+        {
+            ReadOnlySpan<char> candidate =
+                normalizedTitle.AsSpan(
+                    index,
+                    dateLength);
+
+            if (
+                candidate[4] != '/' ||
+                candidate[7] != '/')
+            {
+                continue;
+            }
+
+            if (
+                !int.TryParse(
+                    candidate[..4],
+                    out int year) ||
+                !int.TryParse(
+                    candidate.Slice(5, 2),
+                    out int month) ||
+                !int.TryParse(
+                    candidate.Slice(8, 2),
+                    out int day))
+            {
+                continue;
+            }
+
+            if (
+                year is < 1300 or > 1600 ||
+                month is < 1 or > 12 ||
+                day is < 1 or > 31)
+            {
+                continue;
+            }
+
+            string possibleDate =
+                candidate.ToString();
+
+            if (IsValidPersianDate(possibleDate))
+            {
+                lastValidDate =
+                    possibleDate;
+            }
+        }
+
+        return lastValidDate;
+    }
+
+    private static string NormalizeDigits(
+        string value)
+    {
+        char[] characters =
+            value.ToCharArray();
+
+        for (
+            int index = 0;
+            index < characters.Length;
+            index++)
+        {
+            char character =
+                characters[index];
+
+            if (
+                character is >= '۰' and <= '۹')
+            {
+                characters[index] =
+                    (char)(
+                        '0' +
+                        character -
+                        '۰');
+            }
+            else if (
+                character is >= '٠' and <= '٩')
+            {
+                characters[index] =
+                    (char)(
+                        '0' +
+                        character -
+                        '٠');
+            }
+        }
+
+        return new string(characters);
+    }
+    private static bool IsValidPersianDate(
+    string value)
+    {
+        if (
+            value.Length != 10 ||
+            value[4] != '/' ||
+            value[7] != '/')
+        {
+            return false;
+        }
+
+        if (
+            !int.TryParse(
+                value.AsSpan(0, 4),
+                out int year) ||
+            !int.TryParse(
+                value.AsSpan(5, 2),
+                out int month) ||
+            !int.TryParse(
+                value.AsSpan(8, 2),
+                out int day))
+        {
+            return false;
+        }
+
+        int maximumDay =
+            month is >= 1 and <= 6
+                ? 31
+                : 30;
+
+        return
+            year is >= 1200 and <= 1600 &&
+            month is >= 1 and <= 12 &&
+            day >= 1 &&
+            day <= maximumDay;
+    }
+
+    private static string AddYearsToPersianDate(
+        string value,
+        int years)
+    {
+        _ = int.TryParse(
+            value.AsSpan(0, 4),
+            out int year);
+
+        string shiftedYear =
+            (year + years).ToString(
+                "0000",
+                CultureInfo.InvariantCulture);
+
+        return shiftedYear + value[4..];
     }
 }

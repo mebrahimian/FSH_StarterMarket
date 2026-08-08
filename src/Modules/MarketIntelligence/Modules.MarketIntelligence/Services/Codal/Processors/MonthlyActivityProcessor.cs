@@ -2,19 +2,21 @@
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
+using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
-
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 public sealed class MonthlyActivityProcessor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
+    PreviousYearSummaryLookup previousYearSummaryLookup,
     ILogger<MonthlyActivityProcessor> logger)
     : ICodalDisclosureProcessor
 {
@@ -104,17 +106,18 @@ public sealed class MonthlyActivityProcessor(
                 throw new InvalidOperationException(
                     $"Disclosure {disclosure.TracingNo} does not have a symbol.");
             }
-           
-            decimal periodAmount = ParseDecimal(periodCell.Value,
-                                                disclosure.Symbol,
-                                                disclosure.PublishDateTimeRaw,
-                                                "PeriodAmount");
-            
-                
-            decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
-                                                    disclosure.Symbol,
-                                                    disclosure.PublishDateTimeRaw,
-                                                    "YearToDateAmount");
+
+            if (!decimal.TryParse(periodCell.Value,
+                                  NumberStyles.Number,
+                                  CultureInfo.InvariantCulture,
+                                  out decimal periodAmount) ||
+                !decimal.TryParse(yearToDateCell.Value,
+                                  NumberStyles.Number,
+                                  CultureInfo.InvariantCulture,
+                                  out decimal yearToDateAmount))
+            {
+                return;
+            }
 
             decimal? previousYearToDateAmount = null;
 
@@ -130,41 +133,26 @@ public sealed class MonthlyActivityProcessor(
                         html,                        
                         definition.MetaTableCode,
                         previousYearToDateCellIndex);
+              
 
                 if (previousYearToDateCell is not null &&
                     !string.IsNullOrWhiteSpace(
-                        previousYearToDateCell.Value))
-                {
-                    previousYearToDateAmount =
-                        ParseDecimal(
-                            previousYearToDateCell.Value,
-                            disclosure.Symbol,
-                            disclosure.PublishDateTimeRaw,
-                            "PreviousYearToDateAmount");
-                }
+                        previousYearToDateCell.Value) &&
+                        !decimal.TryParse(previousYearToDateCell.Value,
+                                          NumberStyles.Number | NumberStyles.AllowLeadingSign,
+                                          CultureInfo.InvariantCulture,
+                                          out decimal result)) 
+                    previousYearToDateAmount = result;
+                
             }
             else
             {
-                string? previousYearPeriodPrefix =
-                    GetPreviousYearPeriodPrefix(
-                        periodCell.PeriodEndToDate);
-
-                if (previousYearPeriodPrefix is not null)
-                {
-                    previousYearToDateAmount =
-                        await dbContext.MonthlyActivitySummaries
-                            .Where(x =>
-                                x.Symbol == disclosure.Symbol &&
-                                x.Rt == rt &&
-                                x.PeriodEndDate.StartsWith(
-                                    previousYearPeriodPrefix))
-                            .OrderByDescending(
-                                x => x.PublishDateTime)
-                            .Select(
-                                x => x.YearToDateAmount)
-                            .FirstOrDefaultAsync(
-                                cancellationToken);
-                }
+                previousYearToDateAmount =
+                    await previousYearSummaryLookup
+                        .FindYearToDateAmountAsync(
+                            disclosure.Symbol,
+                            periodCell.PeriodEndToDate,
+                            cancellationToken);
             }
 
 
@@ -234,7 +222,7 @@ public sealed class MonthlyActivityProcessor(
             disclosure.SalesParseStatus = DisclosureParseStatus.Success;
 
             disclosure.SalesParsedAt = DateTime.UtcNow;
-            disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
+          //  disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
             await dbContext.SaveChangesAsync(
                 cancellationToken);
         }
@@ -378,6 +366,7 @@ public sealed class MonthlyActivityProcessor(
             $"Url: {reportUri}",
             lastException);
     }
+    /*
     private static decimal ParseDecimal(string? value,
                                         string? symbol,
                                         string? pubDate,
@@ -427,17 +416,6 @@ public sealed class MonthlyActivityProcessor(
         }
 
         return result;
-    }
-    private static string? GetPreviousYearPeriodPrefix(
-    string? periodEndDate)
-    {
-        if (string.IsNullOrWhiteSpace(periodEndDate) ||
-            periodEndDate.Length < 7 ||
-            !int.TryParse(periodEndDate[..4], out int year))
-        {
-            return null;
-        }
-
-        return $"{year - 1:0000}{periodEndDate[4..7]}";
-    }
+    }*/
+    
 }

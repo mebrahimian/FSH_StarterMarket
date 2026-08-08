@@ -13,19 +13,20 @@ public sealed class CodalBackgroundJob(
                 cancellationToken);
     }
 
-    public Task RunBackfillAsync(
-        CancellationToken cancellationToken)
+    public Task RunBackfillAsync(CancellationToken cancellationToken)
     {
         return collectorService
-            .CollectBackfillAsync(
-                cancellationToken);
+            .CollectBackfillAsync(cancellationToken);
+    }
+    public Task RunSymbolBackfillAsync(string symbol, string fromDate, string toDate)
+    {
+        return collectorService
+            .CollectSymbolBackfillAsync(symbol, fromDate, toDate, CancellationToken.None);
     }
 
-    public Task RunParsePendingAsync(
-        CancellationToken cancellationToken)
+    public Task RunParsePendingAsync(CancellationToken cancellationToken)
     {
         return collectorService
-            .ParsePendingDisclosuresAsync(
-                cancellationToken);
+            .ParsePendingDisclosuresAsync(cancellationToken);
     }
 }

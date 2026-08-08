@@ -7,8 +7,17 @@ public sealed class ForgotPasswordCommandValidator : AbstractValidator<ForgotPas
 {
     public ForgotPasswordCommandValidator()
     {
-        RuleFor(p => p.Email).Cascade(CascadeMode.Stop)
+        RuleFor(p => p.Email)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty()
             .EmailAddress();
+
+        RuleFor(p => p.Origin)
+            .NotEmpty()
+            .Must(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == Uri.UriSchemeHttp ||
+                 uri.Scheme == Uri.UriSchemeHttps))
+            .WithMessage("A valid password reset origin is required.");
     }
 }

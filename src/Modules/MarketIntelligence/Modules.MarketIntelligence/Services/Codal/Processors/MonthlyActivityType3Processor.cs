@@ -9,12 +9,14 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 public sealed class MonthlyActivityType3Processor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
+    PreviousYearSummaryLookup previousYearSummaryLookup,
     ILogger<MonthlyActivityType3Processor> logger)
     : ICodalDisclosureProcessor
 {
@@ -171,25 +173,14 @@ public sealed class MonthlyActivityType3Processor(
             }
             else
             {
-                string? previousYearPeriodPrefix = GetPreviousYearPeriodPrefix(periodCell.PeriodEndToDate);
-
-                if (previousYearPeriodPrefix is not null)
-                {
-                     previousYearToDateAmount =
-                        await dbContext.MonthlyActivitySummaries
-                            .Where(x =>
-                                x.Symbol == disclosure.Symbol &&
-                                x.Rt == rt &&
-                                x.PeriodEndDate.StartsWith(
-                                    previousYearPeriodPrefix))
-                            .OrderByDescending(
-                                x => x.PublishDateTime)
-                            .Select(
-                                x => x.YearToDateAmount)
-                            .FirstOrDefaultAsync(
-                                cancellationToken);
-                }
+                previousYearToDateAmount =
+                    await previousYearSummaryLookup
+                        .FindYearToDateAmountAsync(
+                            disclosure.Symbol,
+                            periodCell.PeriodEndToDate,
+                            cancellationToken);
             }
+
 
             MonthlyActivitySummary? existingSummary =
                 await dbContext.MonthlyActivitySummaries
@@ -256,7 +247,7 @@ public sealed class MonthlyActivityType3Processor(
             disclosure.SalesParseStatus = DisclosureParseStatus.Success;
 
             disclosure.SalesParsedAt = DateTime.UtcNow;
-            disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
+         //   disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
             await dbContext.SaveChangesAsync(
                 cancellationToken);
         }
@@ -452,18 +443,6 @@ public sealed class MonthlyActivityType3Processor(
         return result;
     }
     */
-    private static string? GetPreviousYearPeriodPrefix(
-    string? periodEndDate)
-    {
-        if (string.IsNullOrWhiteSpace(periodEndDate) ||
-            periodEndDate.Length < 7 ||
-            !int.TryParse(periodEndDate[..4], out int year))
-        {
-            return null;
-        }
-
-        return $"{year - 1:0000}{periodEndDate[4..7]}";
-    }
     
     private static CodalTableDefinition? ResolveLayout(string html,
         CodalTableDefinition definition)

@@ -1,23 +1,26 @@
-﻿using Hangfire;
+﻿using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using Asp.Versioning;
+using FSH.Framework.Jobs.Services;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
+using FSH.Framework.Shared.Identity.Authorization;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Services.Codal;
+using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
+using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
+using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
+using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using Hangfire;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
-using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
-using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
-using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
-using FSH.Framework.Jobs.Services;
-using FSH.Framework.Shared.Identity.Authorization;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -40,9 +43,12 @@ namespace FSH.Modules.MarketIntelligence
             });
             //    builder.Services.AddScoped<ICodalDisclosureProcessor, ManufacturingMonthlyActivityProcessor>();
             //    builder.Services.AddScoped<ICodalDisclosureProcessor, RealEstateMonthlyActivityProcessor>();
+            builder.Services.AddScoped<PreviousYearSummaryLookup>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityProcessor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType2Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
+            builder.Services.AddScoped<CodalDataQualityAuditService>();
+
             //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
@@ -87,9 +93,7 @@ namespace FSH.Modules.MarketIntelligence
                 .CodalOperations
                 .Execute);
 
-            group.MapPost(
-                "/codal/import",
-                (IJobService jobService) =>
+            group.MapPost("/codal/import", (IJobService jobService) =>
                 {
                     string jobId =
                         jobService.Enqueue<CodalBackgroundJob>(
@@ -98,17 +102,78 @@ namespace FSH.Modules.MarketIntelligence
 
                     return Results.Accepted(
                         value: new
-                        {
-                            jobId,
-                            message =
-                                "Codal backfill queued."
-                        });
-                })
-                .RequirePermission(
-                    MarketIntelligencePermissions
+                        { jobId, message = "Codal backfill queued." });
+                }).RequirePermission(MarketIntelligencePermissions
                         .CodalOperations
                         .Execute);
+            group.MapPost(
+    "/codal/symbol-backfill",
+    IResult (
+        CodalSymbolBackfillRequest request,
+        IJobService jobService) =>
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                request.Symbol) ||
+            string.IsNullOrWhiteSpace(
+                request.FromDate) ||
+            string.IsNullOrWhiteSpace(
+                request.ToDate))
+        {
+            return Results.BadRequest(
+                new
+                {
+                    message =
+                        "Symbol, fromDate and toDate are required.",
+                });
+        }
 
+        string symbol =
+            request.Symbol.Trim();
+
+        string fromDate =
+            request.FromDate.Trim();
+
+        string toDate =
+            request.ToDate.Trim();
+
+        if (
+            string.Compare(
+                fromDate,
+                toDate,
+                StringComparison.Ordinal) > 0)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    message =
+                        "fromDate cannot be after toDate.",
+                });
+        }
+
+        string jobId =
+            jobService.Enqueue<CodalBackgroundJob>(
+                job =>
+                    job.RunSymbolBackfillAsync(
+                        symbol,
+                        fromDate,
+                        toDate));
+
+        return Results.Accepted(
+            value: new
+            {
+                jobId,
+                message =
+                    "Targeted Codal backfill queued.",
+            });
+    })
+    .WithName("QueueCodalSymbolBackfill")
+    .WithSummary(
+        "Queues targeted Codal backfill for one symbol and date range")
+    .RequirePermission(
+        MarketIntelligencePermissions
+            .CodalOperations
+            .Execute);
             group.MapPost(
                 "/codal/parse-pending",
                 (IJobService jobService) =>
@@ -161,6 +226,39 @@ namespace FSH.Modules.MarketIntelligence
                 }).RequirePermission(MarketIntelligencePermissions
                                     .CodalOperations
                                     .Execute);
+            group.MapGet(
+        "/codal/data-quality",
+        async (
+            int? coverageYears,
+            CodalDataQualityAuditService auditService,
+            CancellationToken cancellationToken) =>
+        {
+            int requestedYears =
+                coverageYears ?? 5;
+
+            if (requestedYears is < 1 or > 20)
+            {
+                return Results.BadRequest(
+                    new
+                    {
+                        message =
+                            "Coverage years must be between 1 and 20.",
+                    });
+            }
+
+            CodalDataQualityReport report = await auditService.RunAsync(
+                         coverageYears: requestedYears,
+                         cancellationToken: cancellationToken);
+
+            return Results.Ok(report);
+        })
+    .WithName("GetCodalDataQuality")
+    .WithSummary(
+        "Audits Codal disclosure and monthly summary data quality")
+    .RequirePermission(
+        MarketIntelligencePermissions
+            .CodalOperations
+            .Execute);
         }
 
     }

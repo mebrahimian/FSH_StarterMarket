@@ -9,12 +9,14 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
-
+using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
+using FSH.Modules.MarketIntelligence.Utilities;
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 public sealed class MonthlyActivityType2Processor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
+    PreviousYearSummaryLookup previousYearSummaryLookup,
     ILogger<MonthlyActivityType2Processor> logger)
     : ICodalDisclosureProcessor
 {
@@ -177,26 +179,12 @@ public sealed class MonthlyActivityType2Processor(
             }
             else
             {
-                string? previousYearPeriodPrefix =
-                    GetPreviousYearPeriodPrefix(
-                        periodCell.PeriodEndToDate);
-
-                if (previousYearPeriodPrefix is not null)
-                {
-                    previousYearToDateAmount =
-                        await dbContext.MonthlyActivitySummaries
-                            .Where(x =>
-                                x.Symbol == disclosure.Symbol &&
-                                x.Rt == rt &&
-                                x.PeriodEndDate.StartsWith(
-                                    previousYearPeriodPrefix))
-                            .OrderByDescending(
-                                x => x.PublishDateTime)
-                            .Select(
-                                x => x.YearToDateAmount)
-                            .FirstOrDefaultAsync(
-                                cancellationToken);
-                }
+                previousYearToDateAmount =
+                    await previousYearSummaryLookup
+                        .FindYearToDateAmountAsync(
+                            disclosure.Symbol,
+                            periodCell.PeriodEndToDate,
+                            cancellationToken);
             }
 
 
@@ -266,7 +254,7 @@ public sealed class MonthlyActivityType2Processor(
             disclosure.SalesParseStatus = DisclosureParseStatus.Success;
 
             disclosure.SalesParsedAt = DateTime.UtcNow;
-            disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
+         //   disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
             await dbContext.SaveChangesAsync(
                 cancellationToken);
         }
@@ -410,41 +398,19 @@ public sealed class MonthlyActivityType2Processor(
             $"Url: {reportUri}",
             lastException);
     }
-    private static decimal ParseDecimal(string? value,
-                                        string? symbol,
-                                        string? pubDate,
-                                        string fieldName)
+    private static decimal ParseDecimal(
+    string? value,
+    string? symbol,
+    string? pubDate,
+    string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return 0;
         }
 
-        string normalizedValue = value
-            .Trim()
-            .Replace(",", string.Empty, StringComparison.Ordinal)
-            .Replace("٬", string.Empty, StringComparison.Ordinal)
-            .Replace("،", string.Empty, StringComparison.Ordinal)
-            .Replace('۰', '0')
-            .Replace('۱', '1')
-            .Replace('۲', '2')
-            .Replace('۳', '3')
-            .Replace('۴', '4')
-            .Replace('۵', '5')
-            .Replace('۶', '6')
-            .Replace('۷', '7')
-            .Replace('۸', '8')
-            .Replace('۹', '9')
-            .Replace('٠', '0')
-            .Replace('١', '1')
-            .Replace('٢', '2')
-            .Replace('٣', '3')
-            .Replace('٤', '4')
-            .Replace('٥', '5')
-            .Replace('٦', '6')
-            .Replace('٧', '7')
-            .Replace('٨', '8')
-            .Replace('٩', '9');
+        string normalizedValue = PersianTextNormalizer.NormalizeNumber(
+                value);
 
         if (!decimal.TryParse(
                 normalizedValue,
@@ -460,16 +426,5 @@ public sealed class MonthlyActivityType2Processor(
 
         return result;
     }
-    private static string? GetPreviousYearPeriodPrefix(
-    string? periodEndDate)
-    {
-        if (string.IsNullOrWhiteSpace(periodEndDate) ||
-            periodEndDate.Length < 7 ||
-            !int.TryParse(periodEndDate[..4], out int year))
-        {
-            return null;
-        }
 
-        return $"{year - 1:0000}{periodEndDate[4..7]}";
-    }
 }

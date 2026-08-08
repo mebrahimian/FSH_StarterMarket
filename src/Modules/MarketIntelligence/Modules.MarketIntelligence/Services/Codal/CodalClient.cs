@@ -25,6 +25,8 @@ public sealed class CodalClient : ICodalClient
         AddParameter("Audited", request.Audited);
         AddParameter("AuditorRef", request.AuditorRef);
         AddParameter("Category", request.Category);
+        AddParameter("FromDate", request.FromDate);
+        AddParameter("ToDate", request.ToDate);
         AddParameter("Childs", request.Childs);
         AddParameter("CompanyState", request.CompanyState);
         AddParameter("CompanyType", request.CompanyType);

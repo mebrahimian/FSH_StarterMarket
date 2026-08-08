@@ -2,7 +2,10 @@
 
 public sealed class CodalSearchRequest
 {
-    public int? Category { get; init; } 
+    public int? Category { get; init; }
+    public string? FromDate { get; init; }
+
+    public string? ToDate { get; init; }
 
     public int PageNumber { get; init; } = 1;
 
