@@ -37,13 +37,6 @@
     "company": "Company",
     "parseDate": "Parse date"
   },
-  "status": {
-    "pending": "Pending",
-    "puccess": "Success",
-    "failed": "Failed",
-    "noData": "No data",
-    "skipped": "Skipped"
-  },
   "table": {
     "symbol": "Symbol",
     "company": "Company",

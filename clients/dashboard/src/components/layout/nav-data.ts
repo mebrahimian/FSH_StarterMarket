@@ -139,6 +139,13 @@ export const sections: NavSection[] = [
             icon: Newspaper,
             perm: "Permissions.MarketIntelligence.Disclosures.View",
         },
+        {
+            to: "/market-intelligence/health-center",
+            label: "Sedaf Health Center",
+            labelKey: "items.marketHealthCenter",
+            icon: HeartPulse,
+            perm: "Permissions.MarketIntelligence.Disclosures.View",
+        },
   ],
 },
   {

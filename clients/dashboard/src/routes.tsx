@@ -61,7 +61,14 @@ const DisclosuresPage = lazyNamed(
     import(
       "@/pages/market-intelligence/disclosures"
     ),
-  "DisclosuresPage",
+    "DisclosuresPage",
+);
+const MarketHealthCenterPage = lazyNamed(
+    () =>
+        import(
+            "@/pages/market-intelligence/health-center"
+        ),
+    "MarketHealthCenterPage",
 );
 const ProductDetailPage = lazyNamed(
   () => import("@/pages/catalog/product-detail"),
@@ -235,10 +242,14 @@ export const router = createBrowserRouter([
             path: "market-intelligence",
             element: (<Navigate to="/market-intelligence/disclosures"  replace   />),
           },
-          {
-            path: "market-intelligence/disclosures",
-            element: withSuspense(<DisclosuresPage />,),
-          },
+            {
+                path: "market-intelligence/disclosures",
+                element: withSuspense(<DisclosuresPage />),
+            },
+            {
+                path: "market-intelligence/health-center",
+                element: withSuspense(<MarketHealthCenterPage />),
+            },
           {
             path: "settings",
             element: withSuspense(<SettingsLayout />),

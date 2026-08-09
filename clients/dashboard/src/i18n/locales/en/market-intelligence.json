@@ -1,7 +1,15 @@
 {
   "filters": {
     "reportType": "Activity type",
-    "reportLet" : "Letter Category"
+    "reportLet": "Letter Category",
+    "reset": "Clear Filters"
+  },
+  "status": {
+    "pending": "Pending",
+    "puccess": "Success",
+    "failed": "Failed",
+    "noData": "No data",
+    "skipped": "Skipped"
   },
   "reportTypes": {
     "0": "Manufacturing",

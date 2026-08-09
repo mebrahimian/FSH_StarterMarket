@@ -377,7 +377,7 @@ function FilterRow({
                 }
                 options={statusOptions.map((option) => ({
                     value: option.value,
-                    label: t(option.labelKey),
+                    label: tMarket(option.labelKey),
                 }))}
                 variant="filter"
                 clearable

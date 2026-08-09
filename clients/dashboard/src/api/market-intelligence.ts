@@ -191,3 +191,20 @@ export function parsePendingCodalDisclosures(): Promise<CodalOperationResponse> 
         },
     );
 }
+export type CodalSymbolBackfillRequest = {
+    symbol: string;
+    fromDate: string;
+    toDate: string;
+};
+
+export function collectCodalSymbolBackfill(
+    request: CodalSymbolBackfillRequest,
+): Promise<CodalOperationResponse> {
+    return apiFetch<CodalOperationResponse>(
+        "/api/v1/marketintelligence/codal/symbol-backfill",
+        {
+            method: "POST",
+            body: JSON.stringify(request),
+        },
+    );
+}

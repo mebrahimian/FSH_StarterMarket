@@ -1,7 +1,15 @@
 {
   "filters": {
     "reportType": "نوع فعالیت",
-    "reportLet": "گروه اطلاعیه"
+    "reportLet": "گروه اطلاعیه",
+    "reset": "پاک کردن فیلترها"
+  },
+  "status": {
+    "pending": "در انتظار",
+    "success": "موفق",
+    "failed": "ناموفق",
+    "noData": "بدون داده",
+    "skipped": "ردشده"
   },
   "reportTypes": {
     "0": "تولیدی",

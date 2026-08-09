@@ -37,13 +37,6 @@
     "company": "شرکت",
     "parseDate": "تاریخ پردازش"
   },
-  "status": {
-    "pending": "در انتظار",
-    "success": "موفق",
-    "failed": "ناموفق",
-    "noData": "بدون داده",
-    "skipped": "ردشده"
-  },
   "table": {
     "symbol": "نماد",
     "company": "شرکت",
