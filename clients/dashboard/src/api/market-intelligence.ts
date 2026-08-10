@@ -24,7 +24,50 @@ export type DisclosureSortBy =
   | "publishDateTime"
   | "sentDateTime"
   | "salesParsedAt";
+export type CodalDataQualityReport = {
+    checkedAtUtc: string;
 
+    metadata: {
+        totalDisclosures: number;
+        missingSymbol: number;
+        missingUrl: number;
+        missingPublishDate: number;
+        missingLet: number;
+        missingRt: number;
+    };
+
+    monthlyProcessing: {
+        totalCandidates: number;
+        pending: number;
+        success: number;
+        failed: number;
+        noData: number;
+        skipped: number;
+    };
+
+    historyCoverage: {
+        coverageYears: number;
+        requiredMonths: number;
+        windowStartPeriod: string | null;
+        windowEndPeriod: string | null;
+        activeSymbols: number;
+        completeSymbols: number;
+        incompleteSymbols: number;
+    };
+
+    summaries: {
+        totalSummaries: number;
+        missingSourceDisclosure: number;
+        sourceIdentityMismatch: number;
+        sourceSymbolMismatch: number;
+        sourcePublishDateMismatch: number;
+        sourceStatusNotSuccess: number;
+        duplicateSymbolPeriods: number;
+        missingPeriodAmount: number;
+        missingYearToDateAmount: number;
+        missingPreviousYearWhenHistoryExists: number;
+    };
+};
 export type DisclosureDto = {
   id: string;
   tracingNo: number;
@@ -137,6 +180,13 @@ export function searchDisclosures(
     `/api/v1/marketintelligence/disclosures?${query.toString()}`,
     );
 
+}
+export function getCodalDataQuality(
+    coverageYears = 5,
+): Promise<CodalDataQualityReport> {
+    return apiFetch<CodalDataQualityReport>(
+        `/api/v1/marketintelligence/codal/data-quality?coverageYears=${coverageYears}`,
+    );
 }
 export type CodalOperationResponse = {
     jobId: string;

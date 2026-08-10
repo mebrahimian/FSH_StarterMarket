@@ -6,7 +6,7 @@
   },
   "status": {
     "pending": "Pending",
-    "puccess": "Success",
+    "success": "Success",
     "failed": "Failed",
     "noData": "No data",
     "skipped": "Skipped"
@@ -31,5 +31,30 @@
     "capitalIncrease": "Capital increase",
     "clarifications": "Clarification disclosures",
     "other": "Other"
+  },
+  "healthCenter": {
+    "title": "Sedaf Bourse Health Center",
+    "eyebrow": "Market Intelligence · Data Health",
+    "subtitle": "Monitor data coverage, quality, market data health, and recovery tools",
+    "stats": {
+      "disclosures": "Disclosures",
+      "activeSymbols": "Active Symbols",
+      "totalDisclosures": "Total Disclosures",
+      "activeSymbolsHint": "With recent monthly activity",
+      "monthlyReports": "Monthly Reports",
+      "monthlySummaries": "Monthly Summaries",
+      "needsReview": "Needs Review"
+    },
+    "recentDisclosures": "The Latest Codal Disclosures",
+    "gapFailedMissing": "Gap / Failed / Missing",
+    "backfill": {
+      "title": "Symbol Data Recovery",
+      "description": "Run Symbol Backfill for a specific symbol and date range",
+      "symbol": "Symbol",
+      "symbolPlaceholder": "e.g. Vesaba",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "run": "Run Symbol Backfill"
+    }
   }
 }

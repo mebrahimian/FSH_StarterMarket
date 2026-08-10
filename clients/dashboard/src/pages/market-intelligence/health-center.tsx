@@ -1,6 +1,8 @@
 import {
     Activity,
     Database,
+    ChartNoAxesCombined,
+    ExternalLink,
     HeartPulse,
     Newspaper,
     RefreshCw,
@@ -15,6 +17,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import {
+    getCodalDataQuality,
     searchDisclosures,
     type DisclosureParseStatus,
     type DisclosureSortBy,
@@ -95,63 +98,91 @@ export function MarketHealthCenterPage() {
                 includeNullLet,
             }),
     });
+    const dataQualityQuery = useQuery({
+        queryKey: [
+            "market-intelligence",
+            "health-center",
+            "data-quality",
+        ],
+        queryFn: () => getCodalDataQuality(5),
+    });
     const recentDisclosures =
         disclosuresQuery.data?.items ?? [];
     return (
         <div className="-mt-5">
-            <PageHero
-                className="-mt-3 [&>div]:!py-3 sm:[&>div]:!py-3"
-                eyebrow="Market Intelligence · Data Health"
-                title="مرکز سلامت صدف بورس"
-                subtitle="کنترل پوشش، کیفیت و سلامت اطلاعات بازار و ابزارهای بازیابی داده"
+            <PageHero   className="-mt-3 [&>div]:!py-3 sm:[&>div]:!py-3"
+                title={tMarket("healthCenter.title")}
+                subtitle={tMarket("healthCenter.subtitle")}
                 actions={
                     <Button
                         type="button"
                         variant="outline"
                         size="sm"
+                        onClick={() => {
+                            disclosuresQuery.refetch();
+                            dataQualityQuery.refetch();
+                        }}
                     >
-                        <RefreshCw className="mr-1.5 size-3.5" />
-                        بروزرسانی
+                        <RefreshCw
+                            className={cn(
+                                "mr-1.5 size-3.5",
+                                (disclosuresQuery.isFetching || dataQualityQuery.isFetching) &&
+                                "animate-spin",
+                            )}
+                        />
+                        {t("actions.refresh")}
                     </Button>
                 }
             />
 
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <HealthStat
                     icon={Activity}
-                    label="نمادهای فعال"
-                    value="—"
-                    hint="Active symbols"
+                    label={tMarket("healthCenter.stats.activeSymbols")}
+                    value={
+                        dataQualityQuery.data
+                            ? dataQualityQuery.data.historyCoverage.activeSymbols.toLocaleString()
+                            : "—"
+                    }
+                    hint={tMarket("healthCenter.stats.activeSymbolsHint")}
                 />
 
                 <HealthStat
                     icon={Newspaper}
-                    label="Disclosure"
+                    label={tMarket("healthCenter.stats.disclosures")}
                     value={
-                        disclosuresQuery.data
-                            ? disclosuresQuery.data.totalCount.toLocaleString()
+                        dataQualityQuery.data
+                            ? dataQualityQuery.data.metadata.totalDisclosures.toLocaleString()
                             : "—"
                     }
-                    hint="کل اطلاعیه‌ها"
+                    hint={tMarket("healthCenter.stats.totalDisclosures")} 
                 />
 
                 <HealthStat
                     icon={Database}
-                    label="گزارش‌های ماهانه"
-                    value="—"
-                    hint="Monthly summaries"
+                    label={tMarket("healthCenter.stats.monthlyReports")}
+                    value={
+                        dataQualityQuery.data
+                            ? dataQualityQuery.data.monthlyProcessing.totalCandidates.toLocaleString()
+                            : "—"
+                    }
+                    hint={tMarket("healthCenter.stats.monthlySummaries")}
                 />
 
                 <HealthStat
                     icon={HeartPulse}
-                    label="نیازمند بررسی"
-                    value="—"
-                    hint="Gap / Failed / Missing"
+                    label={tMarket("healthCenter.stats.needsReview")}
+                    value={
+                        dataQualityQuery.data
+                            ? dataQualityQuery.data.historyCoverage.incompleteSymbols.toLocaleString()
+                            : "—"
+                    }
+                    hint={tMarket("healthCenter.gapFailedMissing")}
                 />
             </section>
-            <section className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-xs sm:h-[196px] lg:h-[212.5px]">
-                <div className="-mt-6 flex w-full items-end justify-between gap-3">
-                    <div className="flex items-end gap-3">
+            <section className="mt-2 pt-5 pr-5 pb-0 mb-0 overflow-hidden rounded-xl border border-[var(--color-border)]  shadow-xs sm:h-[255px]">
+                <div className="-mt-4 mb-0 pb-0 flex w-full items-end justify-between gap-3 ">
+                    <div className="flex items-end gap-3 -pb-5 mb-0">
                         <Combobox
                             label="RT"
                             value={rtFilter || null}
@@ -256,58 +287,104 @@ export function MarketHealthCenterPage() {
                         </div>
                     </div>
                 </div>
-                <h2 className="mb-0 text-center text-base font-semibold">
-                    آخرین Disclosureها
+                <h2 className="text-center text-base font-semibold">
+                    {tMarket("healthCenter.recentDisclosures")}
                 </h2>
-
-                <div className="max-h-46 space-y-2 overflow-y-auto pr-1">
+               
+                <div className="max-h-50 overflow-y-auto pr-1">
+                    <div className="mb-2 grid min-w-[620px] grid-cols-[80px_500px_200px_150px_100px] items-center gap-6 border-b border-[var(--color-border)] text-center text-xs font-semibold text-[var(--color-muted-foreground)]">
+                        <span>{t("table.symbol")}</span>
+                        <span>{t("table.disclosure")}</span>
+                        <span>{t("table.published")}</span>
+                        <span>{tMarket("filters.reportType")}</span>
+                        <span />
+                    </div>
                     {recentDisclosures.map((disclosure) => (
                         <div
                             key={disclosure.id}
-                            className="flex items-center justify-between border-b py-0 last:border-0"
+                            className="grid min-w-[620px] grid-cols-[80px_500px_200px_150px_100px] items-center gap-6 border-b border-[var(--color-border)] pb-0 text-center text-xs font-semibold text-[var(--color-muted-foreground)]"
                         >
-                            <span className="font-semibold">
+                            <span className="w-[80px] shrink-0 truncate text-right text-sm text-[var(--color-muted-foreground)] font-semibold">
                                 {disclosure.symbol}
                             </span>
-
-                            <span className="text-sm text-[var(--color-muted-foreground)]">
-                                {disclosure.tracingNo}
+                            
+                            <div
+                                dir="rtl"
+                                onWheel={(e) => {
+                                    e.currentTarget.scrollLeft -= e.deltaY;
+                                }}
+                                className="scrollbar-hidden min-w-0 overflow-x-auto whitespace-nowrap text-right text-sm text-[var(--color-muted-foreground)]"
+                            >
+                                {disclosure.title}
+                            </div>
+                            <span dir="ltr"  className="min-w-0 truncate whitespace-nowrap text-sm text-[var(--color-muted-foreground)]">
+                                {disclosure.publishDateTimeRaw ?? "—"}
                             </span>
+                            <span className="text-center text-sm text-[var(--color-muted-foreground)]">
+                                {disclosure.rt != null
+                                    ? tMarket(
+                                        codalReportTypeOptions.find(
+                                            (option) =>
+                                                Number(option.value) === disclosure.rt,
+                                        )?.labelKey ?? "—",
+                                    )
+                                    : "—"}
+                            </span>
+                            <div className="flex items-center justify-center gap-1">
+                                {toCodalUrl(disclosure.url) && (
+                                    <a
+                                        href={toCodalUrl(disclosure.url)!}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        aria-label={`Open ${disclosure.symbol} on Codal`}
+                                        className="grid size-8 place-items-center rounded-md text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-primary)]"
+                                    >
+                                        <ExternalLink className="size-4" />
+                                    </a>
+                                )}
+
+                                {disclosure.salesParseStatus === "Success" && (
+                                    <button
+                                        type="button"
+                                        title="آخرین اطلاعات فروش"
+                                        aria-label={`View sales data for ${disclosure.symbol}`}
+                                        className="grid size-8 place-items-center rounded-md text-[var(--color-success)] transition-colors hover:bg-[var(--color-muted)]"
+                                    >
+                                        <ChartNoAxesCombined className="size-4" />
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     ))}
                 </div>
             </section>
-            <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 shadow-xs">
-                <div className="mb-5">
+            <section className="mt-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-1 shadow-xs">
+                <div className="-mt-1 mb-5">
                     <h2 className="text-base font-semibold text-[var(--color-foreground)]">
-                        بازیابی اطلاعات نماد
-                    </h2>
-
-                    <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-                        اجرای Symbol Backfill برای یک نماد و بازه مشخص
-                    </p>
+                        {tMarket("healthCenter.backfill.description")}
+                    </h2>                                        
                 </div>
 
                 <div className="-mt-5 grid gap-4 md:grid-cols-3">
                     <Field
-                        label="نماد"
-                        placeholder="مثلاً وصبا"
+                        label={tMarket("healthCenter.backfill.symbol")}
+                        placeholder={tMarket("healthCenter.backfill.symbolPlaceholder")}
                     />
 
                     <Field
-                        label="از تاریخ"
+                        label={tMarket("healthCenter.backfill.fromDate")}
                         placeholder="1403/01/01"
                     />
 
                     <Field
-                        label="تا تاریخ"
+                        label={tMarket("healthCenter.backfill.toDate")}
                         placeholder="1403/12/30"
                     />
                 </div>
 
                 <div className="mt-1 flex justify-end">
                     <Button type="button">
-                        اجرای Symbol Backfill
+                        {tMarket("healthCenter.backfill.run")}
                     </Button>
                 </div>
             </section>
@@ -352,6 +429,22 @@ function HealthStat({
         </div>
     );
 }
+function toCodalUrl(
+    url: string,
+): string | null {
+    if (!url.trim()) {
+        return null;
+    }
+
+    try {
+        return new URL(
+            url,
+            "https://www.codal.ir",
+        ).toString();
+    } catch {
+        return null;
+    }
+}
 function Field({
     label,
     placeholder,
@@ -372,4 +465,6 @@ function Field({
             />
         </label>
     );
+
+
 }

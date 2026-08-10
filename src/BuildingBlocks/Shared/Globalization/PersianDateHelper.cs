@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using FSH.Framework.Shared.Dates;
 
 namespace FSH.Framework.Shared.Dates;
 
@@ -47,16 +48,16 @@ public static class PersianDateHelper
             ['/', ' ', ':'],
             StringSplitOptions.RemoveEmptyEntries);
 
-        if (parts.Length < 5)
+        if (parts.Length < 3)
             return null;
 
         return Calendar.ToDateTime(
-            int.Parse(parts[0]), // year
-            int.Parse(parts[1]), // month
-            int.Parse(parts[2]), // day
-            int.Parse(parts[3]), // hour
-            int.Parse(parts[4]), // minute
-            parts.Length > 5 ? int.Parse(parts[5]) : 0, // second
+            int.Parse(parts[0]),
+            int.Parse(parts[1]),
+            int.Parse(parts[2]),
+            parts.Length > 3 ? int.Parse(parts[3]) : 0,
+            parts.Length > 4 ? int.Parse(parts[4]) : 0,
+            parts.Length > 5 ? int.Parse(parts[5]) : 0,
             0);
     }
 
@@ -75,6 +76,46 @@ public static class PersianDateHelper
             .Replace('۸', '8')
             .Replace('۹', '9');
     }
+
+    public static IReadOnlyList<string> GetMonthEndDatesEndingAt(
+    string? endDate,
+    int count)
+    {
+        if (count <= 0)
+        {
+            return [];
+        }
+
+        DateTime? gregorianEndDate = ToGregorian(endDate);
+
+        if (!gregorianEndDate.HasValue)
+        {
+            return [];
+        }
+
+        int endYear = Calendar.GetYear(gregorianEndDate.Value);
+        int endMonth = Calendar.GetMonth(gregorianEndDate.Value);
+
+        var result = new List<string>(count);
+
+        for (int offset = count - 1; offset >= 0; offset--)
+        {
+            int totalMonths =
+                (endYear * 12) +
+                (endMonth - 1) -
+                offset;
+
+            int year = totalMonths / 12;
+            int month = (totalMonths % 12) + 1;
+            int day = Calendar.GetDaysInMonth(year, month);
+
+            result.Add(
+                $"{year:0000}/{month:00}/{day:00}");
+        }
+
+        return result;
+    }
+
 
 
 #if false

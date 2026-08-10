@@ -191,7 +191,6 @@ export function HealthPage() {
   return (
     <div className="space-y-7 pb-12">
       <PageHero
-        eyebrow="System · Health"
         title="Health"
         subtitle={
           <>

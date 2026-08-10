@@ -540,7 +540,7 @@ function DesktopRow({
             <div>
                 <div
                     dir="ltr"
-                    className="font-mono text-[12px] text-[var(--color-foreground)]"
+                    className="text-[12px] tabular-nums text-[var(--color-foreground)]"
                 >
                     {disclosure.publishDateTimeRaw ?? "—"}
                 </div>

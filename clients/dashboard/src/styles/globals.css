@@ -1202,4 +1202,12 @@ html[dir="rtl"] {
   border-radius: 9999px;
   flex-shrink: 0;
 }
+.scrollbar-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
 
+    .scrollbar-hidden::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }

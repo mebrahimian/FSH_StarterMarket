@@ -35,11 +35,12 @@ public sealed class CodalDataQualityAuditService(
             dbContext.MonthlyActivitySummaries.AsNoTracking();
 
         var monthlyCandidates =
-            disclosures.Where(d =>
-                d.Let == 58 &&
-                d.Rt.HasValue &&
-                supportedReportTypes.Contains(
-                    d.Rt.Value));
+             disclosures.Where(d => d.Rt.HasValue &&
+                                    supportedReportTypes.Contains(d.Rt.Value) &&
+        (
+            (d.Let == 58 && d.Rt.Value != 2) ||
+            (d.Let == 8 && d.Rt.Value == 2)
+        ));
 
         var metadata = new CodalMetadataQuality
         {
@@ -376,23 +377,22 @@ public sealed class CodalDataQualityAuditService(
             Metadata = metadata,
             MonthlyProcessing = monthlyProcessing,
             HistoryCoverage = new CodalHistoryCoverageQuality
-                                     {
-                                        CoverageYears = coverageYears,
-                                        RequiredMonths =  requiredMonths,
-                                        WindowStartPeriod =  requiredPeriods.FirstOrDefault(),
-                                        WindowEndPeriod = requiredPeriods.LastOrDefault(),
-                                        ActiveSymbols = activeSymbols.Length,
-                                        CompleteSymbols =  activeSymbols.Length -  coverageGaps.Count,
-                                        IncompleteSymbols = coverageGaps.Count,
-                                        Gaps = coverageGaps.OrderByDescending(gap =>
-                                               gap.MissingMonths).ThenBy(gap =>
-                                                    gap.Symbol).ToArray(),
-                                     },
+            {
+                CoverageYears = coverageYears,
+                RequiredMonths = requiredMonths,
+                WindowStartPeriod = requiredPeriods.FirstOrDefault(),
+                WindowEndPeriod = requiredPeriods.LastOrDefault(),
+                ActiveSymbols = activeSymbols.Length,
+                CompleteSymbols = activeSymbols.Length - coverageGaps.Count,
+                IncompleteSymbols = coverageGaps.Count,
+                Gaps = coverageGaps.OrderByDescending(gap =>
+                       gap.MissingMonths).ThenBy(gap =>
+                            gap.Symbol).ToArray(),
+            },
             Summaries = summaryQuality,
         };
     }
-    private static string[]
-    CreatePeriodWindow(
+    private static string[] CreatePeriodWindow(
             string? endPeriod,
             int requiredMonths)
     {

@@ -8,6 +8,7 @@ using FSH.Framework.Web.Modules;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
+using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Services.Codal;
 using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
@@ -81,7 +82,7 @@ namespace FSH.Modules.MarketIntelligence
             // over the catch-all `/{id:guid}`.
 
             group.MapSearchDisclosuresEndpoint();
-
+            group.MapGetFiscalYearSalesEndpoint();
             group.MapPost("/codal/newRead", (IJobService jobService) =>
               {
                   string jobId = jobService.Enqueue<CodalBackgroundJob>

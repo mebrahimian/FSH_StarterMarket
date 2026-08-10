@@ -13,7 +13,6 @@ import { cn } from "@/lib/cn";
  *   subtitle     — muted body line below
  */
 export function PageHero({
-  eyebrow,
   tenant,
   subEyebrow,
   title,
@@ -22,7 +21,6 @@ export function PageHero({
   actions,
   className,
 }: {
-  eyebrow: string;
   tenant?: string;
   subEyebrow?: string;
   title: string;
@@ -44,9 +42,7 @@ export function PageHero({
       <div className="relative px-6 py-6 sm:px-8 sm:py-7 md:px-8">
         {/* Eyebrow row */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-            {eyebrow}
-          </span>
+          
           {tenant && (
             <>
               <span aria-hidden className="h-px w-7 bg-[var(--color-border)]" />

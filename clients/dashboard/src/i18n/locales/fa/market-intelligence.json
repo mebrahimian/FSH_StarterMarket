@@ -31,5 +31,30 @@
     "capitalIncrease": "افزایش سرمایه",
     "clarifications": "شفاف‌سازی",
     "other": "سایر موارد"
+  },
+  "healthCenter": {
+    "title": "مرکز سلامت صدف بورس",
+    "eyebrow": "هوشمندی بازار · سلامت داده",
+    "subtitle": "کنترل پوشش، کیفیت و سلامت اطلاعات بازار و ابزارهای بازیابی داده",
+    "stats": {
+      "disclosures": "اطلاعیه‌ها",
+      "activeSymbols": "نمادهای فعال",
+      "totalDisclosures": "کل اطلاعیه‌ها",
+      "activeSymbolsHint": "دارای فعالیت ماهانه اخیر",
+      "monthlyReports": "گزارش‌های ماهانه",
+      "monthlySummaries": "خلاصه‌های ماهانه",
+      "needsReview": "نیازمند بررسی"
+    },
+    "recentDisclosures": "آخرین اطلاعیه‌های کدال",
+    "gapFailedMissing": "کسری / ناموفق / داده مفقود",
+    "backfill": {
+      "title": "تکمیل اطلاعات تاریخی نماد",
+      "description": "تکمیل اطلاعات تاریخی یک نماد در بازه مشخص",
+      "symbol": "نماد",
+      "symbolPlaceholder": "مثلاً وصبا",
+      "fromDate": "از تاریخ",
+      "toDate": "تا تاریخ",
+      "run": "اجرای تکمیل اطلاعات تاریخی"
+    }
   }
 }
