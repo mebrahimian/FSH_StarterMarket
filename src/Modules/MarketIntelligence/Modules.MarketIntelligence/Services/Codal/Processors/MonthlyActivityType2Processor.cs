@@ -157,37 +157,11 @@ public sealed class MonthlyActivityType2Processor(
                     "PreviousYearToDateAmount",
                     out int previousYearToDateCellIndex);
 
-            if (hasPreviousYearCellDefinition)
-            {
-                CodalCellResult? previousYearToDateCell =
-                    CodalCellReader.FindCellValue(
-                        html,                        
-                        definition.MetaTableCode,
-                        previousYearToDateCellIndex);
-
-                if (previousYearToDateCell is not null &&
-                    !string.IsNullOrWhiteSpace(
-                        previousYearToDateCell.Value))
-                {
-                    previousYearToDateAmount =
-                        ParseDecimal(
-                            previousYearToDateCell.Value,
-                            disclosure.Symbol,
-                            disclosure.PublishDateTimeRaw,
-                            "PreviousYearToDateAmount");
-                }
-            }
-            else
-            {
-                previousYearToDateAmount =
-                    await previousYearSummaryLookup
-                        .FindYearToDateAmountAsync(
-                            disclosure.Symbol,
-                            periodCell.PeriodEndToDate,
-                            cancellationToken);
-            }
-
-
+            previousYearToDateAmount = await previousYearSummaryLookup
+                                  .FindYearToDateAmountAsync(
+                                  disclosure.Symbol,
+                                  periodCell.PeriodEndToDate,
+                                  cancellationToken);
 
             MonthlyActivitySummary? existingSummary =
                 await dbContext.MonthlyActivitySummaries
@@ -224,11 +198,11 @@ public sealed class MonthlyActivityType2Processor(
                         summary,
                         cancellationToken);
             }
-            else if (
-                disclosure.PublishDateTime.HasValue &&
-                (!existingSummary.PublishDateTime.HasValue ||
-                 disclosure.PublishDateTime.Value >
-                 existingSummary.PublishDateTime.Value))
+            else if (existingSummary.DisclosureId == disclosure.Id ||
+                        (disclosure.PublishDateTime.HasValue &&
+                        (!existingSummary.PublishDateTime.HasValue ||
+                         disclosure.PublishDateTime.Value > existingSummary.PublishDateTime.Value)
+                    ))
             {
 
                 existingSummary.Update(

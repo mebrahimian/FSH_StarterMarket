@@ -1,12 +1,13 @@
-﻿using FSH.Modules.MarketIntelligence.Contracts.Dtos;
-using Asp.Versioning;
+﻿using Asp.Versioning;
 using FSH.Framework.Jobs.Services;
 using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Shared.Identity.Authorization;
 using FSH.Framework.Web.Modules;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
+using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
+using FSH.Modules.MarketIntelligence.Features.v1.DataQualityIssues;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Services.Codal;
@@ -16,6 +17,7 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Hangfire;
+using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -83,6 +85,7 @@ namespace FSH.Modules.MarketIntelligence
 
             group.MapSearchDisclosuresEndpoint();
             group.MapGetFiscalYearSalesEndpoint();
+            group.MapGetDataQualityIssuesEndpoint();
             group.MapPost("/codal/newRead", (IJobService jobService) =>
               {
                   string jobId = jobService.Enqueue<CodalBackgroundJob>
@@ -107,77 +110,69 @@ namespace FSH.Modules.MarketIntelligence
                 }).RequirePermission(MarketIntelligencePermissions
                         .CodalOperations
                         .Execute);
-            group.MapPost(
-    "/codal/symbol-backfill",
-    IResult (
-        CodalSymbolBackfillRequest request,
-        IJobService jobService) =>
-    {
-        if (
-            string.IsNullOrWhiteSpace(
-                request.Symbol) ||
-            string.IsNullOrWhiteSpace(
-                request.FromDate) ||
-            string.IsNullOrWhiteSpace(
-                request.ToDate))
-        {
-            return Results.BadRequest(
-                new
+            group.MapPost("/codal/symbol-backfill", IResult
+                     (CodalSymbolBackfillRequest request, IJobService jobService) =>
                 {
-                    message =
-                        "Symbol, fromDate and toDate are required.",
-                });
-        }
+                    if (
+                        string.IsNullOrWhiteSpace(
+                            request.Symbol) ||
+                        string.IsNullOrWhiteSpace(
+                            request.FromDate) ||
+                        string.IsNullOrWhiteSpace(
+                            request.ToDate))
+                    {
+                        return Results.BadRequest(
+                            new
+                            {
+                                message =
+                                    "Symbol, fromDate and toDate are required.",
+                            });
+                    }
 
-        string symbol =
-            request.Symbol.Trim();
+                    string symbol =
+                        request.Symbol.Trim();
 
-        string fromDate =
-            request.FromDate.Trim();
+                    string fromDate =
+                        request.FromDate.Trim();
 
-        string toDate =
-            request.ToDate.Trim();
+                    string toDate =
+                        request.ToDate.Trim();
 
-        if (
-            string.Compare(
-                fromDate,
-                toDate,
-                StringComparison.Ordinal) > 0)
-        {
-            return Results.BadRequest(
-                new
-                {
-                    message =
-                        "fromDate cannot be after toDate.",
-                });
-        }
+                    if (
+                        string.Compare(
+                            fromDate,
+                            toDate,
+                            StringComparison.Ordinal) > 0)
+                    {
+                        return Results.BadRequest(
+                            new
+                            {
+                                message =
+                                    "fromDate cannot be after toDate.",
+                            });
+                    }
 
-        string jobId =
-            jobService.Enqueue<CodalBackgroundJob>(
-                job =>
-                    job.RunSymbolBackfillAsync(
-                        symbol,
-                        fromDate,
-                        toDate));
+                    string jobId =
+                        jobService.Enqueue<CodalBackgroundJob>(
+                            job =>
+                                job.RunSymbolBackfillAsync(
+                                    symbol,
+                                    fromDate,
+                                    toDate));
 
-        return Results.Accepted(
-            value: new
-            {
-                jobId,
-                message =
-                    "Targeted Codal backfill queued.",
-            });
-    })
-    .WithName("QueueCodalSymbolBackfill")
-    .WithSummary(
-        "Queues targeted Codal backfill for one symbol and date range")
-    .RequirePermission(
-        MarketIntelligencePermissions
-            .CodalOperations
-            .Execute);
-            group.MapPost(
-                "/codal/parse-pending",
-                (IJobService jobService) =>
+                    return Results.Accepted(
+                        value: new
+                        {
+                            jobId,
+                            message =
+                                "Targeted Codal backfill queued.",
+                        });
+                }).WithName("QueueCodalSymbolBackfill")
+                  .WithSummary("Queues targeted Codal backfill for one symbol and date range")
+                  .RequirePermission(MarketIntelligencePermissions
+                          .CodalOperations
+                          .Execute);
+            group.MapPost("/codal/parse-pending", (IJobService jobService) =>
                 {
                     string jobId =
                         jobService.Enqueue<CodalBackgroundJob>(
@@ -196,9 +191,7 @@ namespace FSH.Modules.MarketIntelligence
                                   .CodalOperations
                                   .Execute);
 
-            group.MapGet(
-                "/codal/jobs/{jobId}/status",
-                (string jobId) =>
+            group.MapGet("/codal/jobs/{jobId}/status", (string jobId) =>
                 {
                     using var connection = JobStorage.Current.GetConnection();
 
@@ -227,41 +220,95 @@ namespace FSH.Modules.MarketIntelligence
                 }).RequirePermission(MarketIntelligencePermissions
                                     .CodalOperations
                                     .Execute);
-            group.MapGet(
-        "/codal/data-quality",
-        async (
-            int? coverageYears,
-            CodalDataQualityAuditService auditService,
-            CancellationToken cancellationToken) =>
-        {
-            int requestedYears =
-                coverageYears ?? 5;
-
-            if (requestedYears is < 1 or > 20)
+            group.MapGet("/codal/data-quality", async (
+                                              int? coverageYears,
+                                              CodalDataQualityAuditService auditService,
+                                              CancellationToken cancellationToken) =>
             {
-                return Results.BadRequest(
-                    new
-                    {
-                        message =
-                            "Coverage years must be between 1 and 20.",
-                    });
-            }
+                    int requestedYears = coverageYears ?? 5;
 
-            CodalDataQualityReport report = await auditService.RunAsync(
+                    if (requestedYears is < 1 or > 20)
+                       {
+                         return Results.BadRequest(
+                            new
+                                {
+                                    message = "Coverage years must be between 1 and 20.",
+                                });
+                       }
+
+                CodalDataQualityReport report = await auditService.RunAsync(
                          coverageYears: requestedYears,
                          cancellationToken: cancellationToken);
 
-            return Results.Ok(report);
-        })
-    .WithName("GetCodalDataQuality")
-    .WithSummary(
-        "Audits Codal disclosure and monthly summary data quality")
-    .RequirePermission(
-        MarketIntelligencePermissions
-            .CodalOperations
-            .Execute);
+                return Results.Ok(report);
+            }).WithName("GetCodalDataQuality")
+              .WithSummary("Audits Codal disclosure and monthly summary data quality")
+              .RequirePermission( MarketIntelligencePermissions
+              .CodalOperations
+              .Execute);
+
+            var jobManager = endpoints.ServiceProvider
+                                      .GetService<IRecurringJobManager>();
+
+            if (jobManager is not null)
+            {
+                jobManager.AddOrUpdate(
+                    "market-intelligence-codal-incremental-morning",
+                    Job.FromExpression<CodalBackgroundJob>(
+                        job => job.RunIncrementalAsync(
+                            CancellationToken.None)),
+                    "*/30 5-10 * * *",
+                    new RecurringJobOptions
+                    {
+                        TimeZone = TimeZoneInfo.Utc,
+                    });
+
+                jobManager.AddOrUpdate(
+                    "market-intelligence-codal-incremental-afternoon",
+                    Job.FromExpression<CodalBackgroundJob>(
+                        job => job.RunIncrementalAsync(
+                            CancellationToken.None)),
+                    "0 11-23 * * *",
+                    new RecurringJobOptions
+                    {
+                        TimeZone = TimeZoneInfo.Utc,
+                    });
+            }
+
         }
 
+
+
     }
+
 #pragma warning restore S2094
 }
+
+
+
+// Cron format:  فرمت زمانبندی جاب
+// Minute  Hour  DayOfMonth  Month  DayOfWeek
+//
+// خواسته                         Cron               معنی
+// --------------------------------------------------------------------------------
+// هر ۳۰ دقیقه                    */30 * * * *        :00 و :30 هر ساعت
+// هر ساعت                        0 * * * *           سر هر ساعت
+// روزی یک بار ساعت 8             0 8 * * *           هر روز 08:00
+// روزی دو بار                    0 8,18 * * *        هر روز 08:00 و 18:00
+// هر روز ساعت 8 و 12 و 16        0 8,12,16 * * *     سه بار در روز
+// هر هفته شنبه ساعت 9            0 9 * * 6           شنبه‌ها 09:00
+// هر هفته دوشنبه ساعت 10         0 10 * * 1          دوشنبه‌ها
+// شنبه تا چهارشنبه ساعت 8        0 8 * * 6-3         بهتر است به دلیل عبور از انتهای هفته جدا نوشته شود
+// دوشنبه تا جمعه ساعت 8          0 8 * * 1-5         روزهای کاری متداول
+// اول هر ماه ساعت 7              0 7 1 * *           روز اول ماه
+// پانزدهم هر ماه ساعت 7          0 7 15 * *          روز 15
+// ماهی دو بار                    0 8 1,15 * *        اول و پانزدهم ماه ساعت 8
+// آخر هر ماه                     -                   با Cron ساده بهتر است منطق مخصوص داشته باشد
+// هر سه ماه، روز اول             0 8 1 */3 *         فصل‌وار
+// اول ژانویه هر سال              0 8 1 1 *           سالی یک بار
+//
+// علائم:
+// *      = همه
+// */30   = هر 30 واحد
+// 5-10   = از 5 تا 10
+// 1,15   = 1 و 15

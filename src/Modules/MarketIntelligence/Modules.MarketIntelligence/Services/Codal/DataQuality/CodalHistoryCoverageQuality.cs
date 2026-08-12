@@ -21,8 +21,11 @@ public sealed class CodalHistoryCoverageQuality
         get;
         init;
     } = [];
-}
 
+}
+public sealed record CodalMissingPeriod(
+    string PeriodEndDate,
+    string? PublishDate);
 public sealed class CodalSymbolCoverageGap
 {
     public required string Symbol { get; init; }
@@ -36,6 +39,11 @@ public sealed class CodalSymbolCoverageGap
     public string? NewestAvailablePeriod { get; init; }
 
     public IReadOnlyList<string> MissingPeriods
+    {
+        get;
+        init;
+    } = [];
+    public IReadOnlyList<CodalMissingPeriod> MissingPeriodDetails
     {
         get;
         init;

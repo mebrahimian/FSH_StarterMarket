@@ -22,8 +22,22 @@ export type DisclosureSortBy =
   | "symbol"
   | "companyName"
   | "publishDateTime"
-  | "sentDateTime"
-  | "salesParsedAt";
+    | "sentDateTime"
+    | "salesParsedAt";
+export type CodalMissingPeriod = {
+    periodEndDate: string;
+    publishDate: string | null;
+};
+
+export type CodalSymbolCoverageGap = {
+    symbol: string;
+    availableMonths: number;
+    missingMonths: number;
+    oldestAvailablePeriod: string | null;
+    newestAvailablePeriod: string | null;
+    missingPeriods: string[];
+    missingPeriodDetails: CodalMissingPeriod[];
+};
 export type CodalDataQualityReport = {
     checkedAtUtc: string;
 
@@ -53,6 +67,7 @@ export type CodalDataQualityReport = {
         activeSymbols: number;
         completeSymbols: number;
         incompleteSymbols: number;
+        gaps: CodalSymbolCoverageGap[];
     };
 
     summaries: {
@@ -247,6 +262,26 @@ export type CodalSymbolBackfillRequest = {
     toDate: string;
 };
 
+export type CodalSymbolBackfillResponse = {
+    jobId: string;
+    message: string;
+};
+
+export function queueCodalSymbolBackfill(
+    request: CodalSymbolBackfillRequest,
+): Promise<CodalSymbolBackfillResponse> {
+    return apiFetch<CodalSymbolBackfillResponse>(
+        "/api/v1/marketintelligence/codal/symbol-backfill",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(request),
+        },
+    );
+}
+
 export function collectCodalSymbolBackfill(
     request: CodalSymbolBackfillRequest,
 ): Promise<CodalOperationResponse> {
@@ -256,5 +291,44 @@ export function collectCodalSymbolBackfill(
             method: "POST",
             body: JSON.stringify(request),
         },
+    );
+}
+export type FiscalYearSalesRow = {
+    periodEndDate: string;
+    periodAmount: number | null;
+    yearToDateAmount: number | null;
+    previousYearToDateAmount: number | null;
+    isMissing: boolean;
+};
+export type DataQualityIssue = {
+    symbol: string;
+    yearEndDate: string | null;
+    periodEndDate: string;
+    publishDate: string | null;
+    issueCode: string;
+    previousValue: number | null;
+    currentValue: number | null;
+};
+export type FiscalYearSales = {
+    symbol: string;
+    yearEndDate: string;
+    rows: FiscalYearSalesRow[];
+};
+export function getDataQualityIssues(): Promise<DataQualityIssue[]> {
+    return apiFetch<DataQualityIssue[]>(
+        "/api/v1/marketintelligence/data-quality/issues",
+    );
+}
+export function getFiscalYearSales(
+    symbol: string,
+    title: string,
+): Promise<FiscalYearSales> {
+    const params = new URLSearchParams({
+        symbol,
+        title,
+    });
+
+    return apiFetch<FiscalYearSales>(
+        `/api/v1/marketintelligence/fiscal-year-sales?${params.toString()}`,
     );
 }

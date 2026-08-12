@@ -31,9 +31,9 @@ public sealed class MonthlyActivityType3Processor(
 
         CodalDefinitions definitions = CodalDefinitionsProvider.Load();
 
-        return disclosure.Let == 8 && 
-               disclosure.Rt is byte rt && 
-               rt == 2 && 
+        return disclosure.Let == 8 &&
+               disclosure.Rt is byte rt &&
+               rt == 2 &&
                definitions.MonthlyActivities.ContainsKey(rt);
     }
 
@@ -78,14 +78,14 @@ public sealed class MonthlyActivityType3Processor(
                 reportUri,
                 cancellationToken);
 
-            var selectedDefinition = ResolveLayout( html, definition);
+            var selectedDefinition = ResolveLayout(html, definition);
 
             if (selectedDefinition is not { } resolvedLayout)
             {
                 return;
             }
-                                    
-            CodalCellResult? periodCell = selectedDefinition.UseColumnSum 
+
+            CodalCellResult? periodCell = selectedDefinition.UseColumnSum
                          ? CodalCellReader.SumColumnValues(
                                                html,
                                                selectedDefinition.MetaTableCode,
@@ -104,7 +104,7 @@ public sealed class MonthlyActivityType3Processor(
                                   html,
                                   selectedDefinition.MetaTableCode,
                                   selectedDefinition.SelectedCells["YearToDateAmount"]);
-                        
+
             if (periodCell is null || yearToDateCell is null || string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
             {
                 disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
@@ -120,7 +120,7 @@ public sealed class MonthlyActivityType3Processor(
                 throw new InvalidOperationException(
                     $"Disclosure {disclosure.TracingNo} does not have a symbol.");
             }
-           
+
             if (!decimal.TryParse(periodCell.Value,
                                   NumberStyles.Number,
                                   CultureInfo.InvariantCulture,
@@ -132,14 +132,14 @@ public sealed class MonthlyActivityType3Processor(
             {
                 return;
             }
-            
-                //     decimal periodAmount = periodCell.Value;
-       //
-       //
-       //     decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
-       //                                             disclosure.Symbol,
-       //                                             disclosure.PublishDateTimeRaw,
-       //                                             "YearToDateAmount");
+
+            //     decimal periodAmount = periodCell.Value;
+            //
+            //
+            //     decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
+            //                                             disclosure.Symbol,
+            //                                             disclosure.PublishDateTimeRaw,
+            //                                             "YearToDateAmount");
 
             decimal? previousYearToDateAmount = null;
 
@@ -148,39 +148,11 @@ public sealed class MonthlyActivityType3Processor(
                     "PreviousYearToDateAmount",
                     out int previousYearToDateCellIndex);
 
-            if (hasPreviousYearCellDefinition)
-            {                
-                CodalCellResult? previousYearToDateCell = selectedDefinition.UseColumnSum
-                        ? CodalCellReader.SumColumnValues(
-                                 html,
-                                 selectedDefinition.MetaTableCode,
-                                 previousYearToDateCellIndex)
-                        : CodalCellReader.FindCellValue(
-                                 html,
-                                 selectedDefinition.MetaTableCode,
-                                 previousYearToDateCellIndex);
-
-                if (previousYearToDateCell is not null &&
-                    !string.IsNullOrWhiteSpace(previousYearToDateCell.Value) &&
-                        decimal.TryParse(
-                                  previousYearToDateCell.Value,
-                                  NumberStyles.Number,
-                                  CultureInfo.InvariantCulture,
-                                  out decimal pYTDAmount))
-                {                   
-                     previousYearToDateAmount = pYTDAmount;                 
-                }
-            }
-            else
-            {
-                previousYearToDateAmount =
-                    await previousYearSummaryLookup
-                        .FindYearToDateAmountAsync(
-                            disclosure.Symbol,
-                            periodCell.PeriodEndToDate,
-                            cancellationToken);
-            }
-
+            previousYearToDateAmount = await previousYearSummaryLookup
+                              .FindYearToDateAmountAsync(
+                               disclosure.Symbol,
+                               periodCell.PeriodEndToDate,
+                               cancellationToken);
 
             MonthlyActivitySummary? existingSummary =
                 await dbContext.MonthlyActivitySummaries
@@ -217,11 +189,11 @@ public sealed class MonthlyActivityType3Processor(
                         summary,
                         cancellationToken);
             }
-            else if (
-                disclosure.PublishDateTime.HasValue &&
-                (!existingSummary.PublishDateTime.HasValue ||
-                 disclosure.PublishDateTime.Value >
-                 existingSummary.PublishDateTime.Value))
+            else if (existingSummary.DisclosureId == disclosure.Id ||
+                        (disclosure.PublishDateTime.HasValue &&
+                        (!existingSummary.PublishDateTime.HasValue ||
+                         disclosure.PublishDateTime.Value > existingSummary.PublishDateTime.Value)
+                    ))
             {
 
                 existingSummary.Update(
@@ -247,7 +219,7 @@ public sealed class MonthlyActivityType3Processor(
             disclosure.SalesParseStatus = DisclosureParseStatus.Success;
 
             disclosure.SalesParsedAt = DateTime.UtcNow;
-         //   disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
+            //   disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
             await dbContext.SaveChangesAsync(
                 cancellationToken);
         }
@@ -443,7 +415,7 @@ public sealed class MonthlyActivityType3Processor(
         return result;
     }
     */
-    
+
     private static CodalTableDefinition? ResolveLayout(string html,
         CodalTableDefinition definition)
     {

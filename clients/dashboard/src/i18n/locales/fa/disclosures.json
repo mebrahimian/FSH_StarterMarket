@@ -45,12 +45,14 @@
     "publishDate": "تاریخ انتشار",
     "published": "تاریخ انتشار",
     "sentDate": "تاریخ ارسال",
+    "endYearDate": "تاریخ سال مالی",
     "letterCode": "کد نامه",
     "reportType": "نوع گزارش",
     "formats": "فایل‌ها",
     "parseStatus": "وضعیت پردازش",
     "tracingNo": "شماره پیگیری",
-    "actions": "عملیات"
+    "actions": "عملیات",
+    "discrepancy": "مغایرت"
   },
   "formats": {
     "html": "HTML",

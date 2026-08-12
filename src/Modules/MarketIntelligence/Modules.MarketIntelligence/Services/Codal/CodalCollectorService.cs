@@ -255,30 +255,25 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         string normalizedSymbol = symbol.Trim();
 
-        string normalizedFromDate = PersianTextNormalizer.NormalizeDigits(
-        fromDate.Trim());
+        string normalizedFromDate = PersianTextNormalizer.NormalizeDigits(fromDate.Trim());
 
-        string normalizedToDate = PersianTextNormalizer.NormalizeDigits(
-                toDate.Trim());
+        string normalizedToDate = PersianTextNormalizer.NormalizeDigits(toDate.Trim());
 
-        if (!IsValidPersianDate(
-                normalizedFromDate))
+        if (!IsValidPersianDate(normalizedFromDate))
         {
             throw new ArgumentException(
                 "From date is not a valid Persian date.",
                 nameof(fromDate));
         }
 
-        if (!IsValidPersianDate(
-                normalizedToDate))
+        if (!IsValidPersianDate(normalizedToDate))
         {
             throw new ArgumentException(
                 "To date is not a valid Persian date.",
                 nameof(toDate));
         }
 
-        if (
-            string.CompareOrdinal(
+        if (string.CompareOrdinal(
                 normalizedFromDate,
                 normalizedToDate) > 0)
         {
@@ -315,8 +310,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         List<CodalLetterDto> letters = [];
 
-        string windowFromDate =
-            searchFromDate;
+        string windowFromDate = searchFromDate;
 
         bool isFirstRequest = true;
 
@@ -343,8 +337,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     requestDelay,
                     cancellationToken);
             }
-            if (_logger.IsEnabled(
-        LogLevel.Information))
+            if (_logger.IsEnabled(LogLevel.Information))
             {
                 _logger.LogInformation(
                     "Searching Codal for {Symbol}, publication window {FromDate} to {ToDate}, page {PageNumber}.",
@@ -353,7 +346,6 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     windowToDate,
                     1);
             }
-
 
             CodalSearchResponse firstPage =
                 await _codalClient.SearchAsync(
@@ -369,8 +361,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             isFirstRequest = false;
 
-            letters.AddRange(
-                firstPage.Letters);
+            letters.AddRange(firstPage.Letters);
 
             for (
                 int pageNumber = 2;
@@ -417,6 +408,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
         int missingPeriodCount = 0;
         int outsidePeriodCount = 0;
 
+        string parseFromDate =  AddYearsToPersianDate(normalizedFromDate, -1);
         foreach (
             CodalLetterDto letter in
             letters.OrderBy(letter =>
@@ -540,7 +532,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             if (
                 string.CompareOrdinal(
                     periodDate,
-                    normalizedFromDate) < 0 ||
+                    parseFromDate) < 0 ||
                 string.CompareOrdinal(
                     periodDate,
                     normalizedToDate) > 0)

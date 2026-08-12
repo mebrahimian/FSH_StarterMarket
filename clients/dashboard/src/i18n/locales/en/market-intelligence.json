@@ -1,4 +1,13 @@
 {
+  "actions": {
+    "close": "Close"
+  },
+  "salesTable": {
+    "period": "Period",
+    "monthSales": "Monthly sales",
+    "yearToDate": "Year-to-date sales",
+    "previousYearToDate": "Previous year-to-date"
+  },
   "filters": {
     "reportType": "Activity type",
     "reportLet": "Letter Category",
@@ -33,9 +42,12 @@
     "other": "Other"
   },
   "healthCenter": {
-    "title": "Sedaf Bourse Health Center",
+    "title": "Sadaf Bourse Health Center",
     "eyebrow": "Market Intelligence · Data Health",
     "subtitle": "Monitor data coverage, quality, market data health, and recovery tools",
+    "dataQualityChecking": "Checking data quality...",
+    "viewSales": "View sales",
+    "fiscalYearSalesTitle": "Fiscal year sales {{symbol}} —",
     "stats": {
       "disclosures": "Disclosures",
       "activeSymbols": "Active Symbols",
@@ -46,15 +58,27 @@
       "needsReview": "Needs Review"
     },
     "recentDisclosures": "The Latest Codal Disclosures",
+    "dataQualityIssues": "Data Quality Issues",
     "gapFailedMissing": "Gap / Failed / Missing",
     "backfill": {
       "title": "Symbol Data Recovery",
       "description": "Run Symbol Backfill for a specific symbol and date range",
       "symbol": "Symbol",
-      "symbolPlaceholder": "e.g. Vesaba",
+      "symbolPlaceholder": "e.g. Ghebshahr",
       "fromDate": "From Date",
       "toDate": "To Date",
-      "run": "Run Symbol Backfill"
+      "run": "Run Symbol Backfill",
+      "send": "Transfering ...",
+      "queued": "Job was successfully queued. JobId: {{jobId}}",
+      "queueError": "Failed to queue the Backfill job.",
+      "finishedWithStatus": "Backfill finished with status {{status}}.",
+      "validationRequired": "Symbol, from date, and to date are required.",
+      "runAll": "Backfill all affected symbols",
+      "bulkRunning": "Queuing jobs...",
+      "noIssues": "No affected symbols found.",
+      "bulkProgress": "{{queued}} of {{total}} symbols queued. Failed: {{failed}}",
+      "bulkFinished": "Job queueing completed. Queued: {{queued}}, Failed: {{failed}}",
+      "bulkCurrent": "Backfilling {{symbol}} — {{completed}} of {{total}} completed"
     }
   }
 }

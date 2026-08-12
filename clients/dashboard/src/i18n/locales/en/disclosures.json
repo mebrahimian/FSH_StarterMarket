@@ -45,12 +45,14 @@
     "publishDate": "Publish date",
     "published": "Published",
     "sentDate": "Sent date",
+    "endYearDate": "End Year Date",
     "letterCode": "Letter code",
     "reportType": "Report type",
     "formats": "Formats",
     "parseStatus": "Parse status",
     "tracingNo": "Tracing number",
-    "actions": "Actions"
+    "actions": "Actions",
+    "discrepancy": "Discrepancy"
   },
   "formats": {
     "html": "HTML",

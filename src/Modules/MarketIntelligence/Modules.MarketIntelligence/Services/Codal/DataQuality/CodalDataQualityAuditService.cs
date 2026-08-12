@@ -1,7 +1,10 @@
-﻿using FSH.Modules.MarketIntelligence.Data;
+﻿using FSH.Framework.Shared.Utilities;
+using FSH.Modules.MarketIntelligence.Contracts.Dtos;
+using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
+using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -187,6 +190,22 @@ public sealed class CodalDataQualityAuditService(
                     summary.PreviousYearToDateAmount,
                 })
                 .ToListAsync(cancellationToken);
+        var monthlyDisclosures =
+    await dbContext.Disclosures
+        .AsNoTracking()
+        .Where(disclosure =>
+            disclosure.Let == 58 ||
+            (disclosure.Let == 8 &&
+             disclosure.Rt == 2))
+        .Select(disclosure => new
+        {
+            disclosure.Symbol,
+            disclosure.Title,
+            disclosure.PublishDateTimeRaw,
+        })
+        .ToListAsync(cancellationToken)
+        .ConfigureAwait(false);
+
         var persianCalendar =
     new PersianCalendar();
 
@@ -250,6 +269,55 @@ public sealed class CodalDataQualityAuditService(
                     previousYearPrefix)));
         HashSet<string> requiredPeriodSet = requiredPeriods.ToHashSet(
                                 StringComparer.Ordinal);
+        var disclosurePeriodDetails =
+    monthlyDisclosures
+        .Where(disclosure =>
+            !string.IsNullOrWhiteSpace(
+                disclosure.Symbol))
+        .Select(disclosure => new
+        {
+            disclosure.Symbol,
+            PeriodEndDate =
+                PersianDateTextParser.TryExtract(
+                    disclosure.Title),
+            PublishDate =
+                PersianDateTextParser.TryExtract(
+                    disclosure.PublishDateTimeRaw),
+        })
+        .Where(item =>
+            item.PeriodEndDate is not null &&
+            item.PeriodEndDate.Length >= 7)
+        .Select(item => new
+        {
+            Symbol = item.Symbol!,
+            PeriodEndDate = item.PeriodEndDate!,
+            Period = item.PeriodEndDate![..7],
+            item.PublishDate,
+        })
+        .Where(item =>
+            requiredPeriodSet.Contains(
+                item.Period))
+        .GroupBy(item => (
+            item.Symbol,
+            item.Period))
+        .ToDictionary(
+            group => group.Key,
+            group =>
+            {
+                var item = group
+                    .OrderByDescending(x =>
+                        x.PublishDate)
+                    .First();
+
+                return new CodalMissingPeriod(
+                    item.PeriodEndDate,
+                    item.PublishDate);
+            });
+
+        var disclosurePeriods =
+            disclosurePeriodDetails.Keys.ToHashSet();
+
+
 
         Dictionary<string, HashSet<string>>
             coveragePeriodsBySymbol =
@@ -277,9 +345,11 @@ public sealed class CodalDataQualityAuditService(
                             .ToHashSet(
                                 StringComparer.Ordinal),
                         StringComparer.Ordinal);
+        var codalConfirmedPeriods =  new HashSet<(string Symbol, string Period)>();
+        var codalPeriodDetails =    new Dictionary<(string Symbol, string Period), CodalMissingPeriod>();
 
-        List<CodalSymbolCoverageGap> coverageGaps =
-            [];
+
+        List<CodalSymbolCoverageGap> coverageGaps = [];
 
         foreach (string symbol in activeSymbols)
         {
@@ -291,8 +361,17 @@ public sealed class CodalDataQualityAuditService(
                 symbolPeriods = [];
             }
 
+            string[] reportedPeriodsForSymbol =
+                disclosurePeriods
+                    .Where(item =>
+                        item.Symbol == symbol)
+                    .Select(item =>
+                        item.Period)
+                    .OrderBy(period => period)
+                    .ToArray();
+
             string[] missingPeriods =
-                requiredPeriods
+                reportedPeriodsForSymbol
                     .Where(period =>
                         !symbolPeriods.Contains(period))
                     .ToArray();
@@ -303,8 +382,9 @@ public sealed class CodalDataQualityAuditService(
             }
 
             string[] availablePeriodsForSymbol =
-                symbolPeriods
-                    .OrderBy(period => period)
+                reportedPeriodsForSymbol
+                    .Where(period =>
+                        symbolPeriods.Contains(period))
                     .ToArray();
 
             coverageGaps.Add(
@@ -328,33 +408,25 @@ public sealed class CodalDataQualityAuditService(
 
                     MissingPeriods =
                         missingPeriods,
+
+                    MissingPeriodDetails =
+                        missingPeriods
+                            .Select(period =>
+                                disclosurePeriodDetails[
+                                    (symbol, period)])
+                            .ToArray(),
                 });
         }
         var summaryQuality =
             new CodalSummaryQuality
             {
-                TotalSummaries =
-                    await summaries.CountAsync(
-                        cancellationToken),
-
-                MissingSourceDisclosure =
-                    missingSourceDisclosure,
-
-                SourceIdentityMismatch =
-                    sourceIdentityMismatch,
-
-                SourceSymbolMismatch =
-                    sourceSymbolMismatch,
-
-                SourcePublishDateMismatch =
-                    sourcePublishDateMismatch,
-
-                SourceStatusNotSuccess =
-                    sourceStatusNotSuccess,
-
-                DuplicateSymbolPeriods =
-                    duplicateSymbolPeriods,
-
+                TotalSummaries = await summaries.CountAsync(cancellationToken),
+                MissingSourceDisclosure = missingSourceDisclosure,
+                SourceIdentityMismatch = sourceIdentityMismatch,
+                SourceSymbolMismatch = sourceSymbolMismatch,
+                SourcePublishDateMismatch = sourcePublishDateMismatch,
+                SourceStatusNotSuccess = sourceStatusNotSuccess,
+                DuplicateSymbolPeriods = duplicateSymbolPeriods,
                 MissingPeriodAmount =
                     await summaries.CountAsync(
                         summary =>
@@ -434,4 +506,7 @@ public sealed class CodalDataQualityAuditService(
             })
             .ToArray();
     }
+    
+    
+
 }
