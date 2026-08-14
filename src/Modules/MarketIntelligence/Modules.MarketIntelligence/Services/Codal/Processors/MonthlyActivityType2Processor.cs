@@ -339,7 +339,13 @@ public sealed class MonthlyActivityType2Processor(
                         request,
                         HttpCompletionOption.ResponseHeadersRead,
                         cancellationToken);
-
+                if ((int)response.StatusCode == 490)
+                {
+                    throw new HttpRequestException(
+                        "Codal rate limit/security verification triggered (HTTP 490).",
+                        null,
+                        response.StatusCode);
+                }
                 response.EnsureSuccessStatusCode();
 
                 return await response.Content.ReadAsStringAsync(

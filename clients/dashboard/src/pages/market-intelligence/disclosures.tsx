@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
 import {
     useEffect,
+    useRef,
     useState,
+    type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
     keepPreviousData,
@@ -9,6 +11,7 @@ import {
 } from "@tanstack/react-query";
 import {
     AlertTriangle,
+    ChartNoAxesCombined,
     ExternalLink,
     FileText,
     Newspaper,
@@ -16,10 +19,12 @@ import {
     Search,
 } from "lucide-react";
 import {
+    getFiscalYearSales,
     searchDisclosures,
     type DisclosureDto,
     type DisclosureParseStatus,
     type DisclosureSortBy,
+    type FiscalYearSales,
 } from "@/api/market-intelligence";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,18 +63,38 @@ const sortOptions: Array<{ value: DisclosureSortBy; labelKey: string; }> =
 
 export function DisclosuresPage() {
     const { t } = useTranslation("disclosures");
+    const { t: tMarket } = useTranslation("marketIntelligence");
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
     const [rtFilter, setRtFilter] = useState("");
     const [letFilter, setLetFilter] = useState("");
-    const [statusFilter, setStatusFilter] =
-        useState<DisclosureParseStatus | null>(null);
-    const [sortBy, setSortBy] =
-        useState<DisclosureSortBy>("publishDateTime");
-    const [sortDir, setSortDir] =
-        useState<"asc" | "desc">("desc");
+    const [statusFilter, setStatusFilter] = useState<DisclosureParseStatus | null>(null);
+    const [sortBy, setSortBy] = useState<DisclosureSortBy>("publishDateTime");
+    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+    const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
+    const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
+    const [salesWindowOffset, setSalesWindowOffset] =
+        useState({ x: 0, y: 0 });
 
+    const salesWindowDragRef = useRef<{
+        startX: number;
+        startY: number;
+        offsetX: number;
+        offsetY: number;
+    } | null>(null);
+    const handleSalesClick = async (
+        symbol: string,
+        title: string,
+    ) => {
+        const result = await getFiscalYearSales(
+            symbol,
+            title,
+        );
+
+        setFiscalYearSales(result);
+        setIsSalesDialogOpen(true);
+    };
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(search.trim());
@@ -88,6 +113,61 @@ export function DisclosuresPage() {
         sortBy,
         sortDir,
     ]);
+    const handleSalesWindowPointerDown = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        if (event.button !== 0) {
+            return;
+        }
+
+        event.currentTarget.setPointerCapture(
+            event.pointerId,
+        );
+
+        salesWindowDragRef.current = {
+            startX: event.clientX,
+            startY: event.clientY,
+            offsetX: salesWindowOffset.x,
+            offsetY: salesWindowOffset.y,
+        };
+    };
+
+    const handleSalesWindowPointerMove = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        const drag = salesWindowDragRef.current;
+
+        if (!drag) {
+            return;
+        }
+
+        setSalesWindowOffset({
+            x:
+                drag.offsetX +
+                event.clientX -
+                drag.startX,
+            y:
+                drag.offsetY +
+                event.clientY -
+                drag.startY,
+        });
+    };
+
+    const handleSalesWindowPointerUp = (
+        event: ReactPointerEvent<HTMLDivElement>,
+    ) => {
+        if (
+            event.currentTarget.hasPointerCapture(
+                event.pointerId,
+            )
+        ) {
+            event.currentTarget.releasePointerCapture(
+                event.pointerId,
+            );
+        }
+
+        salesWindowDragRef.current = null;
+    };
     const selectedLetterCategory =
         codalLetterCategoryOptions.find(
             (category) =>
@@ -216,10 +296,11 @@ export function DisclosuresPage() {
                     onClear={clearFilters}
                 />
             ) : (
-                <DisclosureResults
-                    items={items}
-                    totalCount={data?.totalCount ?? 0}
-                />
+                   <DisclosureResults
+                       items={items}
+                       totalCount={data?.totalCount ?? 0}
+                       onSalesClick={handleSalesClick}
+                   />
             )}
 
             {items.length > 0 && (
@@ -240,7 +321,127 @@ export function DisclosuresPage() {
                     }
                 />
             )}
+            {isSalesDialogOpen && fiscalYearSales && (
+                <div
+                    className="text-center fixed left-1/2 top-20 z-50 w-[min(600px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl"
+                    style={{
+                        transform: `translate(calc(-50% + ${salesWindowOffset.x}px), ${salesWindowOffset.y}px)`,
+                    }}
+                >
+                    <div
+                        onPointerDown={
+                            handleSalesWindowPointerDown
+                        }
+                        onPointerMove={
+                            handleSalesWindowPointerMove
+                        }
+                        onPointerUp={
+                            handleSalesWindowPointerUp
+                        }
+                        onPointerCancel={
+                            handleSalesWindowPointerUp
+                        }
+                        className="relative flex touch-none select-none items-center justify-center border-b border-[var(--color-border)] px-4 py-3 cursor-grab active:cursor-grabbing"
+                    >
+                        <div className="text-center font-semibold">
+                            {tMarket(
+                                "healthCenter.fiscalYearSalesTitle",
+                                {
+                                    symbol:
+                                        fiscalYearSales.symbol,
+                                },
+                            )}{" "}
+                            <span dir="ltr">
+                                {fiscalYearSales.yearEndDate}
+                            </span>
+                        </div>
 
+                        <button
+                            type="button"
+                            onPointerDown={(event) =>
+                                event.stopPropagation()
+                            }
+                            onClick={() =>
+                                setIsSalesDialogOpen(false)
+                            }
+                            className="absolute left-3 grid size-8 place-items-center rounded-md text-xl leading-none text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+                            aria-label={tMarket(
+                                "actions.close",
+                            )}
+                            title={tMarket(
+                                "actions.close",
+                            )}
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    <div className="max-h-[70vh] overflow-auto p-4">
+                        <table className="w-full border-collapse text-center text-sm">
+                            <thead>
+                                <tr className="border-b text-xs font-semibold text-[var(--color-muted-foreground)]">
+                                    <th className="px-3 py-2">
+                                        {tMarket(
+                                            "salesTable.period",
+                                        )}
+                                    </th>
+
+                                    <th className="px-3 py-2">
+                                        {tMarket(
+                                            "salesTable.monthSales",
+                                        )}
+                                    </th>
+
+                                    <th className="px-3 py-2">
+                                        {tMarket(
+                                            "salesTable.yearToDate",
+                                        )}
+                                    </th>
+
+                                    <th className="px-3 py-2">
+                                        {tMarket(
+                                            "salesTable.previousYearToDate",
+                                        )}
+                                    </th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {fiscalYearSales.rows.map(
+                                    (row) => (
+                                        <tr
+                                            key={row.periodEndDate}
+                                            className="border-b last:border-0"
+                                        >
+                                            <td
+                                                dir="ltr"
+                                                className="px-3 py-2 tabular-nums"
+                                            >
+                                                {row.periodEndDate}
+                                            </td>
+
+                                            <td className="px-3 py-2 tabular-nums">
+                                                {row.periodAmount?.toLocaleString() ??
+                                                    "—"}
+                                            </td>
+
+                                            <td className="px-3 py-2 tabular-nums">
+                                                {row.yearToDateAmount?.toLocaleString() ??
+                                                    "—"}
+                                            </td>
+
+                                            <td className="px-3 py-2 tabular-nums">
+                                                {row.previousYearToDateAmount?.toLocaleString() ??
+                                                    "—"}
+                                            </td>
+                                        </tr>
+                                    ),
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
             {query.isError && (
                 <div
                     role="alert"
@@ -433,11 +634,15 @@ function FilterRow({
 function DisclosureResults({
     items,
     totalCount,
+    onSalesClick,
 }: {
     items: DisclosureDto[];
     totalCount: number;
-}) {
-    const { t, i18n } = useTranslation("disclosures");
+    onSalesClick: (
+        symbol: string,
+        title: string,
+    ) => Promise<void>;
+}) {    const { t, i18n } = useTranslation("disclosures");
     const numberLocale =
         i18n.resolvedLanguage
             ?.toLowerCase()
@@ -465,12 +670,13 @@ function DisclosureResults({
 
             <div className="hidden overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs md:block">
                 <div className="min-w-[1050px]">
-                    <div className="grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_120px_50px] gap-3 border-b border-[var(--color-border)] bg-[oklch(from_var(--color-muted)_l_c_h_/_0.4)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                    <div className="grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_120px_80px] gap-3 border-b border-[var(--color-border)] bg-[oklch(from_var(--color-muted)_l_c_h_/_0.4)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
                         <span> {t("table.symbol")} / {t("table.company")} </span>
                         <span> {t("table.disclosure")}</span>
                         <span>{t("table.published")}</span>
                         <span>Type</span>
                         <span>{t("table.parseStatus")}</span>
+                        <span className="text-center">عملیات</span>
 
                     </div>
 
@@ -479,6 +685,7 @@ function DisclosureResults({
                             key={disclosure.id}
                             disclosure={disclosure}
                             isLast={index === items.length - 1}
+                            onSalesClick={onSalesClick}
                         />
                     ))}
                 </div>
@@ -490,20 +697,29 @@ function DisclosureResults({
 function DesktopRow({
     disclosure,
     isLast,
+    onSalesClick,
 }: {
     disclosure: DisclosureDto;
     isLast: boolean;
+    onSalesClick: (
+        symbol: string,
+        title: string,
+    ) => Promise<void>;
 }) {
     const codalUrl = toCodalUrl(disclosure.url);
 
     return (
         <div
             className={cn(
-                "group grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_120px_50px] items-center gap-3 px-5 py-3 transition-colors",
+                "group grid items-center gap-3 px-5 py-3 transition-colors",
                 "hover:bg-[oklch(from_var(--color-accent)_l_c_h_/_0.4)]",
                 !isLast &&
                 "border-b border-[oklch(from_var(--color-border)_l_c_h_/_0.3)]",
             )}
+            style={{
+                gridTemplateColumns:
+                    "150px minmax(300px, 1fr) 170px 110px 120px 80px",
+            }}
         >
             <div className="min-w-0">
                 <div
@@ -557,20 +773,40 @@ function DesktopRow({
             <StatusChip
                 status={disclosure.salesParseStatus}
             />
+            <div className="grid grid-cols-[32px_32px] items-center justify-end gap-1">
+                <div className="grid size-8 place-items-center">
+                    {hasFiscalDate(disclosure.title) && (
+                        <button
+                            type="button"
+                            onClick={() =>
+                                void onSalesClick(
+                                    disclosure.symbol,
+                                    disclosure.title,
+                                )
+                            }
+                            title="مشاهده فروش"
+                            className="grid size-8 place-items-center rounded-md text-[var(--color-success)] transition-colors hover:bg-[var(--color-muted)]"
+                        >
+                            <ChartNoAxesCombined className="size-[22px]" />
+                        </button>
+                    )}
+                </div>
 
-            <div className="flex justify-end">
-                {codalUrl && (
-                    <a
-                        href={codalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={`Open ${disclosure.symbol} on Codal`}
-                        className="grid size-8 place-items-center rounded-md text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-primary)]"
-                    >
-                        <ExternalLink className="size-4" />
-                    </a>
-                )}
+                <div className="grid size-8 place-items-center">
+                    {codalUrl && (
+                        <a
+                            href={codalUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Open ${disclosure.symbol} on Codal`}
+                            className="grid size-8 place-items-center rounded-md text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-primary)]"
+                        >
+                            <ExternalLink className="size-4" />
+                        </a>
+                    )}
+                </div>
             </div>
+            
         </div>
     );
 }
@@ -773,6 +1009,12 @@ function LoadingList() {
     );
 }
 
+function hasFiscalDate(
+    title: string | null | undefined,
+): boolean {
+    return /[0-9۰-۹]{4}\/[0-9۰-۹]{2}\/[0-9۰-۹]{2}/
+        .test(title ?? "");
+}
 function toOptionalNumber(
     value: string,
 ): number | null {

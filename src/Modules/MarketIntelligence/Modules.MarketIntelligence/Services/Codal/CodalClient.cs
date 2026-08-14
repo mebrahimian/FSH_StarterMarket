@@ -8,10 +8,14 @@ namespace FSH.Modules.MarketIntelligence.Services.Codal;
 public sealed class CodalClient : ICodalClient
 {
     private readonly HttpClient _httpClient;
+    private readonly CodalRequestGate _requestGate;
 
-    public CodalClient(HttpClient httpClient)
+    public CodalClient(
+        HttpClient httpClient,
+        CodalRequestGate requestGate)
     {
         _httpClient = httpClient;
+        _requestGate = requestGate;
     }
 
     public async Task<CodalSearchResponse> SearchAsync(
@@ -53,9 +57,10 @@ public sealed class CodalClient : ICodalClient
         {
             try
             {
-                response = await _httpClient.GetFromJsonAsync<CodalSearchResponse>(
-                    url,
-                    cancellationToken);
+                response = await _requestGate.ExecuteAsync(
+                                   ct => _httpClient.GetFromJsonAsync<CodalSearchResponse>(
+                                                 url,
+                                                 ct), cancellationToken);
 
                 break;
             }
@@ -74,6 +79,11 @@ public sealed class CodalClient : ICodalClient
                 {
                     throw;
                 }
+            }
+            catch (HttpRequestException ex)
+                      when ((int?)ex.StatusCode == 490)
+            {
+                throw;
             }
             catch (HttpRequestException ex)
             {

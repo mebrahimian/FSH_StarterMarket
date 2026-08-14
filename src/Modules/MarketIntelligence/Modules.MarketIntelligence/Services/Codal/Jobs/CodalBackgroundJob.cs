@@ -1,4 +1,5 @@
 ﻿using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+using Hangfire;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 
@@ -18,6 +19,7 @@ public sealed class CodalBackgroundJob(
         return collectorService
             .CollectBackfillAsync(cancellationToken);
     }
+    [AutomaticRetry(Attempts = 0)]
     public Task RunSymbolBackfillAsync(string symbol, string fromDate, string toDate)
     {
         return collectorService

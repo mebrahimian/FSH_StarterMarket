@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
+    "skipLibCheck": true,
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": [ "ES2023", "DOM", "DOM.Iterable" ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -19,9 +20,9 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [ "./src/*" ]
     },
-    "types": ["vite/client"]
+    "types": [ "vite/client" ]
   },
   "include": ["src"]
 }

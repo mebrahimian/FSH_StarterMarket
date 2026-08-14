@@ -39,20 +39,38 @@ import {
 
 
 import { useTranslation } from "react-i18next";
-import DatePicker from "react-multi-date-picker";
 import DateObject from "react-date-object";
+import DatePicker from "react-multi-date-picker";
+
 import persian from "react-date-object/calendars/persian";
 import persianFa from "react-date-object/locales/persian_fa";
+import type { ComponentType } from "react";
+import type { Calendar, Locale } from "react-date-object";
+type PersianDatePickerProps = {
+    value: DateObject | null;
+    onChange: (value: DateObject | null) => void;
+    calendar: Calendar | Omit<Calendar, "leapsLength">;
+    locale: Locale;
+    format?: string;
+    calendarPosition?: string;
+    inputClass?: string;
+    fixRelativePosition?: boolean
+    containerClassName?: string;
+    disabled?: boolean;
+    placeholder?: string;
+};
 
+const PersianDatePicker =
+    DatePicker as unknown as ComponentType<PersianDatePickerProps>;
 import {
     codalLetterCategoryOptions,
 } from "@/lib/market-intelligence/codal-letter-categories";
 
 export function MarketHealthCenterPage() {
-    const [rtFilter, setRtFilter] = useState("");
-    const [letFilter, setLetFilter] = useState("");
-    const [sortBy, setSortBy] = useState<DisclosureSortBy>("publishDateTime");
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+    const [rtFilter, ] = useState("");
+    const [letFilter, ] = useState("");
+    const [sortBy, ] = useState<DisclosureSortBy>("publishDateTime");
+    const [sortDir, ] = useState<"asc" | "desc">("desc");
     const [fiscalYearSales, setFiscalYearSales] =
         useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
@@ -66,7 +84,6 @@ export function MarketHealthCenterPage() {
     const {
         data: dataQualityIssues = [],
         isLoading: isDataQualityIssuesLoading,
-        isFetching: isDataQualityIssuesFetching,
         refetch: refetchDataQualityIssues,
     } = useQuery<DataQualityIssue[]>({
         queryKey: ["market-intelligence", "data-quality-issues"],
@@ -207,7 +224,7 @@ export function MarketHealthCenterPage() {
     };
     const { t } = useTranslation("disclosures");
     const { t: tMarket } = useTranslation("marketIntelligence");
-    const [statusFilter, setStatusFilter] = useState<DisclosureParseStatus | null>(null);
+    const [statusFilter, ] = useState<DisclosureParseStatus | null>(null);
     const [bulkBackfillRunning, setBulkBackfillRunning] =
         useState(false);
 
@@ -361,29 +378,69 @@ export function MarketHealthCenterPage() {
                 (resolve) =>
                     window.setTimeout(
                         resolve,
-                        15_000,
+                        2_000,
                     ),
             );
         }
     };
     const handleQueueAllBackfills = async () => {
-        const uniqueSymbols = Array.from(
-            new Set(
-                [
-                    ...rule0Issues,
-                    ...dataQualityIssues,
-                ]
-                    .map((issue) =>
-                        issue.symbol?.trim(),
-                    )
-                    .filter(
-                        (symbol): symbol is string =>
-                            Boolean(symbol),
-                    ),
-            ),
-        ).sort();
+        const issueRanges = new Map<
+            string,
+            {
+                fromDate: string;
+                toDate: string;
+            }
+        >();
 
-        if (uniqueSymbols.length === 0) {
+        for (const issue of [
+            ...rule0Issues,
+            ...dataQualityIssues,
+        ]) {
+            const symbol = issue.symbol?.trim();
+
+            const publishDate =
+                issue.publishDate?.trim();
+
+            if (!symbol || !publishDate) {
+                continue;
+            }
+
+            const date = publishDate;
+
+            const current =
+                issueRanges.get(symbol);
+
+            if (!current) {
+                issueRanges.set(symbol, {
+                    fromDate: date,
+                    toDate: date,
+                });
+
+                continue;
+            }
+
+            if (date < current.fromDate) {
+                current.fromDate = date;
+            }
+
+            if (date > current.toDate) {
+                current.toDate = date;
+            }
+        }
+
+        const backfillItems =
+            Array.from(issueRanges.entries())
+                .map(
+                    ([
+                        symbol,
+                        range,
+                    ]) => ({
+                        symbol,
+                        ...range,
+                    }),
+                );
+
+        if (backfillItems.length === 0) {
             setBulkBackfillMessage(
                 tMarket(
                     "healthCenter.backfill.noIssues",
@@ -399,24 +456,29 @@ export function MarketHealthCenterPage() {
         let failed = 0;
 
         try {
-            for (const symbol of uniqueSymbols) {
+            for (const item of backfillItems) {
                 try {
                     setBulkBackfillMessage(
                         tMarket(
                             "healthCenter.backfill.bulkCurrent",
                             {
-                                symbol,
-                                completed: queued + failed,
-                                total: uniqueSymbols.length,
+                                symbol: item.symbol,
+                                completed:
+                                    queued +
+                                    failed,
+                                total:
+                                    backfillItems.length,
                             },
                         ),
                     );
 
                     const result =
                         await queueCodalSymbolBackfill({
-                            symbol,
-                            fromDate: "1400/01/01",
-                            toDate: "1405/05/21",
+                            symbol: item.symbol,
+                            fromDate:
+                                item.fromDate,
+                            toDate:
+                                item.toDate,
                         });
 
                     const succeeded =
@@ -540,7 +602,6 @@ export function MarketHealthCenterPage() {
                         </div>
                     ) : (
                             [...rule0Issues, ...dataQualityIssues]
-                                .slice(0, 12)
                                 .map((issue) => {
                             const issueDescription =
                                 `اشکال در اعلامیه کدال ${issue.periodEndDate ?? "—"}`;
@@ -632,7 +693,7 @@ export function MarketHealthCenterPage() {
                     </label>
 
                     <label>
-                        <DatePicker
+                        <PersianDatePicker
                             value={backfillFromDate}
                             onChange={(value) =>
                                 setBackfillFromDate(
@@ -651,7 +712,7 @@ export function MarketHealthCenterPage() {
                     </label>
 
                     <label>
-                        <DatePicker
+                        <PersianDatePicker
                             value={backfillToDate}
                             onChange={(value) =>
                                 setBackfillToDate(

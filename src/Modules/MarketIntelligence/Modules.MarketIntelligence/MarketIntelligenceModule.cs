@@ -11,6 +11,7 @@ using FSH.Modules.MarketIntelligence.Features.v1.DataQualityIssues;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Services.Codal;
+using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
@@ -38,8 +39,11 @@ namespace FSH.Modules.MarketIntelligence
 
             PermissionConstants.Register(MarketIntelligencePermissions.All);
 
+            builder.Services.Configure<CodalOptions>(
+                    builder.Configuration.GetSection(CodalOptions.SectionName));
             builder.Services.AddHeroDbContext<MarketIntelligenceDbContext>();
             builder.Services.AddScoped<IDbInitializer, MarketIntelligenceDbInitializer>();
+            builder.Services.AddSingleton<CodalRequestGate>();
             builder.Services.AddHttpClient<ICodalClient, CodalClient>(client =>
             {
                 client.Timeout = TimeSpan.FromMinutes(3);

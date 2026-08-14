@@ -3,6 +3,8 @@
     "0": {
       "MetaTableCode": 1197,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 6,
+        "AdjustmentAmount": 9,
         "PeriodAmount": 17,
         "YearToDateAmount": 21,
         "PreviousYearToDateAmount": 25
@@ -11,6 +13,8 @@
     "1": {
       "MetaTableCode": 3145,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 2,
+        "AdjustmentAmount": 3,
         "PeriodAmount": 5,
         "YearToDateAmount": 6
       }
@@ -18,6 +22,8 @@
     "2": {
       "MetaTableCode": 2568,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 2,
+        "AdjustmentAmount": 3,
         "PeriodAmount": 5,
         "YearToDateAmount": 6,
         "PreviousYearToDateAmount": 7
@@ -27,8 +33,9 @@
           "MetaTableCode": 3657,
           "UseColumnSum": true,
           "SelectedCells": {
+            "PreviousPeriodYearToDateAmount": 16,
             "PeriodAmount": 18,
-            "YearToDateAmount": 21            
+            "YearToDateAmount": 21
           }
         }
       ]
@@ -36,6 +43,8 @@
     "3": {
       "MetaTableCode": 2548,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 2,
+        "AdjustmentAmount": 3,
         "PeriodAmount": 5,
         "YearToDateAmount": 6,
         "PreviousYearToDateAmount": 7
@@ -44,6 +53,8 @@
     "4": {
       "MetaTableCode": 992,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 2,
+        "AdjustmentAmount": 3,
         "PeriodAmount": 5,
         "YearToDateAmount": 6
       }
@@ -51,6 +62,8 @@
     "5": {
       "MetaTableCode": 1704,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 3,
+        "AdjustmentAmount": 4,
         "PeriodAmount": 7,
         "YearToDateAmount": 8,
         "PreviousYearToDateAmount": 9
@@ -66,6 +79,8 @@
     "8": {
       "MetaTableCode": 1197,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 6,
+        "AdjustmentAmount": 9,
         "PeriodAmount": 17,
         "YearToDateAmount": 21,
         "PreviousYearToDateAmount": 25
@@ -74,6 +89,8 @@
     "9": {
       "MetaTableCode": 2162,
       "SelectedCells": {
+        "PreviousPeriodYearToDateAmount": 2,
+        "AdjustmentAmount": 3,
         "PeriodAmount": 5,
         "YearToDateAmount": 6,
         "PreviousYearToDateAmount": 7

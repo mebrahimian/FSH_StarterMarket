@@ -282,10 +282,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 nameof(fromDate));
         }
 
-        string searchFromDate =
-            AddYearsToPersianDate(
-                normalizedFromDate,
-                -2);
+        string searchFromDate = normalizedFromDate;
 
         string maximumSearchToDate =
             AddYearsToPersianDate(
