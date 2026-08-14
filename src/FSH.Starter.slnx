@@ -88,8 +88,7 @@
   </Folder>
   <!--#if (includeTools) -->
   <Folder Name="/Tools/">
-    <Project Path="FSH.MarketIntelligence.TemplateDiscovery/FSH.MarketIntelligence.TemplateDiscovery.csproj" Id="5ff4476b-9e92-4b04-89d8-144607136913" />
-    <Project Path="Tools/CLI/FSH.CLI.csproj" />
+     <Project Path="Tools/CLI/FSH.CLI.csproj" />
   </Folder>
   <!--#endif -->
 
