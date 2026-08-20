@@ -22,7 +22,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.Minio;
-using Testcontainers.PostgreSql;
+using Testcontainers.MsSql;
+using Microsoft.Data.SqlClient;
 
 namespace Integration.Tests.Infrastructure;
 
@@ -33,13 +34,11 @@ public sealed class FshWebApplicationFactory : WebApplicationFactory<Program>, I
     private const string MinioBucket = "fsh-integration-test-uploads";
 
     private static readonly SemaphoreSlim _migrationLock = new(1, 1);
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
-        .WithDatabase("fsh_integration_tests")
-        .WithUsername("postgres")
-        .WithPassword("integration_test_pwd")
-        .WithAutoRemove(true)
-        .WithCleanUp(true)
-        .Build();
+    private readonly MsSqlContainer _mssql = new MsSqlBuilder(
+        "mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
+    .WithAutoRemove(true)
+    .WithCleanUp(true)
+    .Build();
 
     private readonly MinioContainer _minio = new MinioBuilder("minio/minio:latest")
         .WithUsername(MinioAccessKey)
@@ -48,9 +47,14 @@ public sealed class FshWebApplicationFactory : WebApplicationFactory<Program>, I
         .WithCleanUp(true)
         .Build();
 
+   
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_postgres.StartAsync(), _minio.StartAsync());
+        await Task.WhenAll(_mssql.StartAsync(), _minio.StartAsync());
+
+        await _mssql.ExecScriptAsync(
+            "IF DB_ID(N'fsh_integration_tests') IS NULL CREATE DATABASE [fsh_integration_tests];");
+
         await CreateMinioBucketAsync();
 
         // Force host creation via the Server property (no leaked HttpClient)
@@ -72,12 +76,22 @@ public sealed class FshWebApplicationFactory : WebApplicationFactory<Program>, I
     public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
-        await _postgres.DisposeAsync();
+        await _mssql.DisposeAsync();
         await _minio.DisposeAsync();
     }
 
     /// <summary>The MinIO endpoint URL exposed to the host configuration; useful for tests that need to PUT bytes directly.</summary>
     public string MinioServiceUrl => _minio.GetConnectionString();
+
+    private string GetDatabaseConnectionString()
+    {
+        var builder = new SqlConnectionStringBuilder(_mssql.GetConnectionString())
+        {
+            InitialCatalog = "fsh_integration_tests"
+        };
+
+        return builder.ConnectionString;
+    }
 
     private async Task CreateMinioBucketAsync()
     {
@@ -113,9 +127,9 @@ public sealed class FshWebApplicationFactory : WebApplicationFactory<Program>, I
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DatabaseOptions:Provider"] = "POSTGRESQL",
-                ["DatabaseOptions:ConnectionString"] = _postgres.GetConnectionString(),
-                ["DatabaseOptions:MigrationsAssembly"] = "FSH.Starter.Migrations.PostgreSQL",
+                ["DatabaseOptions:Provider"] = "MSSQL",
+                          ["DatabaseOptions:ConnectionString"] = GetDatabaseConnectionString(),
+                          ["DatabaseOptions:MigrationsAssembly"] = "FSH.Starter.Migrations.MSSQL",
                 ["CachingOptions:Redis"] = "",
                 ["JwtOptions:Issuer"] = TestConstants.JwtIssuer,
                 ["JwtOptions:Audience"] = TestConstants.JwtAudience,
@@ -126,7 +140,6 @@ public sealed class FshWebApplicationFactory : WebApplicationFactory<Program>, I
                 ["OpenTelemetryOptions:Enabled"] = "false",
                 ["EventingOptions:UseHostedServiceDispatcher"] = "false",
                 ["Serilog:MinimumLevel:Default"] = "Warning",
-                ["Serilog:MinimumLevel:Override:Microsoft.EntityFrameworkCore"] = "Fatal",
                 ["Serilog:MinimumLevel:Override:Npgsql"] = "Fatal",
                 ["Serilog:WriteTo:0:Name"] = "Console",
                 ["Serilog:WriteTo:0:Args:restrictedToMinimumLevel"] = "Warning",

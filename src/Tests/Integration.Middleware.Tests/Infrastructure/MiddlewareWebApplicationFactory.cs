@@ -23,7 +23,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Testcontainers.Minio;
-using Testcontainers.PostgreSql;
+using Testcontainers.MsSql;
 
 namespace Integration.Middleware.Tests.Infrastructure;
 
@@ -47,13 +47,11 @@ public sealed class MiddlewareWebApplicationFactory : WebApplicationFactory<Prog
     private const string MinioBucket = "fsh-middleware-test-uploads";
 
     private static readonly SemaphoreSlim _migrationLock = new(1, 1);
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
-        .WithDatabase("fsh_middleware_tests")
-        .WithUsername("postgres")
-        .WithPassword("integration_test_pwd")
-        .WithAutoRemove(true)
-        .WithCleanUp(true)
-        .Build();
+    private readonly MsSqlContainer _mssql = new MsSqlBuilder(
+        "mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
+    .WithAutoRemove(true)
+    .WithCleanUp(true)
+    .Build();
 
     private readonly MinioContainer _minio = new MinioBuilder("minio/minio:latest")
         .WithUsername(MinioAccessKey)
@@ -78,7 +76,7 @@ public sealed class MiddlewareWebApplicationFactory : WebApplicationFactory<Prog
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_postgres.StartAsync(), _minio.StartAsync());
+        await Task.WhenAll(_mssql.StartAsync(), _minio.StartAsync());
         await CreateMinioBucketAsync();
 
         // Force host creation via the Server property (no leaked HttpClient)
@@ -100,7 +98,7 @@ public sealed class MiddlewareWebApplicationFactory : WebApplicationFactory<Prog
     public new async Task DisposeAsync()
     {
         await base.DisposeAsync();
-        await _postgres.DisposeAsync();
+        await _mssql.DisposeAsync();
         await _minio.DisposeAsync();
     }
 
@@ -141,9 +139,9 @@ public sealed class MiddlewareWebApplicationFactory : WebApplicationFactory<Prog
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["DatabaseOptions:Provider"] = "POSTGRESQL",
-                ["DatabaseOptions:ConnectionString"] = _postgres.GetConnectionString(),
-                ["DatabaseOptions:MigrationsAssembly"] = "FSH.Starter.Migrations.PostgreSQL",
+                ["DatabaseOptions:Provider"] = "MSSQL",
+                ["DatabaseOptions:ConnectionString"] = _mssql.GetConnectionString(),
+                ["DatabaseOptions:MigrationsAssembly"] = "FSH.Starter.Migrations.MSSQL",
                 ["CachingOptions:Redis"] = "",
                 ["JwtOptions:Issuer"] = TestConstants.JwtIssuer,
                 ["JwtOptions:Audience"] = TestConstants.JwtAudience,
@@ -155,7 +153,6 @@ public sealed class MiddlewareWebApplicationFactory : WebApplicationFactory<Prog
                 ["EventingOptions:UseHostedServiceDispatcher"] = "false",
                 ["Serilog:MinimumLevel:Default"] = "Warning",
                 ["Serilog:MinimumLevel:Override:Microsoft.EntityFrameworkCore"] = "Fatal",
-                ["Serilog:MinimumLevel:Override:Npgsql"] = "Fatal",
                 ["Serilog:WriteTo:0:Name"] = "Console",
                 ["Serilog:WriteTo:0:Args:restrictedToMinimumLevel"] = "Warning",
                 ["Serilog:WriteTo:1:Name"] = "",

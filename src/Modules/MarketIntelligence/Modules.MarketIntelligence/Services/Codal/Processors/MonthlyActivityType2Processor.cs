@@ -75,54 +75,61 @@ public sealed class MonthlyActivityType2Processor(
             Uri reportUri = BuildReportUri(disclosure.Url);
 
             string html = await DownloadHtmlWithRetryAsync(
-                    reportUri,
-                    cancellationToken);
+                reportUri,
+                cancellationToken);
 
-            CodalCellResult? periodCell =
+            // فقط برای گرفتن PeriodEndToDate و YearEndToDate.
+            // Value این سلول در ماه اول قابل استفاده نیست.
+            CodalCellResult? metadataCell =
                 CodalCellReader.FindCellValue(
                     html,
                     definition.MetaTableCode,
                     definition.SelectedCells["PeriodAmount"]);
+
+            if (metadataCell is null ||
+                string.IsNullOrWhiteSpace(metadataCell.PeriodEndToDate) ||
+                string.IsNullOrWhiteSpace(metadataCell.YearEndToDate))
+            {
+                disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
+                disclosure.SalesParsedAt = DateTime.UtcNow;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                return;
+            }
+
+            string periodEndToDate = metadataCell.PeriodEndToDate!;
+            string yearEndToDate = metadataCell.YearEndToDate!;
+
+            bool isFirstFiscalMonth =
+                IsFirstFiscalMonth(
+                    periodEndToDate,
+                    yearEndToDate);
+
+            int periodColumn =
+                definition.SelectedCells["PeriodAmount"];
+                        
+            CodalCellResult? periodCell =
+                CodalCellReader.FindCellValue(
+                    html,
+                    definition.MetaTableCode,
+                    periodColumn);
+
             CodalCellResult? periodCellPlus2 =
                 CodalCellReader.FindCellValue(
                     html,
                     definition.MetaTableCode,
-                    definition.SelectedCells["PeriodAmount"] + 2);
+                    periodColumn + 2);
 
-            CodalCellResult? yearToDateCell =
-                CodalCellReader.FindCellValue(
-                    html,
-                    definition.MetaTableCode,
-                    definition.SelectedCells["YearToDateAmount"]);
-            CodalCellResult? yearToDateCellPlus2 =
-                CodalCellReader.FindCellValue(
-                    html,
-                    definition.MetaTableCode,
-                    definition.SelectedCells["YearToDateAmount"] + 2);
-
-            if (periodCell is null || yearToDateCell is null)
+            if (periodCell is null ||
+                periodCellPlus2 is null)
             {
                 disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
-
-                disclosure.SalesParsedAt =  DateTime.UtcNow;
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                return;
-            }
-            if (periodCellPlus2 is null || yearToDateCellPlus2 is null)
-            {
-                disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
-
                 disclosure.SalesParsedAt = DateTime.UtcNow;
+
                 await dbContext.SaveChangesAsync(cancellationToken);
 
                 return;
-            }
-
-            if (string.IsNullOrWhiteSpace(periodCell.PeriodEndToDate))
-            {
-                throw new InvalidOperationException(
-                    $"Period end date was not found for disclosure {disclosure.TracingNo}.");
             }
 
             if (string.IsNullOrWhiteSpace(disclosure.Symbol))
@@ -130,25 +137,68 @@ public sealed class MonthlyActivityType2Processor(
                 throw new InvalidOperationException(
                     $"Disclosure {disclosure.TracingNo} does not have a symbol.");
             }
-           
-            decimal periodAmount = ParseDecimal(periodCell.Value,
-                                                disclosure.Symbol,
-                                                disclosure.PublishDateTimeRaw,
-                                                "PeriodBimeh") -
-                                   ParseDecimal(periodCellPlus2.Value,
-                                                disclosure.Symbol,
-                                                disclosure.PublishDateTimeRaw,
-                                                "PeriodKhesarat");
-            
-                
-            decimal yearToDateAmount = ParseDecimal(yearToDateCell.Value,
-                                                    disclosure.Symbol,
-                                                    disclosure.PublishDateTimeRaw,
-                                                    "YearToDateBimeh") -
-                                       ParseDecimal(yearToDateCellPlus2.Value,
-                                                    disclosure.Symbol,
-                                                    disclosure.PublishDateTimeRaw,
-                                                    "YearToDateBimeh");
+
+            decimal periodAmount =
+                ParseDecimal(
+                    periodCell.Value,
+                    disclosure.Symbol,
+                    disclosure.PublishDateTimeRaw,
+                    "PeriodBimeh")
+                -
+                ParseDecimal(
+                    periodCellPlus2.Value,
+                    disclosure.Symbol,
+                    disclosure.PublishDateTimeRaw,
+                    "PeriodKhesarat");
+
+            CodalCellResult yearToDateCell;
+            decimal yearToDateAmount;
+
+            if (isFirstFiscalMonth)
+            {
+                yearToDateCell = periodCell;
+                yearToDateAmount = periodAmount;
+            }
+            else
+            {
+                CodalCellResult? currentYearToDateCell =
+                    CodalCellReader.FindCellValue(
+                        html,
+                        definition.MetaTableCode,
+                        definition.SelectedCells["YearToDateAmount"]);
+
+                CodalCellResult? yearToDateCellPlus2 =
+                    CodalCellReader.FindCellValue(
+                        html,
+                        definition.MetaTableCode,
+                        definition.SelectedCells["YearToDateAmount"] + 2);
+
+                if (currentYearToDateCell is null ||
+                    yearToDateCellPlus2 is null)
+                {
+                    disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+
+                    return;
+                }
+
+                yearToDateCell = currentYearToDateCell;
+
+                yearToDateAmount =
+                    ParseDecimal(
+                        currentYearToDateCell.Value,
+                        disclosure.Symbol,
+                        disclosure.PublishDateTimeRaw,
+                        "YearToDateBimeh")
+                    -
+                    ParseDecimal(
+                        yearToDateCellPlus2.Value,
+                        disclosure.Symbol,
+                        disclosure.PublishDateTimeRaw,
+                        "YearToDateKhesarat");
+            }
 
             decimal? previousYearToDateAmount = null;
 
@@ -158,18 +208,17 @@ public sealed class MonthlyActivityType2Processor(
                     out int previousYearToDateCellIndex);
 
             previousYearToDateAmount = await previousYearSummaryLookup
-                                  .FindYearToDateAmountAsync(
-                                  disclosure.Symbol,
-                                  periodCell.PeriodEndToDate,
-                                  cancellationToken);
+                .FindYearToDateAmountAsync(
+                    disclosure.Symbol,
+                    periodEndToDate,
+                    cancellationToken);
 
             MonthlyActivitySummary? existingSummary =
                 await dbContext.MonthlyActivitySummaries
                     .SingleOrDefaultAsync(
                         x =>
                             x.Symbol == disclosure.Symbol &&
-                            x.PeriodEndDate ==
-                            periodCell.PeriodEndToDate,
+                            x.PeriodEndDate == periodEndToDate,
                         cancellationToken);
 
             if (existingSummary is null)
@@ -177,8 +226,8 @@ public sealed class MonthlyActivityType2Processor(
                 var summary =
                     new MonthlyActivitySummary(
                         symbol: disclosure.Symbol,
-                        periodEndDate: periodCell.PeriodEndToDate,
-                        yearEndDate: periodCell.YearEndToDate,
+                        periodEndDate: periodEndToDate,
+                        yearEndDate: yearEndToDate,
                         rt: rt,
                         periodAmount: periodAmount,
                         yearToDateAmount: yearToDateAmount,
@@ -199,14 +248,13 @@ public sealed class MonthlyActivityType2Processor(
                         cancellationToken);
             }
             else if (existingSummary.DisclosureId == disclosure.Id ||
-                        (disclosure.PublishDateTime.HasValue &&
-                        (!existingSummary.PublishDateTime.HasValue ||
-                         disclosure.PublishDateTime.Value > existingSummary.PublishDateTime.Value)
-                    ))
+                     (disclosure.PublishDateTime.HasValue &&
+                      (!existingSummary.PublishDateTime.HasValue ||
+                       disclosure.PublishDateTime.Value >
+                       existingSummary.PublishDateTime.Value)))
             {
-
                 existingSummary.Update(
-                    yearEndDate: periodCell.YearEndToDate,
+                    yearEndDate: yearEndToDate,
                     rt: rt,
 
                     periodAmount: periodAmount,
@@ -226,9 +274,8 @@ public sealed class MonthlyActivityType2Processor(
             }
 
             disclosure.SalesParseStatus = DisclosureParseStatus.Success;
-
             disclosure.SalesParsedAt = DateTime.UtcNow;
-         //   disclosure.ReportingTypeCode = periodCell.ReportingTypeCode;
+
             await dbContext.SaveChangesAsync(
                 cancellationToken);
         }
@@ -377,6 +424,42 @@ public sealed class MonthlyActivityType2Processor(
             $"Downloading Codal report failed after {maxAttempts} attempts. " +
             $"Url: {reportUri}",
             lastException);
+    }
+    private static bool IsFirstFiscalMonth(
+    string periodEndToDate,
+    string yearEndToDate)
+    {
+        string[] periodParts = periodEndToDate.Split('/');
+        string[] yearEndParts = yearEndToDate.Split('/');
+
+        int periodYear = int.Parse(
+            periodParts[0],
+            CultureInfo.InvariantCulture);
+
+        int periodMonth = int.Parse(
+            periodParts[1],
+            CultureInfo.InvariantCulture);
+
+        int yearEndYear = int.Parse(
+            yearEndParts[0],
+            CultureInfo.InvariantCulture);
+
+        int yearEndMonth = int.Parse(
+            yearEndParts[1],
+            CultureInfo.InvariantCulture);
+
+        int firstFiscalYear =
+            yearEndMonth == 12
+                ? yearEndYear
+                : yearEndYear - 1;
+
+        int firstFiscalMonth =
+            yearEndMonth == 12
+                ? 1
+                : yearEndMonth + 1;
+
+        return periodYear == firstFiscalYear &&
+               periodMonth == firstFiscalMonth;
     }
     private static decimal ParseDecimal(
     string? value,

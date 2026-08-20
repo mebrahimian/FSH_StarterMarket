@@ -177,20 +177,20 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    # Catches container-publish regressions (Dockerfile-less SDK container) and DI-graph
-    # breakage in the migrator. Publishes the image locally, runs `apply --catalog-only`
-    # against an ephemeral Postgres, asserts exit 0.
+
+    # Catches container-publish regressions and DI-graph breakage
+    # in the migrator. Run against an ephemeral SQL Server instance.
     services:
-      postgres:
-        image: postgres:17-alpine
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
         env:
-          POSTGRES_PASSWORD: migrator_smoke_pwd
-          POSTGRES_DB: fsh_migrator_smoke
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: Migrator_Smoke_123!
         ports:
-          - 5432:5432
+          - 1433:1433
         options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Migrator_Smoke_123! -C -Q 'SELECT 1'"
+          --health-interval 10s
           --health-timeout 5s
           --health-retries 10
 
@@ -218,14 +218,15 @@ jobs:
             -p:ContainerRepository=fsh-db-migrator \
             -p:ContainerImageTags=smoke
 
-      - name: Run DbMigrator against ephemeral Postgres
+      - name: Run DbMigrator against ephemeral MSSQL
         run: |
           docker run --rm --network host \
-            -e DatabaseOptions__Provider=POSTGRESQL \
-            -e DatabaseOptions__ConnectionString="Host=localhost;Port=5432;Database=fsh_migrator_smoke;Username=postgres;Password=migrator_smoke_pwd" \
-            -e DatabaseOptions__MigrationsAssembly=FSH.Starter.Migrations.PostgreSQL \
+            -e DatabaseOptions__Provider=MSSQL \
+            -e 'DatabaseOptions__ConnectionString=Server=localhost,1433;Database=master;User Id=sa;Password=Migrator_Smoke_123!;Encrypt=False;TrustServerCertificate=True' \
+            -e DatabaseOptions__MigrationsAssembly=FSH.Starter.Migrations.MSSQL \
             fsh-db-migrator:smoke apply --catalog-only \
             | tee migrator.log
+
           grep -q "finished successfully" migrator.log
 
   coverage:

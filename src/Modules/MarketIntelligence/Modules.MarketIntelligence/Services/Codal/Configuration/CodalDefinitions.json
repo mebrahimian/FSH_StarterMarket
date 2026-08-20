@@ -41,14 +41,44 @@
       ]
     },
     "3": {
-      "MetaTableCode": 2548,
-      "SelectedCells": {
-        "PreviousPeriodYearToDateAmount": 2,
-        "AdjustmentAmount": 3,
-        "PeriodAmount": 5,
-        "YearToDateAmount": 6,
-        "PreviousYearToDateAmount": 7
-      }
+      "Components": [
+        {
+          "Name": "Income",
+          "MetaTableCode": 2548,
+          "Operation": "Add",
+          "Required": true,
+          "HasTotalRow": false,
+          "SelectedCells": {
+            "PreviousPeriodYearToDateAmount": 2,
+            "AdjustmentAmount": 3,
+            "PeriodAmount": 5,
+            "YearToDateAmount": 6,
+            "PreviousYearToDateAmount": 7
+          }
+        },
+        {
+          "Name": "OperationalExpense",
+          "MetaTableCode": 2553,
+          "Operation": "Subtract",
+          "Required": false,
+          "HasTotalRow": false,
+          "SelectedCells": {
+            "PeriodAmount": 5,
+            "YearToDateAmount": 6
+          }
+        },
+        {
+          "Name": "NonOperationalIncomeExp",
+          "MetaTableCode": 4392,
+          "Operation": "Add",
+          "Required": false,
+          "HasTotalRow": true,
+          "SelectedCells": {
+            "PeriodAmount": 5,
+            "YearToDateAmount": 6
+          }
+        }
+      ]
     },
     "4": {
       "MetaTableCode": 992,

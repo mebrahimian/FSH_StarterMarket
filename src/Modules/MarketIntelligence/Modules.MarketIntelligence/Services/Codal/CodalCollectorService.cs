@@ -143,7 +143,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
                 var sent = PersianDateHelper.ToGregorian(sentRaw);
 
-                var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
+                var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
                 int? RepTypCode =
                 rt is >= 0 and <= 9
                    ? 1000000 + rt
@@ -426,7 +426,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             var (let, rt, ct, ft) =
                 ParseUrlParameters(
-                    letter.Url);
+                    letter.Url, letter.Title);
 
             if (rt is null)
             {
@@ -541,6 +541,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
             await Task.Delay(
                 requestDelay,
                 cancellationToken);
+
+
 
             await processor.ProcessAsync(
                 disclosure,
@@ -658,7 +660,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     stop = true;
                     break;
                 }
-                var (let, rt, ct, ft) = ParseUrlParameters(letter.Url);
+                var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
                 if (rt is null)
                 {
                     continue;
@@ -724,20 +726,64 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _logger.LogInformation("Backfill process completed.");
 
     }
-    private static (short? let, byte? rt, byte? ct, short? ft) ParseUrlParameters(string? url)
+    private static (short? let, byte? rt, byte? ct, short? ft) ParseUrlParameters(
+    string? url,
+    string? title)
     {
+        short? let =
+            title?.Contains(
+                "گزارش فعالیت ماهانه",
+                StringComparison.Ordinal) == true
+                ? (short)58
+                : null;
+
         if (string.IsNullOrWhiteSpace(url))
-            return (null, null, null, null);
+            return (let, null, null, null);
+
 #pragma warning disable S1075
-        var query = System.Web.HttpUtility.ParseQueryString(new Uri("https://dummy.local" + url).Query);
+        var query = System.Web.HttpUtility.ParseQueryString(
+            new Uri("https://dummy.local" + url).Query);
 #pragma warning restore S1075
-        short? let = short.TryParse(query["let"], out var l) ? l : null;
-        byte? rt = byte.TryParse(query["rt"], out var r) ? r : null;
-        byte? ct = byte.TryParse(query["ct"], out var c) ? c : null;
-        short? ft = short.TryParse(query["ft"], out var f) ? f : null;
+
+        if (let is null)
+        {
+            let = short.TryParse(
+                query["let"],
+                out var l)
+                ? l
+                : null;
+        }
+
+        byte? rt =
+            byte.TryParse(
+                query["rt"],
+                out var r)
+                ? r
+                : null;
+
+        byte? ct =
+            byte.TryParse(
+                query["ct"],
+                out var c)
+                ? c
+                : null;
+
+        short? ft =
+            short.TryParse(
+                query["ft"],
+                out var f)
+                ? f
+                : null;
+
         if (rt is null &&
-            int.TryParse(query["ReportingType"], out var reportingType) &&
-            reportingType == 1000002) rt = 2;
+            int.TryParse(
+                query["ReportingType"],
+                out var reportingType) &&
+            reportingType == 1000002)
+        {
+            rt = 2;
+        }
+
         return (let, rt, ct, ft);
     }
     public async Task ParsePendingDisclosuresAsync(

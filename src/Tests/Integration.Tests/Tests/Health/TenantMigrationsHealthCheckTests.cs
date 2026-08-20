@@ -4,7 +4,8 @@ using FSH.Framework.Shared.Multitenancy;
 using FSH.Modules.Multitenancy;
 using FSH.Modules.Multitenancy.Data;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Testcontainers.PostgreSql;
+using Microsoft.Data.SqlClient;
+using Testcontainers.MsSql;
 
 namespace Integration.Tests.Tests.Health;
 
@@ -19,17 +20,21 @@ namespace Integration.Tests.Tests.Health;
 /// </summary>
 public sealed class TenantMigrationsHealthCheckTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
-        .WithDatabase("fsh_migrations_check")
-        .WithUsername("postgres")
-        .WithPassword("integration_test_pwd")
-        .WithAutoRemove(true)
-        .WithCleanUp(true)
-        .Build();
+    private readonly MsSqlContainer _mssql = new MsSqlBuilder(
+        "mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
+    .WithAutoRemove(true)
+    .WithCleanUp(true)
+    .Build();
 
-    public Task InitializeAsync() => _postgres.StartAsync();
+    public async Task InitializeAsync()
+{
+    await _mssql.StartAsync();
 
-    public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
+    await _mssql.ExecScriptAsync(
+        "IF DB_ID(N'fsh_migrations_check') IS NULL CREATE DATABASE [fsh_migrations_check];");
+}
+
+       public Task DisposeAsync() => _mssql.DisposeAsync().AsTask();
 
     [Fact]
     public async Task CheckHealthAsync_Should_TransitionFromUnhealthyToHealthy_AsMigrationsApply()
@@ -81,17 +86,35 @@ public sealed class TenantMigrationsHealthCheckTests : IAsyncLifetime
 
     private ServiceProvider BuildServiceProvider(bool badConnectionString = false)
     {
-        var connectionString = badConnectionString
-            // Reserved discard port — refuses connections immediately.
-            ? "Host=127.0.0.1;Port=1;Database=does_not_exist;Username=postgres;Password=x;Timeout=2;Command Timeout=2"
-            : _postgres.GetConnectionString();
+        string connectionString;
+
+if (badConnectionString)
+{
+    connectionString =
+        "Server=127.0.0.1,1;" +
+        "Database=does_not_exist;" +
+        "User Id=sa;" +
+        "Password=InvalidPassword123!;" +
+        "Encrypt=False;" +
+        "TrustServerCertificate=True;" +
+        "Connect Timeout=2;";
+}
+else
+{
+    var builder = new SqlConnectionStringBuilder(_mssql.GetConnectionString())
+    {
+        InitialCatalog = "fsh_migrations_check"
+    };
+
+    connectionString = builder.ConnectionString;
+}
 
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<IMultiTenantStore<AppTenantInfo>>(new SingleTenantStore());
         services.AddScoped<IMultiTenantContextSetter, FakeMultiTenantContextSetter>();
-        services.AddDbContext<TenantDbContext>(opts =>
-            opts.UseNpgsql(connectionString, b => b.MigrationsAssembly("FSH.Starter.Migrations.PostgreSQL")));
+        services.AddDbContext<TenantDbContext>(opts => opts.UseSqlServer(connectionString,
+                                           b => b.MigrationsAssembly("FSH.Starter.Migrations.MSSQL")));
         return services.BuildServiceProvider();
     }
 

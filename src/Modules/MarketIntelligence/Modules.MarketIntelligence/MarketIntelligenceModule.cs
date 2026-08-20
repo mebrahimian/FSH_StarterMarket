@@ -25,6 +25,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Modules.MarketIntelligence.Services.Codal.Processors;
+using Microsoft.AspNetCore.Mvc;
+
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -54,6 +57,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityProcessor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType2Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityBankProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
 
             //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
@@ -176,6 +180,70 @@ namespace FSH.Modules.MarketIntelligence
                   .RequirePermission(MarketIntelligencePermissions
                           .CodalOperations
                           .Execute);
+            group.MapPost(
+    "/codal/symbol-backfill/direct",
+    async Task<IResult> (
+        CodalSymbolBackfillRequest request,
+        [FromServices] ICodalCollectorService codalCollectorService,
+        CancellationToken cancellationToken) =>
+    {
+        if (
+            string.IsNullOrWhiteSpace(request.Symbol) ||
+            string.IsNullOrWhiteSpace(request.FromDate) ||
+            string.IsNullOrWhiteSpace(request.ToDate))
+        {
+            return Results.BadRequest(
+                new
+                {
+                    message =
+                        "Symbol, fromDate and toDate are required.",
+                });
+        }
+
+        string symbol =
+            request.Symbol.Trim();
+
+        string fromDate =
+            request.FromDate.Trim();
+
+        string toDate =
+            request.ToDate.Trim();
+
+        if (
+            string.Compare(
+                fromDate,
+                toDate,
+                StringComparison.Ordinal) > 0)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    message =
+                        "fromDate cannot be after toDate.",
+                });
+        }
+
+        await codalCollectorService
+            .CollectSymbolBackfillAsync(
+                symbol,
+                fromDate,
+                toDate,
+                cancellationToken);
+
+        return Results.Ok(
+            new
+            {
+                message =
+                    "Targeted Codal backfill completed.",
+            });
+    })
+    .WithName("RunCodalSymbolBackfill")
+    .WithSummary(
+        "Runs targeted Codal backfill directly for one symbol and date range")
+    .RequirePermission(
+        MarketIntelligencePermissions
+            .CodalOperations
+            .Execute);
             group.MapPost("/codal/parse-pending", (IJobService jobService) =>
                 {
                     string jobId =
