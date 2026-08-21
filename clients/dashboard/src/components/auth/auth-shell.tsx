@@ -67,8 +67,8 @@ export function AuthShell({
         <div className="mb-8 flex flex-col items-center">
           <div className="flex items-center gap-2.5">
             <img
-              src="/logo-fullstackhero.png"
-              alt="fullstackhero"
+              src="/branding/sadaf/sadaf-mark-primary.svg"
+              alt="SadafBourse"
               className="size-9 object-contain"
             />
             <span className="font-display text-[26px] font-semibold tracking-tight text-[var(--color-foreground)]">

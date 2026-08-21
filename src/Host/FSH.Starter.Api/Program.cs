@@ -37,7 +37,6 @@ if (builder.Environment.IsProduction())
 
     var config = builder.Configuration;
     Require(config, "DatabaseOptions:ConnectionString");
-    Require(config, "CachingOptions:Redis");
     Require(config, "JwtOptions:SigningKey");
 }
 

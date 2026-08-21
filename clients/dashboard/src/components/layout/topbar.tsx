@@ -387,7 +387,7 @@ export function Topbar() {
             <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Sign out of fullstackhero?</DialogTitle>
+                        <DialogTitle>Sign out of SadafBourse?</DialogTitle>
                         <DialogDescription>
                             You'll need to sign in again to access this tenant. Any unsaved
                             work in this session will be lost.

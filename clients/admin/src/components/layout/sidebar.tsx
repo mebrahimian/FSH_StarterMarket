@@ -81,27 +81,25 @@ export function Sidebar() {
           collapsed ? "justify-center px-0" : "justify-between px-4",
         )}
       >
-        <div className={cn("flex items-center", collapsed ? "" : "gap-2.5")}>
-          <span
-            aria-hidden
-            className={cn(
-              "brand-mark grid size-8 place-items-center rounded-lg shrink-0",
-              "font-display text-[12px] font-bold text-[var(--color-primary-foreground)]",
-            )}
-          >
-            F
-          </span>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="whitespace-nowrap font-display text-[15px] font-bold leading-none tracking-tight text-[var(--color-foreground)]">
-                fullstack<span className="text-[var(--color-primary)]">hero</span>
-              </span>
-              <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.7)]">
-                Admin
-              </span>
-            </div>
-          )}
-        </div>
+              <div className={cn("flex items-center", collapsed ? "" : "gap-2.5")}>
+                  <img
+                      src="/branding/sadaf/sadaf-mark-primary.svg"
+                      alt="صدف بورس"
+                      className="size-8 shrink-0 object-contain"
+                  />
+
+                  {!collapsed && (
+                      <div className="flex flex-col">
+                          <span className="whitespace-nowrap font-display text-[15px] font-bold leading-none tracking-tight text-[var(--color-foreground)]">
+                              صدف بورس
+                          </span>
+
+                          <span className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.7)]">
+                              Admin
+                          </span>
+                      </div>
+                  )}
+              </div>
 
         {!collapsed && (
           <button

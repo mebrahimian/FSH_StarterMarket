@@ -115,16 +115,20 @@ export function LoginPage() {
         <div className="relative z-10 w-full max-w-[420px] fsh-enter fsh-enter-1">
           {/* ── Brand lockup — same as dashboard AuthShell ─────────────── */}
           <div className="mb-8 flex flex-col items-center">
-            <div className="flex items-center gap-2.5">
-              <img
-                src="/logo-fullstackhero.png"
-                alt="fullstackhero"
-                className="size-9 object-contain"
-              />
-              <span className="font-display text-[26px] font-semibold tracking-tight text-[var(--color-foreground)]">
-                fullstack<span className="text-[var(--color-primary)]">hero</span>
-              </span>
-            </div>
+                      <div className="flex items-center gap-2.5">
+                          <img
+                              src="/branding/sadaf/sadaf-mark-primary.svg"
+                              alt="صدف بورس"
+                              className="size-10 object-contain"
+                          />
+
+                          <span
+                              dir="rtl"
+                              className="font-display text-[26px] font-semibold tracking-tight text-[var(--color-foreground)]"
+                          >
+                              صدف بورس
+                          </span>
+                      </div>
             <div className="mt-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.7)]">
               <span aria-hidden className="h-px w-6 bg-[var(--color-border)]" />
               <span>Platform Admin</span>
@@ -298,7 +302,7 @@ export function LoginPage() {
             <span>Encrypted in transit · JWT-secured session</span>
           </div>
           <p className="mt-4 text-center text-[10px] font-medium uppercase tracking-wider text-[oklch(from_var(--color-muted-foreground)_l_c_h_/_0.5)]">
-            fullstackhero Administration
+                      Sadaf Bourse Administration
           </p>
         </div>
       </div>

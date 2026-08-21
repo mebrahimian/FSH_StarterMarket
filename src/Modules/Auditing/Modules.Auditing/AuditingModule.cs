@@ -39,6 +39,7 @@ public class AuditingModule : IModule
         var retentionOpts = builder.Configuration.GetSection("Auditing:Retention").Get<AuditRetentionOptions>() ?? new AuditRetentionOptions();
         builder.Services.AddSingleton(retentionOpts);
         builder.Services.AddTransient<AuditRetentionJob>();
+        builder.Services.AddTransient<AuditSqlCleanupJob>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IAuditClient, DefaultAuditClient>();
         builder.Services.AddScoped<ISecurityAudit, SecurityAudit>();
@@ -103,6 +104,18 @@ public class AuditingModule : IModule
                 Job.FromExpression<AuditRetentionJob>(j => j.RunAsync(CancellationToken.None)),
                 retentionOpts.Cron,
                 new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+        }
+        if (jobManager is not null)
+        {
+            jobManager.AddOrUpdate(
+                "audit-sql-cleanup",
+                Job.FromExpression<AuditSqlCleanupJob>(
+                    j => j.RunAsync(CancellationToken.None)),
+                "0 4 * * *",
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.Utc
+                });
         }
     }
 }
