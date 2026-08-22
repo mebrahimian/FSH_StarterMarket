@@ -89,7 +89,7 @@ export function MarketHealthCenterPage() {
         queryKey: ["market-intelligence", "data-quality-issues"],
         queryFn: getDataQualityIssues,
     });
-    
+
     const handleSalesClick = async (
         symbol: string,
         title: string,
@@ -392,10 +392,7 @@ export function MarketHealthCenterPage() {
             }
         >();
 
-        for (const issue of [
-            ...rule0Issues,
-            ...dataQualityIssues,
-        ]) {
+        for (const issue of dataQualityIssues) {
             const symbol = issue.symbol?.trim();
 
             const publishDate =
@@ -509,6 +506,17 @@ export function MarketHealthCenterPage() {
             setBulkBackfillRunning(false);
         }
     };
+    const needsReviewCount =
+        new Set(
+            dataQualityIssues
+                .map((issue) => issue.symbol?.trim())
+                .filter(
+                    (symbol): symbol is string =>
+                        Boolean(symbol),
+                ),
+        ).size;
+
+
     return (
         <div className="-mt-5">
             <PageHero   className="-mt-3 [&>div]:!py-3 sm:[&>div]:!py-3"
@@ -573,11 +581,7 @@ export function MarketHealthCenterPage() {
                 <HealthStat
                     icon={HeartPulse}
                     label={tMarket("healthCenter.stats.needsReview")}
-                    value={
-                        dataQualityQuery.data
-                            ? dataQualityQuery.data.historyCoverage.incompleteSymbols.toLocaleString()
-                            : "—"
-                    }
+                    value={needsReviewCount.toLocaleString()}
                     hint={tMarket("healthCenter.gapFailedMissing")}
                 />
             </section>
@@ -601,7 +605,7 @@ export function MarketHealthCenterPage() {
                             {tMarket("healthCenter.dataQualityChecking")}
                         </div>
                     ) : (
-                            [...rule0Issues, ...dataQualityIssues]
+                            dataQualityIssues
                                 .map((issue) => {
                             const issueDescription =
                                 `اشکال در اعلامیه کدال ${issue.periodEndDate ?? "—"}`;

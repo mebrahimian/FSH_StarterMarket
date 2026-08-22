@@ -235,14 +235,14 @@ public sealed class CodalDataQualityAuditService(
                                   windowEndPeriod,
                                   requiredMonths);
         DateTime activeSinceUtc = auditDateUtc.AddMonths(-12);
-        string[] activeSymbols =
-            await monthlyCandidates
+        string[] activeSymbols = await disclosures
                 .Where(disclosure =>
-                    disclosure.PublishDateTime.HasValue &&
-                    disclosure.PublishDateTime.Value >=
-                        activeSinceUtc)
+                   disclosure.Let == 58 &&
+                   disclosure.PublishDateTime.HasValue &&
+                   disclosure.PublishDateTime.Value >= activeSinceUtc &&
+                   disclosure.Symbol != string.Empty)
                 .Select(disclosure =>
-                    disclosure.Symbol)
+                              disclosure.Symbol)
                 .Distinct()
                 .OrderBy(symbol => symbol)
                 .ToArrayAsync(cancellationToken);
