@@ -22,4 +22,6 @@ public sealed class HangfireOptions
     public string Password { get; set; } = default!;
 
     public string Route { get; set; } = "/jobs";
+    public string? ConnectionString { get; set; }
+    public bool RecurringJobsEnabled { get; set; } = true;
 }

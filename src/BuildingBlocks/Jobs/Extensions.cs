@@ -6,14 +6,16 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace FSH.Framework.Jobs;
 
 public static class Extensions
 {
-    public static IServiceCollection AddHeroJobs(this IServiceCollection services)
+    public static IServiceCollection AddHeroJobs(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddOptions<HangfireOptions>()
             .BindConfiguration(nameof(HangfireOptions))
@@ -30,21 +32,28 @@ public static class Extensions
 
         services.AddHangfire((provider, config) =>
         {
+
             var configuration = provider.GetRequiredService<IConfiguration>();
             var dbOptions = configuration.GetSection(nameof(DatabaseOptions)).Get<DatabaseOptions>()
                 ?? throw new CustomException("Database options not found");
 
+            string? hangfireConnectionString = configuration[$"{nameof(HangfireOptions)}:ConnectionString"];
+
+            if (string.IsNullOrWhiteSpace(hangfireConnectionString))
+            {
+                hangfireConnectionString = dbOptions.ConnectionString;
+            }
             switch (dbOptions.Provider.ToUpperInvariant())
             {
                 case DbProviders.PostgreSQL:
                     config.UsePostgreSqlStorage(o =>
                     {
-                        o.UseNpgsqlConnection(dbOptions.ConnectionString);
+                        o.UseNpgsqlConnection(hangfireConnectionString);
                     });
                     break;
 
                 case DbProviders.MSSQL:
-                    config.UseSqlServerStorage(dbOptions.ConnectionString);
+                    config.UseSqlServerStorage(hangfireConnectionString);
                     break;
 
                 default:
@@ -56,6 +65,17 @@ public static class Extensions
             config.UseFilter(new LogJobFilter());
             config.UseFilter(new HangfireTelemetryFilter());
         });
+
+        bool recurringJobsEnabled = configuration.GetValue($"{nameof(HangfireOptions)}:RecurringJobsEnabled", true);
+
+        if (!recurringJobsEnabled)
+        {
+            services.Replace(
+                ServiceDescriptor.Singleton<
+                    IRecurringJobManager,
+                    DisabledRecurringJobManager>());
+        }
+
 
         // Deferred stale lock cleanup — runs after app starts accepting requests
         services.AddHostedService<HangfireStaleLockCleanupService>();

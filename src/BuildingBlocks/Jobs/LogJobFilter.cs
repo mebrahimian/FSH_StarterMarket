@@ -112,9 +112,9 @@ public class LogJobFilter : IClientFilter, IServerFilter, IElectStateFilter, IAp
             context.OldStateName ?? "<none>");
     }
 
-    private static string GetJobName(Hangfire.Common.Job job)
+    private static string GetJobName(Hangfire.Common.Job? job)
     {
-        return $"{job.Method.Name}";
+        return job?.Method?.Name ?? "<unknown>";
     }
 
     private static string FormatArguments(IReadOnlyList<object?> args)

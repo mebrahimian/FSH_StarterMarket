@@ -85,7 +85,7 @@ public static class Extensions
 
         if (options.EnableJobs)
         {
-            builder.Services.AddHeroJobs();
+            builder.Services.AddHeroJobs(builder.Configuration);
             builder.Services.AddHealthChecks().AddCheck<HangfireHealthCheck>("hangfire");
         }
 
