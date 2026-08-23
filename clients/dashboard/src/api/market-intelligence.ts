@@ -309,9 +309,12 @@ export type DataQualityIssue = {
     previousValue: number | null;
     currentValue: number | null;
 };
+
 export type FiscalYearSales = {
     symbol: string;
     yearEndDate: string;
+    previousYearEndDate: string | null;
+    nextYearEndDate: string | null;
     rows: FiscalYearSalesRow[];
 };
 export function getDataQualityIssues(): Promise<DataQualityIssue[]> {
@@ -322,11 +325,19 @@ export function getDataQualityIssues(): Promise<DataQualityIssue[]> {
 export function getFiscalYearSales(
     symbol: string,
     title: string,
+    yearEndDate?: string,
 ): Promise<FiscalYearSales> {
     const params = new URLSearchParams({
         symbol,
         title,
     });
+
+    if (yearEndDate) {
+        params.set(
+            "yearEndDate",
+            yearEndDate,
+        );
+    }
 
     return apiFetch<FiscalYearSales>(
         `/api/v1/marketintelligence/fiscal-year-sales?${params.toString()}`,

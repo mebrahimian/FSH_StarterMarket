@@ -3,7 +3,12 @@
 public sealed record FiscalYearSalesDto(
     string Symbol,
     string YearEndDate,
-    IReadOnlyList<FiscalYearSalesRowDto> Rows);
+    IReadOnlyList<FiscalYearSalesRowDto> Rows)
+{
+    public string? PreviousYearEndDate { get; init; }
+
+    public string? NextYearEndDate { get; init; }
+}
 
 public sealed record FiscalYearSalesRowDto(
     string PeriodEndDate,

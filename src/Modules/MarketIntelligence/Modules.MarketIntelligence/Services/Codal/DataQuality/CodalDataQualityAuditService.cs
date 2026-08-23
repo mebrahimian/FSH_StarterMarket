@@ -24,7 +24,7 @@ public sealed class CodalDataQualityAuditService(
                 "Coverage years must be between 1 and 20.");
         }
 
-        DateTime checkedAtUtc = DateTime.UtcNow;
+        
         int requiredMonths = coverageYears * 12;
 
         CodalDefinitions definitions = CodalDefinitionsProvider.Load();

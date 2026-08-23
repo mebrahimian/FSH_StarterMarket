@@ -18,15 +18,20 @@ public sealed class GetFiscalYearSalesQueryHandler(
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        string? reportDate =
-            PersianDateTextParser.TryExtract(query.Title);
+        string? reportDate = null;
 
-        if (reportDate is null)
+        if (string.IsNullOrWhiteSpace(query.YearEndDate))
         {
-            return new FiscalYearSalesDto(
-                query.Symbol,
-                string.Empty,
-                []);
+            reportDate =
+                PersianDateTextParser.TryExtract(query.Title);
+
+            if (reportDate is null)
+            {
+                return new FiscalYearSalesDto(
+                    query.Symbol,
+                    string.Empty,
+                    []);
+            }
         }
 
         var yearEndDates = await dbContext.MonthlyActivitySummaries
@@ -40,9 +45,25 @@ public sealed class GetFiscalYearSalesQueryHandler(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        string? yearEndDate = yearEndDates
-            .FirstOrDefault(date =>
-                string.CompareOrdinal(date, reportDate) >= 0);
+        string? yearEndDate;
+
+        if (!string.IsNullOrWhiteSpace(query.YearEndDate))
+        {
+            yearEndDate = yearEndDates
+                .FirstOrDefault(date =>
+                    string.Equals(
+                        date,
+                        query.YearEndDate,
+                        StringComparison.Ordinal));
+        }
+        else
+        {
+            yearEndDate = yearEndDates
+                .FirstOrDefault(date =>
+                    string.CompareOrdinal(
+                        date,
+                        reportDate) >= 0);
+        }
 
         if (yearEndDate is null)
         {
@@ -52,6 +73,16 @@ public sealed class GetFiscalYearSalesQueryHandler(
                 []);
         }
 
+        int yearEndDateIndex =  yearEndDates.IndexOf(yearEndDate);
+
+        string? previousYearEndDate = yearEndDateIndex > 0
+                                        ? yearEndDates[yearEndDateIndex - 1]
+                                        : null;
+
+        string? nextYearEndDate =  yearEndDateIndex >= 0 &&
+                                   yearEndDateIndex < yearEndDates.Count - 1
+                                        ? yearEndDates[yearEndDateIndex + 1]
+                                        : null;
         var summaries = await dbContext.MonthlyActivitySummaries
             .AsNoTracking()
             .Where(summary =>
@@ -62,9 +93,7 @@ public sealed class GetFiscalYearSalesQueryHandler(
             .ConfigureAwait(false);
 
         var expectedPeriodEndDates =
-    PersianDateHelper.GetMonthEndDatesEndingAt(
-        yearEndDate,
-        12);
+    PersianDateHelper.GetMonthEndDatesEndingAt(yearEndDate, 12);
 
         var summaryByPeriod = summaries
             .GroupBy(
@@ -101,9 +130,12 @@ public sealed class GetFiscalYearSalesQueryHandler(
             })
             .ToList();
 
-        return new FiscalYearSalesDto(
-            query.Symbol,
-            yearEndDate,
-            rows);
+        return new FiscalYearSalesDto(query.Symbol,
+                                      yearEndDate,
+                                      rows)
+        {
+            PreviousYearEndDate = previousYearEndDate,
+            NextYearEndDate = nextYearEndDate,
+        };
     }
 }

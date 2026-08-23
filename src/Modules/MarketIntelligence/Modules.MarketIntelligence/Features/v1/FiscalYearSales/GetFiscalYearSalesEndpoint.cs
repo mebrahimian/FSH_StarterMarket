@@ -16,15 +16,17 @@ public static class GetFiscalYearSalesEndpoint
         return endpoints
             .MapGet(
                 "/fiscal-year-sales",
-                (
-                    string symbol,
-                    string title,
-                    IMediator mediator,
-                    CancellationToken cancellationToken) =>
-                    mediator.Send(
-                        new GetFiscalYearSalesQuery(
-                            Symbol: symbol,
-                            Title: title),
+               (
+                 string symbol,
+                 string title,
+                 string? yearEndDate,
+                 IMediator mediator,
+                 CancellationToken cancellationToken) =>
+                 mediator.Send(
+                     new GetFiscalYearSalesQuery(
+                        Symbol: symbol,
+                        Title: title,
+                        YearEndDate: yearEndDate),
                         cancellationToken))
             .WithName("GetFiscalYearSales")
             .WithSummary(

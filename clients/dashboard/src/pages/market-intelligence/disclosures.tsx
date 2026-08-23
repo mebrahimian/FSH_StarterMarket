@@ -1,9 +1,7 @@
 import { useTranslation } from "react-i18next";
 import {
     useEffect,
-    useRef,
     useState,
-    type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
     keepPreviousData,
@@ -38,7 +36,8 @@ import { describe } from "@/lib/list-helpers";
 import { CodalOperationsPanel } from "./codal-operations-panel";
 import { codalReportTypeOptions, } from "@/lib/market-intelligence/codal-report-types";
 import { codalLetterCategoryOptions, } from "@/lib/market-intelligence/codal-letter-categories";
-
+import { FiscalYearSalesDialog } from
+    "@/components/market-intelligence/fiscal-year-sales-dialog";
 const PAGE_SIZE = 25;
 
 const statusOptions: Array<{
@@ -63,7 +62,6 @@ const sortOptions: Array<{ value: DisclosureSortBy; labelKey: string; }> =
 
 export function DisclosuresPage() {
     const { t } = useTranslation("disclosures");
-    const { t: tMarket } = useTranslation("marketIntelligence");
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [page, setPage] = useState(1);
@@ -74,15 +72,8 @@ export function DisclosuresPage() {
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
-    const [salesWindowOffset, setSalesWindowOffset] =
-        useState({ x: 0, y: 0 });
-
-    const salesWindowDragRef = useRef<{
-        startX: number;
-        startY: number;
-        offsetX: number;
-        offsetY: number;
-    } | null>(null);
+    const [fiscalYearSalesTitle, setFiscalYearSalesTitle] = useState("");
+    
     const handleSalesClick = async (
         symbol: string,
         title: string,
@@ -93,6 +84,7 @@ export function DisclosuresPage() {
         );
 
         setFiscalYearSales(result);
+        setFiscalYearSalesTitle(title);
         setIsSalesDialogOpen(true);
     };
     useEffect(() => {
@@ -113,61 +105,7 @@ export function DisclosuresPage() {
         sortBy,
         sortDir,
     ]);
-    const handleSalesWindowPointerDown = (
-        event: ReactPointerEvent<HTMLDivElement>,
-    ) => {
-        if (event.button !== 0) {
-            return;
-        }
-
-        event.currentTarget.setPointerCapture(
-            event.pointerId,
-        );
-
-        salesWindowDragRef.current = {
-            startX: event.clientX,
-            startY: event.clientY,
-            offsetX: salesWindowOffset.x,
-            offsetY: salesWindowOffset.y,
-        };
-    };
-
-    const handleSalesWindowPointerMove = (
-        event: ReactPointerEvent<HTMLDivElement>,
-    ) => {
-        const drag = salesWindowDragRef.current;
-
-        if (!drag) {
-            return;
-        }
-
-        setSalesWindowOffset({
-            x:
-                drag.offsetX +
-                event.clientX -
-                drag.startX,
-            y:
-                drag.offsetY +
-                event.clientY -
-                drag.startY,
-        });
-    };
-
-    const handleSalesWindowPointerUp = (
-        event: ReactPointerEvent<HTMLDivElement>,
-    ) => {
-        if (
-            event.currentTarget.hasPointerCapture(
-                event.pointerId,
-            )
-        ) {
-            event.currentTarget.releasePointerCapture(
-                event.pointerId,
-            );
-        }
-
-        salesWindowDragRef.current = null;
-    };
+            
     const selectedLetterCategory =
         codalLetterCategoryOptions.find(
             (category) =>
@@ -239,6 +177,21 @@ export function DisclosuresPage() {
         setLetFilter("");
         setStatusFilter(null);
         setPage(1);
+    };
+    const handleSalesNavigation = async (
+        yearEndDate: string | null,
+    ) => {
+        if (!yearEndDate || !fiscalYearSales) {
+            return;
+        }
+
+        const result = await getFiscalYearSales(
+            fiscalYearSales.symbol,
+            fiscalYearSalesTitle,
+            yearEndDate,
+        );
+
+        setFiscalYearSales(result);
     };
 
     return (
@@ -321,127 +274,23 @@ export function DisclosuresPage() {
                     }
                 />
             )}
-            {isSalesDialogOpen && fiscalYearSales && (
-                <div
-                    className="text-center fixed left-1/2 top-20 z-50 w-[min(600px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl"
-                    style={{
-                        transform: `translate(calc(-50% + ${salesWindowOffset.x}px), ${salesWindowOffset.y}px)`,
-                    }}
-                >
-                    <div
-                        onPointerDown={
-                            handleSalesWindowPointerDown
-                        }
-                        onPointerMove={
-                            handleSalesWindowPointerMove
-                        }
-                        onPointerUp={
-                            handleSalesWindowPointerUp
-                        }
-                        onPointerCancel={
-                            handleSalesWindowPointerUp
-                        }
-                        className="relative flex touch-none select-none items-center justify-center border-b border-[var(--color-border)] px-4 py-3 cursor-grab active:cursor-grabbing"
-                    >
-                        <div className="text-center font-semibold">
-                            {tMarket(
-                                "healthCenter.fiscalYearSalesTitle",
-                                {
-                                    symbol:
-                                        fiscalYearSales.symbol,
-                                },
-                            )}{" "}
-                            <span dir="ltr">
-                                {fiscalYearSales.yearEndDate}
-                            </span>
-                        </div>
-
-                        <button
-                            type="button"
-                            onPointerDown={(event) =>
-                                event.stopPropagation()
-                            }
-                            onClick={() =>
-                                setIsSalesDialogOpen(false)
-                            }
-                            className="absolute left-3 grid size-8 place-items-center rounded-md text-xl leading-none text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-                            aria-label={tMarket(
-                                "actions.close",
-                            )}
-                            title={tMarket(
-                                "actions.close",
-                            )}
-                        >
-                            ×
-                        </button>
-                    </div>
-
-                    <div className="max-h-[70vh] overflow-auto p-4">
-                        <table className="w-full border-collapse text-center text-sm">
-                            <thead>
-                                <tr className="border-b text-xs font-semibold text-[var(--color-muted-foreground)]">
-                                    <th className="px-3 py-2">
-                                        {tMarket(
-                                            "salesTable.period",
-                                        )}
-                                    </th>
-
-                                    <th className="px-3 py-2">
-                                        {tMarket(
-                                            "salesTable.monthSales",
-                                        )}
-                                    </th>
-
-                                    <th className="px-3 py-2">
-                                        {tMarket(
-                                            "salesTable.yearToDate",
-                                        )}
-                                    </th>
-
-                                    <th className="px-3 py-2">
-                                        {tMarket(
-                                            "salesTable.previousYearToDate",
-                                        )}
-                                    </th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {fiscalYearSales.rows.map(
-                                    (row) => (
-                                        <tr
-                                            key={row.periodEndDate}
-                                            className="border-b last:border-0"
-                                        >
-                                            <td
-                                                dir="ltr"
-                                                className="px-3 py-2 tabular-nums"
-                                            >
-                                                {row.periodEndDate}
-                                            </td>
-
-                                            <td className="px-3 py-2 tabular-nums">
-                                                {row.periodAmount?.toLocaleString() ??
-                                                    "—"}
-                                            </td>
-
-                                            <td className="px-3 py-2 tabular-nums">
-                                                {row.yearToDateAmount?.toLocaleString() ??
-                                                    "—"}
-                                            </td>
-
-                                            <td className="px-3 py-2 tabular-nums">
-                                                {row.previousYearToDateAmount?.toLocaleString() ??
-                                                    "—"}
-                                            </td>
-                                        </tr>
-                                    ),
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
+            <FiscalYearSalesDialog
+                open={isSalesDialogOpen}
+                sales={fiscalYearSales}
+                onClose={() =>
+                    setIsSalesDialogOpen(false)
+                }
+                onPrevious={() =>
+                    void handleSalesNavigation(
+                        fiscalYearSales?.previousYearEndDate ?? null,
+                    )
+                }
+                onNext={() =>
+                    void handleSalesNavigation(
+                        fiscalYearSales?.nextYearEndDate ?? null,
+                    )
+                }
+            />
             {query.isError && (
                 <div
                     role="alert"
