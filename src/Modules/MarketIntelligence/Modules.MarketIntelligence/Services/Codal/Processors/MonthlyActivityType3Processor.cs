@@ -43,7 +43,7 @@ public sealed class MonthlyActivityType3Processor(
     {
         ArgumentNullException.ThrowIfNull(disclosure);
 
-        if (disclosure.Let != 8 ||
+        if (disclosure.Let != 58 ||
             disclosure.Rt is not byte rt)
         {
             return;
