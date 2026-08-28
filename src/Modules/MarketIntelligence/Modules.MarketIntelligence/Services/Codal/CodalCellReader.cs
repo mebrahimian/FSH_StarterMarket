@@ -130,6 +130,185 @@ internal static class CodalCellReader
              → جدول اصلاً ردیف جمع ندارد
              → تمام ردیف‌های عددی ستون را جمع می‌کند
     */
+    public static IReadOnlyList<CodalTableRow> ReadTableRows(
+    string html,
+    int metaTableCode)
+    {
+        int datasourceStart = html.IndexOf(
+            "var datasource",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (datasourceStart < 0)
+        {
+            return [];
+        }
+
+        int jsonStart = html.IndexOf(
+            '{',
+            datasourceStart);
+
+        if (jsonStart < 0)
+        {
+            return [];
+        }
+
+        int jsonEnd = FindJsonObjectEnd(
+            html,
+            jsonStart);
+
+        if (jsonEnd < 0)
+        {
+            return [];
+        }
+
+        string json = html.Substring(
+            jsonStart,
+            jsonEnd - jsonStart + 1);
+
+        using var document = JsonDocument.Parse(json);
+
+        var rows =
+            new Dictionary<int, Dictionary<int, string?>>();
+
+        foreach (JsonElement sheet in document.RootElement
+                     .GetProperty("sheets")
+                     .EnumerateArray())
+        {
+            foreach (JsonElement table in sheet
+                         .GetProperty("tables")
+                         .EnumerateArray())
+            {
+                if (!table.TryGetProperty(
+                        "code",
+                        out JsonElement tableCode) ||
+                    tableCode.GetInt32() != metaTableCode)
+                {
+                    continue;
+                }
+
+                foreach (JsonElement cell in table
+                             .GetProperty("cells")
+                             .EnumerateArray())
+                {
+                    if (!cell.TryGetProperty(
+                            "rowSequence",
+                            out JsonElement rowElement) ||
+                        !cell.TryGetProperty(
+                            "columnSequence",
+                            out JsonElement columnElement))
+                    {
+                        continue;
+                    }
+
+                    int rowSequence =
+                        rowElement.GetInt32();
+
+                    int columnSequence =
+                        columnElement.GetInt32();
+
+                    string? value = null;
+
+                    if (cell.TryGetProperty(
+                            "value",
+                            out JsonElement valueElement))
+                    {
+                        value = valueElement.ValueKind switch
+                        {
+                            JsonValueKind.String =>
+                                valueElement.GetString(),
+
+                            JsonValueKind.Number =>
+                                valueElement.GetRawText(),
+
+                            JsonValueKind.Null =>
+                                null,
+
+                            _ =>
+                                valueElement.ToString()
+                        };
+                    }
+
+                    if (!rows.TryGetValue(
+                            rowSequence,
+                            out Dictionary<int, string?>? row))
+                    {
+                        row = [];
+                        rows[rowSequence] = row;
+                    }
+
+                    row[columnSequence] = value;
+                }
+            }
+        }
+
+        return rows
+            .OrderBy(x => x.Key)
+            .Select(x =>
+                new CodalTableRow(
+                    x.Key,
+                    x.Value))
+            .ToList();
+    }
+    public static CodalDatasourceMetadata? ReadMetadata(
+    string html)
+    {
+        int datasourceStart = html.IndexOf(
+            "var datasource",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (datasourceStart < 0)
+            return null;
+
+        int jsonStart = html.IndexOf(
+            '{',
+            datasourceStart);
+
+        if (jsonStart < 0)
+            return null;
+
+        int jsonEnd = FindJsonObjectEnd(
+            html,
+            jsonStart);
+
+        if (jsonEnd < 0)
+            return null;
+
+        string json = html.Substring(
+            jsonStart,
+            jsonEnd - jsonStart + 1);
+
+        using var document =
+            JsonDocument.Parse(json);
+
+        JsonElement root =
+            document.RootElement;
+
+        long tracingNo =
+            root.TryGetProperty(
+                "tracingNo",
+                out JsonElement tracingNoElement)
+                ? tracingNoElement.GetInt64()
+                : 0;
+
+        string? periodEndToDate =
+            root.TryGetProperty(
+                "periodEndToDate",
+                out JsonElement periodElement)
+                ? periodElement.GetString()
+                : null;
+
+        string? yearEndToDate =
+            root.TryGetProperty(
+                "yearEndToDate",
+                out JsonElement yearElement)
+                ? yearElement.GetString()
+                : null;
+
+        return new CodalDatasourceMetadata(
+            TracingNo: tracingNo,
+            PeriodEndToDate: periodEndToDate,
+            YearEndToDate: yearEndToDate);
+    }
     public static CodalCellResult? SumColumnValues(string html, int metaTableCode, int columnSequence)
     {
         int datasourceStart = html.IndexOf(
@@ -488,3 +667,11 @@ internal static class CodalCellReader
             : 0;
     }
 }
+internal sealed record CodalDatasourceMetadata(
+    long TracingNo,
+    string? PeriodEndToDate,
+    string? YearEndToDate);
+
+internal sealed record CodalTableRow(
+    int RowSequence,
+    IReadOnlyDictionary<int, string?> Values);

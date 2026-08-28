@@ -58,7 +58,23 @@ public sealed class GetFiscalYearSalesQueryHandler(
         }
         else
         {
-            yearEndDate = yearEndDates
+            // The fiscal year end may change during the year.
+            // Resolve it from the actual monthly summary for the
+            // requested reporting period instead of inferring it
+            // only from the calendar position of the report date.
+            yearEndDate = await dbContext.MonthlyActivitySummaries
+                .AsNoTracking()
+                .Where(summary =>
+                    summary.Symbol == query.Symbol &&
+                    summary.PeriodEndDate == reportDate &&
+                    summary.YearEndDate != null)
+                .OrderByDescending(summary => summary.ParsedAt)
+                .Select(summary => summary.YearEndDate)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // Defensive fallback for old/unparsed data.
+            yearEndDate ??= yearEndDates
                 .FirstOrDefault(date =>
                     string.CompareOrdinal(
                         date,

@@ -6,6 +6,7 @@ using FSH.Modules.MarketIntelligence.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using FSH.Modules.MarketIntelligence.Data.Views;
 
 namespace FSH.Modules.MarketIntelligence.Data;
 
@@ -21,6 +22,9 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
 
     public DbSet<Disclosure> Disclosures => Set<Disclosure>();
     public DbSet<MonthlyActivitySummary> MonthlyActivitySummaries =>  Set<MonthlyActivitySummary>();
+    public DbSet<PortfolioCompanyAlias> PortfolioCompanyAliases => Set<PortfolioCompanyAlias>();
+    public DbSet<InvestmentPortfolioPosition> InvestmentPortfolioPositions => Set<InvestmentPortfolioPosition>();
+    public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

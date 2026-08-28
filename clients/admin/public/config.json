@@ -1,5 +1,5 @@
 {
-  "apiBase": "",
+  "apiBase": "https://api.mebrahimian.ir",
   "defaultTenant": "root",
   "dashboardUrl": "http://localhost:5174",
   "inactivityIdleMs": 28800000,

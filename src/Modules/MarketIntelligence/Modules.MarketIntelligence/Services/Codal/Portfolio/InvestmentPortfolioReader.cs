@@ -1,6 +1,6 @@
-﻿using System.Text.Json;
-using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
+﻿using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 
@@ -8,177 +8,133 @@ public sealed class InvestmentPortfolioReader(
     HttpClient httpClient,
     IOptions<CodalOptions> options)
 {
-    private const int ListedPortfolioMetaTableId = 3475;
-    private const int ListedPortfolioMetaTableCode = 3475;
-
-    public async Task<string?> ReadAsync(
+    internal async Task<IReadOnlyList<InvestmentPortfolioSheetData>> ReadAsync(
         string disclosureUrl,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(
             disclosureUrl);
 
-        Uri uri = Uri.TryCreate(
-            disclosureUrl,
-            UriKind.Absolute,
-            out Uri? absoluteUri)
-                ? absoluteUri
-                : new Uri(
-                    new Uri(options.Value.BaseUrl),
-                    disclosureUrl);
+        IReadOnlyList<PortfolioSheet> sheets = PortfolioSheetResolver.GetSheets(disclosureUrl);
 
-        string html = await httpClient
-            .GetStringAsync(
-                uri,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var result =
+            new List<InvestmentPortfolioSheetData>(sheets.Count);
 
-        int datasourceStart = html.IndexOf(
-            "var datasource",
-            StringComparison.OrdinalIgnoreCase);
-
-        if (datasourceStart < 0)
+        foreach (PortfolioSheet sheet in sheets)
         {
-            return null;
+            Uri reportUri = BuildReportUri(sheet.Url);
+            string html =  await DownloadHtmlWithRetryAsync(reportUri, cancellationToken);
+            IReadOnlyList<CodalTableRow> rows = CodalCellReader.ReadTableRows(html, sheet.MetaTableCode);
+            CodalCellResult? metadata = CodalCellReader.FindCellValue(html, sheet.MetaTableCode, 1);
+            result.Add(new InvestmentPortfolioSheetData(
+                           SheetId: sheet.SheetId,
+                           MetaTableCode: sheet.MetaTableCode,
+                           IsListed: sheet.IsListed,
+                           PeriodEndDate: metadata?.PeriodEndToDate,
+                           Rows: rows));
         }
 
-        int jsonStart = html.IndexOf(
-            '{',
-            datasourceStart);
-
-        if (jsonStart < 0)
-        {
-            return null;
-        }
-
-        int jsonEnd = FindJsonObjectEnd(
-            html,
-            jsonStart);
-
-        if (jsonEnd < 0)
-        {
-            return null;
-        }
-
-        string json = html.Substring(
-            jsonStart,
-            jsonEnd - jsonStart + 1);
-
-        using JsonDocument document =
-            JsonDocument.Parse(json);
-
-        JsonElement root =
-            document.RootElement;
-
-        if (!root.TryGetProperty("sheets", out JsonElement sheets) ||
-                  sheets.ValueKind != JsonValueKind.Array)
-        {
-            return null;
-        }
-
-        for (int sheetIndex = 0;
-     sheetIndex < sheets.GetArrayLength();
-     sheetIndex++)
-        {
-            JsonElement sheet = sheets[sheetIndex];
-            if (!sheet.TryGetProperty("tables", out JsonElement tables) ||
-                    tables.ValueKind != JsonValueKind.Array)
-            {
-                continue;
-            }
-
-            for (int tableIndex = 0; tableIndex < tables.GetArrayLength(); tableIndex++)
-            {
-                JsonElement table = tables[tableIndex];
-
-                if (IsListedPortfolioTable(table))
-                {
-                    return table.GetRawText();
-                }
-            }
-        }
-
-        return null;
+        return result;
     }
 
-    private static bool IsListedPortfolioTable(
-        JsonElement table)
+    private Uri BuildReportUri(
+        string disclosureUrl)
     {
-        bool codeMatches = false;
-
-        if (table.TryGetProperty("metaTableCode", out JsonElement metaTableCode) &&
-             metaTableCode.TryGetInt32(out int explicitCode))
+        if (Uri.TryCreate(
+                disclosureUrl,
+                UriKind.Absolute,
+                out Uri? absoluteUri))
         {
-            codeMatches = explicitCode == ListedPortfolioMetaTableCode;
-        }
-        else if (table.TryGetProperty("code", out JsonElement code) &&
-                    code.TryGetInt32(out int tableCode))
-        {
-            codeMatches = tableCode == ListedPortfolioMetaTableCode;
+            return absoluteUri;
         }
 
-        if (!codeMatches)
-        {
-            return false;
-        }
-
-        if (table.TryGetProperty("metaTableId", out JsonElement metaTableId) &&
-            metaTableId.TryGetInt32(out int tableId))
-        {
-            return tableId == ListedPortfolioMetaTableId;
-        }
-
-        return true;
+        return new Uri(
+            new Uri(options.Value.BaseUrl),
+            disclosureUrl);
     }
 
-    private static int FindJsonObjectEnd(string text, int start)
+    private async Task<string> DownloadHtmlWithRetryAsync(
+        Uri reportUri,
+        CancellationToken cancellationToken)
     {
-        int depth = 0;
-        bool inString = false;
-        bool escape = false;
+        const int maxAttempts = 3;
 
-        for (int i = start; i < text.Length; i++)
+        Exception? lastException = null;
+
+        for (int attempt = 1;
+             attempt <= maxAttempts;
+             attempt++)
         {
-            char ch = text[i];
-
-            if (escape)
+            try
             {
-                escape = false;
-                continue;
-            }
+                using var request =
+                    new HttpRequestMessage(
+                        HttpMethod.Get,
+                        reportUri);
 
-            if (ch == '\\' && inString)
-            {
-                escape = true;
-                continue;
-            }
+                request.Version =
+                    HttpVersion.Version11;
 
-            if (ch == '"')
-            {
-                inString = !inString;
-                continue;
-            }
+                request.VersionPolicy =
+                    HttpVersionPolicy.RequestVersionOrLower;
 
-            if (inString)
-            {
-                continue;
-            }
+                using HttpResponseMessage response =
+                    await httpClient.SendAsync(
+                        request,
+                        HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken);
 
-            if (ch == '{')
-            {
-                depth++;
-            }
-            else if (ch == '}')
-            {
-                depth--;
-
-                if (depth == 0)
+                if ((int)response.StatusCode == 490)
                 {
-                    return i;
+                    throw new HttpRequestException(
+                        "Codal rate limit/security verification triggered (HTTP 490).",
+                        null,
+                        response.StatusCode);
                 }
+
+                response.EnsureSuccessStatusCode();
+
+                return await response.Content
+                    .ReadAsStringAsync(
+                        cancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (HttpRequestException ex)
+            {
+                lastException = ex;
+            }
+            catch (IOException ex)
+            {
+                lastException = ex;
+            }
+            catch (OperationCanceledException ex)
+            {
+                lastException = ex;
+            }
+
+            if (attempt < maxAttempts)
+            {
+                await Task.Delay(
+                    TimeSpan.FromSeconds(
+                        attempt * 5),
+                    cancellationToken);
             }
         }
 
-        return -1;
+        throw new HttpRequestException(
+            $"Downloading Codal portfolio report failed after " +
+            $"{maxAttempts} attempts. Url: {reportUri}",
+            lastException);
     }
 }
+
+internal sealed record InvestmentPortfolioSheetData(
+    int SheetId,
+    int MetaTableCode,
+    bool IsListed,
+    string? PeriodEndDate,
+    IReadOnlyList<CodalTableRow> Rows);

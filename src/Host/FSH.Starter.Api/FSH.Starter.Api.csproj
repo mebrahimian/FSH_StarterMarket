@@ -26,7 +26,11 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
   </ItemGroup>
-
+  <ItemGroup>
+	<Content Update="appsettings.Production.json">
+	   <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+	</Content>
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\Web\Web.csproj" />
     <ProjectReference Include="..\..\Modules\Auditing\Modules.Auditing.Contracts\Modules.Auditing.Contracts.csproj" />

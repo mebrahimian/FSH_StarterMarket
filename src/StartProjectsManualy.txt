@@ -23,4 +23,20 @@ Get-NetTCPConnection -LocalPort 5173 -State Listen -ErrorAction SilentlyContinue
 Get-NetTCPConnection -LocalPort 5030 -State Listen -ErrorAction SilentlyContinue |ForEach-Object {Stop-Process -Id $_.OwningProcess -Force}
 
 
+/////
+Passwords مربوط به Production 
+اتصال به mebrahim_Bors
+user : mebrahim1_api   => Password : SadafKhashayar76!
+
+////
+Password مربوط به Job/hangfire
+ User : admin          => Password : AdminHangfire4585!
+
+////
+Passwos login Admin (front)
+ User : admin@root.com => Password : 123Pa$$ord!
+
+
+
+
 

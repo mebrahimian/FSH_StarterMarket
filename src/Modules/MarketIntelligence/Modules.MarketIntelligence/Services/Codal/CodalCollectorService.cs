@@ -231,10 +231,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            var processor = _processors
-                .SingleOrDefault(x => x.CanProcess(disclosure));
+            IReadOnlyList<ICodalDisclosureProcessor> processors =
+                      _processors.Where(x => x.CanProcess(disclosure))
+                                 .ToList();
 
-            if (processor is not null)
+            foreach (ICodalDisclosureProcessor processor in processors)
             {
                 await processor.ProcessAsync(
                     disclosure,
@@ -508,16 +509,13 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     cancellationToken);
             }
 
-            ICodalDisclosureProcessor? processor =
-                _processors.SingleOrDefault(
-                    item =>
-                        item.CanProcess(
-                            disclosure));
+            List<ICodalDisclosureProcessor> processors = _processors.Where(x => x.CanProcess(disclosure)).ToList();
 
-            if (processor is null)
+            if (processors.Count == 0)
             {
                 continue;
             }
+
             string? periodDate = ExtractPeriodDateFromTitle(letter.Title);
 
             if (periodDate is null)
@@ -542,13 +540,14 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 requestDelay,
                 cancellationToken);
 
+            foreach (ICodalDisclosureProcessor processor in processors)
+            {
+                await processor.ProcessAsync(
+                    disclosure,
+                    cancellationToken);
 
-
-            await processor.ProcessAsync(
-                disclosure,
-                cancellationToken);
-
-            processedCount++;
+                processedCount++;
+            }
         }
 
         if (_logger.IsEnabled(LogLevel.Information))
@@ -807,8 +806,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                   supportedReportTypes.Contains(x.Rt.Value) &&
                                   x.SalesParseStatus == DisclosureParseStatus.Pending
                             )
-                      .OrderBy(x => x.PublishDateTime ?? DateTime.MinValue)
-                      .ThenBy(x => x.Id)
+                      .OrderByDescending(x => x.PublishDateTime ?? DateTime.MinValue)
+                      .ThenByDescending(x => x.Id)
                       .Take(batchSize)
                       .ToListAsync(cancellationToken);
 

@@ -243,6 +243,9 @@ export function MarketHealthCenterPage() {
     const [bulkBackfillRunning, setBulkBackfillRunning] =
         useState(false);
 
+    const [bulkStartIndex, setBulkStartIndex] =
+        useState(0);
+
     const [bulkBackfillMessage, setBulkBackfillMessage] =
         useState("");
     const selectedLetterCategory =
@@ -357,8 +360,9 @@ export function MarketHealthCenterPage() {
                 toDate: string;
             }
         >();
-
-        for (const issue of dataQualityIssues) {
+        const issuesToProcess =
+            dataQualityIssues.slice(bulkStartIndex);
+        for (const issue of issuesToProcess) {
             const symbol = issue.symbol?.trim();
 
             const publishDate =
@@ -572,18 +576,25 @@ export function MarketHealthCenterPage() {
                         </div>
                     ) : (
                             dataQualityIssues
-                                .map((issue) => {
-                            const issueDescription =
-                                `اشکال در اعلامیه کدال ${issue.periodEndDate ?? "—"}`;
+                                .map((issue, index) => {
+                                    const issueDescription =
+                                        issue.issueCode === "MissingPortfolio"
+                                            ? `پرتفوی ثبت نشده ${issue.periodEndDate ?? "—"}`
+                                            : `اشکال در اعلامیه کدال ${issue.periodEndDate ?? "—"}`;
 
-                            return (
-                                <div
-                                    key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}
-                                    onClick={() =>
-                                        setBackfillSymbol(issue.symbol)
-                                    }
-                                    className="-mb-3 grid min-w-[620px] cursor-pointer grid-cols-[80px_200px_150px_150px_150px_100px] items-center gap-6 border-b py-2 transition-colors hover:bg-[var(--color-muted)] last:border-0"
-                                >
+                                    return (
+                                        <div
+                                            key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}
+                                            onClick={() => {
+                                                setBackfillSymbol(issue.symbol);
+                                                setBulkStartIndex(index);
+                                            }}
+                                            className={cn(
+                                                "-mb-3 grid min-w-[620px] cursor-pointer grid-cols-[80px_200px_150px_150px_150px_100px] items-center gap-6 border-b py-2 transition-colors hover:bg-[var(--color-muted)] last:border-0",
+                                                bulkStartIndex === index &&
+                                                "bg-[var(--color-muted)]",
+                                            )}
+                                        >
                                     <div className="font-semibold">
                                         {issue.symbol}
                                     </div>

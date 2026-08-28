@@ -27,6 +27,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.AspNetCore.Mvc;
+using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
@@ -58,6 +59,8 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType2Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityBankProcessor>();
+            builder.Services.AddScoped<InvestmentPortfolioReader>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor,InvestmentPortfolioProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
 
             //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();

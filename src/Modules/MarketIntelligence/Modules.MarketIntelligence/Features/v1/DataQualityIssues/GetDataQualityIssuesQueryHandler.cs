@@ -120,7 +120,53 @@ public sealed class GetDataQualityIssuesQueryHandler(
                     calculatedValue,
                     storedValue));
         }
+        var listedCompanySymbols = (await dbContext.CompanyMaster
+                     .AsNoTracking()
+                     .Where(x => x.IsListed &&
+                                 x.FSortSymbol != null)
+                     .Select(x => x.FSortSymbol!)
+                     .ToListAsync(cancellationToken)
+                     .ConfigureAwait(false))
+                     .ToHashSet(StringComparer.Ordinal);
+        var missingPortfolioDisclosures = (await dbContext.Disclosures
+                     .AsNoTracking()
+                     .Where(disclosure => disclosure.Let == 58 &&
+                                          disclosure.Rt == 2 &&
+                                          disclosure.HasHtml &&
+                                          !dbContext.InvestmentPortfolioPositions
+                    .Any(position => position.DisclosureId == disclosure.Id))
+                    .Select(disclosure => new
+                                              {
+                                                 disclosure.Symbol,
+                                                 disclosure.Title,
+                                                 disclosure.PublishDateTimeRaw,
+                                              })
+                    .ToListAsync(cancellationToken)
+                    .ConfigureAwait(false))
+                    .Where(disclosure => listedCompanySymbols.Contains(FSort.Normalize(disclosure.Symbol)))
+                    .ToList();
 
+        foreach (var disclosure in missingPortfolioDisclosures)
+        {
+            string periodEndDate =
+                PersianDateTextParser.TryExtract(
+                    disclosure.Title)
+                ?? string.Empty;
+
+            string? publishDate =
+                PersianDateTextParser.TryExtract(
+                    disclosure.PublishDateTimeRaw);
+
+            issues.Add(
+                new DataQualityIssueDto(
+                    disclosure.Symbol,
+                    null,
+                    periodEndDate,
+                    publishDate,
+                    "MissingPortfolio",
+                    null,
+                    null));
+        }
         return issues;
     }
 }
