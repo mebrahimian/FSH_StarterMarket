@@ -7,9 +7,14 @@ export type PagedResponse<T> = {
   totalCount: number;
   totalPages: number;
   hasNext: boolean;
-  hasPrevious: boolean;
+    hasPrevious: boolean;
 };
-
+export type MatchPortfolioCompanyInput = {
+    rawCompanyName: string;
+    fSortName: string;
+    isListed: boolean;
+    companyId: number;
+};
 export type DisclosureParseStatus =
   | "Pending"
   | "Success"
@@ -203,6 +208,10 @@ export function getCodalDataQuality(
         `/api/v1/marketintelligence/codal/data-quality?coverageYears=${coverageYears}`,
     );
 }
+export type CreateUnlistedPortfolioCompanyInput = {
+    rawCompanyName: string;
+    fSortName: string;
+};
 export type CodalOperationResponse = {
     jobId: string;
     message: string;
@@ -341,5 +350,82 @@ export function getFiscalYearSales(
 
     return apiFetch<FiscalYearSales>(
         `/api/v1/marketintelligence/fiscal-year-sales?${params.toString()}`,
+    );
+
+}
+export type UnmatchedPortfolioCompany = {
+    rawCompanyName: string;
+    fSortName: string;
+    isListed: boolean;
+    occurrenceCount: number;
+    parentSymbolCount: number;
+};
+
+export type PortfolioCompanyUsage = {
+    symbol: string;
+    companyName: string;
+    occurrenceCount: number;
+    firstPeriod: string;
+    lastPeriod: string;
+};
+export type PortfolioCompanyTarget = {
+    companyId: number;
+    symbol: string | null;
+    companyName: string;
+    isListed: boolean;
+};
+export function getUnmatchedPortfolioCompanies():
+    Promise<UnmatchedPortfolioCompany[]> {
+    return apiFetch<UnmatchedPortfolioCompany[]>(
+        "/api/v1/marketintelligence/portfolio-matching/unmatched",
+    );
+}
+
+export function getPortfolioCompanyUsage(
+    fSortName: string,
+    isListed: boolean,
+): Promise<PortfolioCompanyUsage[]> {
+    const params = new URLSearchParams({
+        fSortName,
+        isListed: String(isListed),
+    });
+
+    return apiFetch<PortfolioCompanyUsage[]>(
+        `/api/v1/marketintelligence/portfolio-matching/unmatched/usage?${params.toString()}`,
+    );
+}
+export function searchPortfolioCompanies(
+    searchText: string,
+    isListed: boolean,
+): Promise<PortfolioCompanyTarget[]> {
+    const params = new URLSearchParams({
+        searchText,
+        isListed: String(isListed),
+    });
+
+    return apiFetch<PortfolioCompanyTarget[]>(
+        `/api/v1/marketintelligence/portfolio-matching/companies?${params.toString()}`,
+    );
+}
+export function createUnlistedPortfolioCompany(
+    input: CreateUnlistedPortfolioCompanyInput,
+): Promise<PortfolioCompanyTarget> {
+    return apiFetch<PortfolioCompanyTarget>(
+        "/api/v1/marketintelligence/portfolio-matching/unlisted-companies",
+        {
+            method: "POST",
+            body: JSON.stringify(input),
+        },
+    );
+}
+export function matchPortfolioCompany(
+    input: MatchPortfolioCompanyInput,
+): Promise<number> {
+    return apiFetch<number>(
+        "/api/v1/marketintelligence/portfolio-matching/match",
+        {
+            method: "POST",
+            body: JSON.stringify(input),
+        },
     );
 }

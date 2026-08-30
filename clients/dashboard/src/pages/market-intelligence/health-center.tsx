@@ -3,10 +3,12 @@ import {
     Database,
     ChartNoAxesCombined,
     HeartPulse,
+    Link2,
     Newspaper,
     RefreshCw,
     type LucideIcon,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,6 +69,7 @@ import {
 import { FiscalYearSalesDialog } from
     "@/components/market-intelligence/fiscal-year-sales-dialog";
 export function MarketHealthCenterPage() {
+    const navigate = useNavigate();
     const [rtFilter, ] = useState("");
     const [letFilter, ] = useState("");
     const [sortBy, ] = useState<DisclosureSortBy>("publishDateTime");
@@ -493,24 +496,44 @@ export function MarketHealthCenterPage() {
                 title={tMarket("healthCenter.title")}
                 subtitle={tMarket("healthCenter.subtitle")}
                 actions={
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                            void refetchDataQualityIssues();
-                            void dataQualityQuery.refetch();
-                        }}
-                    >
-                        <RefreshCw
-                            className={cn(
-                                "mr-1.5 size-3.5",
-                                (disclosuresQuery.isFetching || dataQualityQuery.isFetching) &&
-                                "animate-spin",
-                            )}
-                        />
-                        {t("actions.refresh")}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() =>
+                                navigate(
+                                    "/market-intelligence/portfolio-matching",
+                                )
+                            }
+                        >
+                            <Link2 className="size-3.5" />
+                            تطبیق شرکت‌های پرتفوی
+                        </Button>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                void refetchDataQualityIssues();
+                                void dataQualityQuery.refetch();
+                            }}
+                        >
+                            <RefreshCw
+                                className={cn(
+                                    "mr-1.5 size-3.5",
+                                    (
+                                        disclosuresQuery.isFetching ||
+                                        dataQualityQuery.isFetching
+                                    ) &&
+                                    "animate-spin",
+                                )}
+                            />
+                            {t("actions.refresh")}
+                        </Button>
+                    </div>
                 }
             />
             

@@ -109,12 +109,25 @@ public sealed class InvestmentPortfolioProcessor(
                 string fSortName = FSort.Normalize(position.CompanyName);
 
                 int? childCompanyId = null;
+                bool isListed = position.IsListed;
 
-                if (aliasLookup.TryGetValue((fSortName, sheet.IsListed),
-                                      out List<int>? companyIds) &&
-                                      companyIds.Count == 1)
+                bool hasListedMatch = aliasLookup.ContainsKey((fSortName, true));
+
+                bool hasUnlistedMatch = aliasLookup.ContainsKey((fSortName, false));
+
+                if (hasListedMatch != hasUnlistedMatch)
                 {
-                    childCompanyId = companyIds[0];
+                    bool resolvedIsListed = hasListedMatch;
+
+                    if (aliasLookup.TryGetValue(
+                            (fSortName, resolvedIsListed),
+                            out List<int>? companyIds) &&
+                        companyIds.Count == 1)
+                    {
+                        childCompanyId = companyIds[0];
+
+                        isListed = resolvedIsListed;
+                    }
                 }
                 entities.Add(
                     new InvestmentPortfolioPosition(
@@ -123,7 +136,7 @@ public sealed class InvestmentPortfolioProcessor(
                         rawCompanyName: position.CompanyName,
                         fSortName: fSortName,
                         periodEndDate: periodEndDate,
-                        isListed: position.IsListed,
+                        isListed: isListed,
                         rowSequence: position.RowSequence,
                         capital: ParseNullableDecimal(position.Capital),
                         nominalValue: ParseNullableDecimal(position.NominalValue),
@@ -203,8 +216,7 @@ public sealed class InvestmentPortfolioProcessor(
             string? changeQuantity =
                 GetValue(row, 7);
 
-            result.Add(
-                new InvestmentPortfolioPositionData(
+            var position = new InvestmentPortfolioPositionData(
                     RowSequence: row.RowSequence,
                     IsListed: true,
                     CompanyName: GetValue(row, 1)!,
@@ -217,15 +229,20 @@ public sealed class InvestmentPortfolioProcessor(
                     ChangeCost: GetValue(row, 8),
                     ChangeMarketValue: GetValue(row, 9),
                     OwnershipPercent: GetValue(row, 10),
-                    EndingQuantity: AddNumericValues(
-                        beginningQuantity,
-                        changeQuantity),
+                    EndingQuantity: AddNumericValues(beginningQuantity, changeQuantity),
                     EndingCost: GetValue(row, 11),
                     EndingMarketValue: GetValue(row, 12),
                     EndingCostPerShare: GetValue(row, 13),
                     EndingMarketPrice: GetValue(row, 14),
                     IncreaseDecrease: GetValue(row, 15),
-                    Notes: null));
+                    Notes: null);
+
+            if (IsZeroPosition(position))
+            {
+                continue;
+            }
+
+            result.Add(position);
         }
 
         return result;
@@ -252,8 +269,7 @@ public sealed class InvestmentPortfolioProcessor(
             string? changeQuantity =
                 GetValue(row, 6);
 
-            result.Add(
-                new InvestmentPortfolioPositionData(
+            var position = new InvestmentPortfolioPositionData(
                     RowSequence: row.RowSequence,
                     IsListed: false,
                     CompanyName: GetValue(row, 1)!,
@@ -266,15 +282,20 @@ public sealed class InvestmentPortfolioProcessor(
                     ChangeCost: GetValue(row, 7),
                     ChangeMarketValue: null,
                     OwnershipPercent: GetValue(row, 8),
-                    EndingQuantity: AddNumericValues(
-                        beginningQuantity,
-                        changeQuantity),
+                    EndingQuantity: AddNumericValues(beginningQuantity, changeQuantity),
                     EndingCost: GetValue(row, 9),
                     EndingMarketValue: null,
                     EndingCostPerShare: GetValue(row, 10),
                     EndingMarketPrice: null,
                     IncreaseDecrease: null,
-                    Notes: GetValue(row, 11)));
+                    Notes: GetValue(row, 11));
+
+            if (IsZeroPosition(position))
+            {
+                continue;
+            }
+
+            result.Add(position);
         }
 
         return result;
@@ -283,38 +304,29 @@ public sealed class InvestmentPortfolioProcessor(
     private static bool IsDataRow(
         CodalTableRow row)
     {
-        string? companyName =
-            GetValue(row, 1);
+        string? companyName = GetValue(row, 1);
 
         if (string.IsNullOrWhiteSpace(companyName))
         {
             return false;
         }
 
-        string trimmedName =
-            companyName.Trim();
+        string trimmedName = companyName.Trim();
 
-        if (string.Equals(
-                trimmedName,
-                "جمع",
-                StringComparison.Ordinal) ||
-            trimmedName.StartsWith(
-                "جمع ",
-                StringComparison.Ordinal))
+        if (string.Equals(trimmedName, "جمع", StringComparison.Ordinal) ||
+                          trimmedName.StartsWith("جمع ", StringComparison.Ordinal))
         {
             return false;
         }
 
         foreach (KeyValuePair<int, string?> value in row.Values)
         {
-            if (value.Key <= 1 ||
-                string.IsNullOrWhiteSpace(value.Value))
+            if (value.Key <= 1 || string.IsNullOrWhiteSpace(value.Value))
             {
                 continue;
             }
 
-            string normalized =
-                NormalizeNumeric(value.Value);
+            string normalized = NormalizeNumeric(value.Value);
 
             if (decimal.TryParse(
                     normalized,
@@ -441,6 +453,23 @@ public sealed class InvestmentPortfolioProcessor(
             .Replace('٧', '7')
             .Replace('٨', '8')
             .Replace('٩', '9');
+    }
+    private static bool IsZeroPosition(InvestmentPortfolioPositionData position)
+    {
+        return
+            ParseDecimal(position.BeginningQuantity) == 0m &&
+            ParseDecimal(position.BeginningCost) == 0m &&
+            ParseDecimal(position.BeginningMarketValue) == 0m &&
+            ParseDecimal(position.ChangeQuantity) == 0m &&
+            ParseDecimal(position.ChangeCost) == 0m &&
+            ParseDecimal(position.ChangeMarketValue) == 0m &&
+            ParseDecimal(position.OwnershipPercent) == 0m &&
+            ParseDecimal(position.EndingQuantity) == 0m &&
+            ParseDecimal(position.EndingCost) == 0m &&
+            ParseDecimal(position.EndingMarketValue) == 0m &&
+            ParseDecimal(position.EndingCostPerShare) == 0m &&
+            ParseDecimal(position.EndingMarketPrice) == 0m &&
+            ParseDecimal(position.IncreaseDecrease) == 0m;
     }
 }
 

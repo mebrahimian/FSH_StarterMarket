@@ -28,7 +28,7 @@ using Microsoft.Extensions.Hosting;
 using Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.AspNetCore.Mvc;
 using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
-
+using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -97,6 +97,11 @@ namespace FSH.Modules.MarketIntelligence
             group.MapSearchDisclosuresEndpoint();
             group.MapGetFiscalYearSalesEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
+            group.MapGetUnmatchedPortfolioCompaniesEndpoint();
+            group.MapGetPortfolioCompanyUsageEndpoint();
+            group.MapSearchPortfolioCompaniesEndpoint();
+            group.MapCreateUnlistedPortfolioCompanyEndpoint();
+            group.MapMatchPortfolioCompanyEndpoint();
             group.MapPost("/codal/newRead", (IJobService jobService) =>
               {
                   string jobId = jobService.Enqueue<CodalBackgroundJob>

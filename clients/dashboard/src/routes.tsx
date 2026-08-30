@@ -70,6 +70,14 @@ const MarketHealthCenterPage = lazyNamed(
         ),
     "MarketHealthCenterPage",
 );
+const PortfolioMatchingPage = lazyNamed(
+    () =>
+        import(
+            "@/pages/market-intelligence/portfolio-matching"
+        ),
+    "PortfolioMatchingPage",
+);
+
 const ProductDetailPage = lazyNamed(
   () => import("@/pages/catalog/product-detail"),
   "ProductDetailPage",
@@ -249,6 +257,10 @@ export const router = createBrowserRouter([
             {
                 path: "market-intelligence/health-center",
                 element: withSuspense(<MarketHealthCenterPage />),
+            },
+            {
+                path: "market-intelligence/portfolio-matching",
+                element: withSuspense(<PortfolioMatchingPage />),
             },
           {
             path: "settings",

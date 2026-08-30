@@ -24,6 +24,7 @@ public sealed class PortfolioCompanyAliasConfiguration :
         builder.Property(x => x.AliasName).HasMaxLength(512).IsRequired();
 
         builder.Property(x => x.FSortName).HasMaxLength(512).IsRequired();
+        builder.HasIndex(x => new {x.FSortName, x.IsListed,}).IsUnique();
 
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.IsListed).HasDefaultValue(true).IsRequired();

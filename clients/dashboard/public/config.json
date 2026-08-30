@@ -1,5 +1,5 @@
 {
-  "apiBase": "https://api.mebrahimian.ir",
+  "apiBase": "http://localhost:5030",
   "defaultTenant": "marketintelligence",
   "demoMode": false,
   "inactivityIdleMs": 28800000,
