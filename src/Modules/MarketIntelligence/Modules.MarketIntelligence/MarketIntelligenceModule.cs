@@ -101,7 +101,12 @@ namespace FSH.Modules.MarketIntelligence
             group.MapGetPortfolioCompanyUsageEndpoint();
             group.MapSearchPortfolioCompaniesEndpoint();
             group.MapCreateUnlistedPortfolioCompanyEndpoint();
+            
             group.MapMatchPortfolioCompanyEndpoint();
+            group.MapUnmatchPortfolioCompanyEndpoint();
+
+            group.MapGetMatchedPortfolioCompaniesEndpoint();
+
             group.MapPost("/codal/newRead", (IJobService jobService) =>
               {
                   string jobId = jobService.Enqueue<CodalBackgroundJob>

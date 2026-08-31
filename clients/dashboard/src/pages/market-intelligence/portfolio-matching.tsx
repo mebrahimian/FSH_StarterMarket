@@ -1,5 +1,6 @@
 
 import {
+    Loader2,
     Building2,
     CheckCircle2,
     ChevronDown,
@@ -30,6 +31,7 @@ import {
     useQueryClient,
 } from "@tanstack/react-query";
 import { PortfolioCompanyTargetPicker } from "./portfolio-company-target-picker";
+import { PortfolioManipulationPanel } from "./portfolio-manipulation-panel";
 
 import { Button } from "@/components/ui/button";
 import { PageHero } from "@/components/list";
@@ -47,18 +49,17 @@ type ListingFilter =
     | "listed"
     | "unlisted";
 
-
+type PortfolioView =
+    | "unmatched"
+    | "matched";
 export function PortfolioMatchingPage() {
     const navigate = useNavigate();
+    const [portfolioView, setPortfolioView] = useState<PortfolioView>("unmatched");
+    const [search, setSearch] = useState("");
 
-    const [search, setSearch] =
-        useState("");
+    const [listingFilter, setListingFilter] = useState<ListingFilter>("all");
 
-    const [listingFilter, setListingFilter] =
-        useState<ListingFilter>("all");
-
-    const [expandedCompany, setExpandedCompany] =
-        useState<string | null>(null);
+    const [expandedCompany, setExpandedCompany] = useState<string | null>(null);
 
     const [selectedTargets, setSelectedTargets] = useState<
         Record<string, PortfolioCompanyTarget | null>
@@ -150,16 +151,52 @@ export function PortfolioMatchingPage() {
             className="-mt-5 space-y-5"
             dir="rtl"
         >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            {/* عنوان صفحه */}
+            <div className="flex flex-col gap-3">
                 <PageHero
                     title="تطبیق شرکت‌های پرتفوی"
-                    subtitle="شناسایی و اتصال نام‌های پرتفوی که هنوز CompanyId ندارند"
+                    subtitle="شناسایی، اتصال و اصلاح هویت شرکت‌های موجود در پرتفوی"
                 />
+            </div>
+
+            {/* نوار عملیات */}
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex w-fit gap-1 rounded-xl border border-border bg-muted/40 p-1">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                            portfolioView === "unmatched"
+                                ? "secondary"
+                                : "ghost"
+                        }
+                        onClick={() =>
+                            setPortfolioView("unmatched")
+                        }
+                    >
+                        نیازمند تطبیق
+                    </Button>
+
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                            portfolioView === "matched"
+                                ? "secondary"
+                                : "ghost"
+                        }
+                        onClick={() =>
+                            setPortfolioView("matched")
+                        }
+                    >
+                        مدیریت تطبیق‌ها
+                    </Button>
+                </div>
 
                 <Button
                     type="button"
                     variant="outline"
-                    className="gap-2 self-start"
+                    className="gap-2 self-start sm:self-auto"
                     onClick={() =>
                         navigate(
                             "/market-intelligence/health-center",
@@ -171,328 +208,367 @@ export function PortfolioMatchingPage() {
                 </Button>
             </div>
 
-            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <MatchingStat
-                    icon={Link2}
-                    title="بدون CompanyId"
-                    value={
-                        isLoading
-                            ? "..."
-                            : companies.length
-                                .toLocaleString()
-                    }
-                    hint="نام یکتای نیازمند تطبیق"
-                />
+            {/* مدیریت تطبیق‌های انجام‌شده */}
+            {portfolioView === "matched" && (
+                <PortfolioManipulationPanel />
+            )}
 
-                <MatchingStat
-                    icon={Building2}
-                    title="بورسی"
-                    value={
-                        isLoading
-                            ? "..."
-                            : listedCount.toLocaleString()
-                    }
-                    hint="شرکت‌های بورسی تطبیق‌نشده"
-                />
+            {/* فقط موارد نیازمند تطبیق */}
+            {portfolioView === "unmatched" && (
+                <>
+                    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <MatchingStat
+                            icon={Link2}
+                            title="بدون CompanyId"
+                            value={
+                                isLoading
+                                    ? "..."
+                                    : companies.length.toLocaleString()
+                            }
+                            hint="نام یکتای نیازمند تطبیق"
+                        />
 
-                <MatchingStat
-                    icon={Store}
-                    title="غیربورسی"
-                    value={
-                        isLoading
-                            ? "..."
-                            : unlistedCount.toLocaleString()
-                    }
-                    hint="شرکت‌های غیربورسی تطبیق‌نشده"
-                />
+                        <MatchingStat
+                            icon={Building2}
+                            title="بورسی"
+                            value={
+                                isLoading
+                                    ? "..."
+                                    : listedCount.toLocaleString()
+                            }
+                            hint="شرکت‌های بورسی تطبیق‌نشده"
+                        />
 
-                <MatchingStat
-                    icon={CheckCircle2}
-                    title="وضعیت تطبیق"
-                    value={
-                        isLoading
-                            ? "..."
-                            : companies.length === 0
-                                ? "کامل"
-                                : "نیاز به بررسی"
-                    }
-                    hint={
-                        companies.length === 0
-                            ? "همه CompanyIdها مشخص هستند"
-                            : "موارد باقی‌مانده را بررسی کنید"
-                    }
-                />
-            </section>
+                        <MatchingStat
+                            icon={Store}
+                            title="غیربورسی"
+                            value={
+                                isLoading
+                                    ? "..."
+                                    : unlistedCount.toLocaleString()
+                            }
+                            hint="شرکت‌های غیربورسی تطبیق‌نشده"
+                        />
 
-            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <h2 className="text-base font-semibold">
-                            شرکت‌های نیازمند بررسی
-                        </h2>
+                        <MatchingStat
+                            icon={CheckCircle2}
+                            title="وضعیت تطبیق"
+                            value={
+                                isLoading
+                                    ? "..."
+                                    : companies.length === 0
+                                        ? "کامل"
+                                        : "نیاز به بررسی"
+                            }
+                            hint={
+                                companies.length === 0
+                                    ? "همه CompanyIdها مشخص هستند"
+                                    : "موارد باقی‌مانده را بررسی کنید"
+                            }
+                        />
+                    </section>
 
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            اولویت بر اساس تعداد نمادهای استفاده‌کننده
-                            و سپس تعداد تکرار
-                        </p>
-                    </div>
-
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                        <div className="relative min-w-72">
-                            <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                            <input
-                                type="text"
-                                value={search}
-                                onChange={event =>
-                                    setSearch(
-                                        event.target.value,
-                                    )
-                                }
-                                placeholder="جستجو در نام شرکت..."
-                                className="h-9 w-full rounded-lg border border-input bg-background pr-9 pl-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-                            />
-                        </div>
-
-                        <div className="flex gap-1 rounded-lg bg-muted/60 p-1">
-                            <Button
-                                type="button"
-                                variant={
-                                    listingFilter === "all"
-                                        ? "secondary"
-                                        : "ghost"
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    setListingFilter("all")
-                                }
-                            >
-                                همه
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant={
-                                    listingFilter === "listed"
-                                        ? "secondary"
-                                        : "ghost"
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    setListingFilter(
-                                        "listed",
-                                    )
-                                }
-                            >
-                                بورسی
-                            </Button>
-
-                            <Button
-                                type="button"
-                                variant={
-                                    listingFilter === "unlisted"
-                                        ? "secondary"
-                                        : "ghost"
-                                }
-                                size="sm"
-                                onClick={() =>
-                                    setListingFilter(
-                                        "unlisted",
-                                    )
-                                }
-                            >
-                                غیربورسی
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <div className="min-w-[1050px]">
-                        <div className="grid grid-cols-[2.2fr_1.8fr_100px_100px_125px_2fr_115px] gap-3 border-b border-border bg-muted/30 px-5 py-3 text-xs font-semibold text-muted-foreground">
-                            <div>نام کدال</div>
-                            <div>نام نرمال‌شده</div>
-                            <div className="text-center">
-                                نوع
-                            </div>
-                            <div className="text-center">
-                                تکرار
-                            </div>
-                            <div className="text-center">
-                                استفاده در
-                            </div>
+                    <section className="overflow-visible rounded-2xl border border-border bg-card shadow-sm">
+                        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
                             <div>
-                                شرکت مقصد
+                                <h2 className="text-base font-semibold">
+                                    شرکت‌های نیازمند بررسی
+                                </h2>
+
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    اولویت بر اساس تعداد نمادهای استفاده‌کننده
+                                    و سپس تعداد تکرار
+                                </p>
                             </div>
-                            <div className="text-center">
-                                عملیات
+
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                                <div className="relative min-w-72">
+                                    <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+                                    <input
+                                        type="text"
+                                        value={search}
+                                        onChange={event =>
+                                            setSearch(
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder="جستجو در نام شرکت..."
+                                        className="h-9 w-full rounded-lg border border-input bg-background pr-9 pl-3 text-sm outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+                                    />
+                                </div>
+
+                                <div className="flex gap-1 rounded-lg bg-muted/60 p-1">
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            listingFilter === "all"
+                                                ? "secondary"
+                                                : "ghost"
+                                        }
+                                        size="sm"
+                                        onClick={() =>
+                                            setListingFilter("all")
+                                        }
+                                    >
+                                        همه
+                                    </Button>
+
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            listingFilter === "listed"
+                                                ? "secondary"
+                                                : "ghost"
+                                        }
+                                        size="sm"
+                                        onClick={() =>
+                                            setListingFilter(
+                                                "listed",
+                                            )
+                                        }
+                                    >
+                                        بورسی
+                                    </Button>
+
+                                    <Button
+                                        type="button"
+                                        variant={
+                                            listingFilter === "unlisted"
+                                                ? "secondary"
+                                                : "ghost"
+                                        }
+                                        size="sm"
+                                        onClick={() =>
+                                            setListingFilter(
+                                                "unlisted",
+                                            )
+                                        }
+                                    >
+                                        غیربورسی
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
-                        {isLoading && (
-                            <div className="flex min-h-72 items-center justify-center text-sm text-muted-foreground">
-                                در حال خواندن پرتفوی...
-                            </div>
-                        )}
+                        <div className="overflow-x-auto">
+                            <div className="min-w-[1050px]">
+                                <div className="grid grid-cols-[2.2fr_1.8fr_100px_100px_125px_2fr_115px] gap-3 border-b border-border bg-muted/30 px-5 py-3 text-xs font-semibold text-muted-foreground">
+                                    <div>نام کدال</div>
+                                    <div>نام نرمال‌شده</div>
 
-                        {isError && (
-                            <div className="flex min-h-72 items-center justify-center text-sm text-destructive">
-                                خطا در دریافت اطلاعات پرتفوی
-                            </div>
-                        )}
+                                    <div className="text-center">
+                                        نوع
+                                    </div>
 
-                        {!isLoading &&
-                            !isError &&
-                            filteredCompanies.length === 0 && (
-                                <div className="flex min-h-72 flex-col items-center justify-center text-center">
-                                    <CheckCircle2 className="mb-3 size-8 text-muted-foreground" />
+                                    <div className="text-center">
+                                        تکرار
+                                    </div>
 
-                                    <div className="text-sm font-semibold">
-                                        موردی پیدا نشد
+                                    <div className="text-center">
+                                        استفاده در
+                                    </div>
+
+                                    <div>
+                                        شرکت مقصد
+                                    </div>
+
+                                    <div className="text-center">
+                                        عملیات
                                     </div>
                                 </div>
-                            )}
 
-                        {!isLoading &&
-                            !isError &&
-                            filteredCompanies.map(company => {
-                                const companyKey =
-                                    `${company.fSortName}-${company.isListed}`;
+                                {isLoading && (
+                                    <div className="flex min-h-72 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+                                        <Loader2 className="size-6 animate-spin" />
 
-                                const isExpanded =
-                                    expandedCompany === companyKey;
-                                const selectedTarget =
-                                    selectedTargets[companyKey] ?? null;
+                                        <span>
+                                            در حال خواندن تطبیق‌ها...
+                                        </span>
+                                    </div>
+                                )}
 
-                                return (
-                                    <Fragment key={companyKey}>
-                                        <div
-                                            className={[
-                                                "grid grid-cols-[2.2fr_1.8fr_100px_100px_125px_2fr_115px]",
-                                                "items-center gap-3 border-b border-border/70",
-                                                "px-5 py-3 text-sm transition",
-                                                isExpanded
-                                                    ? "bg-muted/30"
-                                                    : "hover:bg-muted/25",
-                                            ].join(" ")}
-                                        >
-                                            <div className="font-medium">
-                                                {company.rawCompanyName}
-                                            </div>
+                                {isError && (
+                                    <div className="flex min-h-72 items-center justify-center text-sm text-destructive">
+                                        خطا در دریافت اطلاعات پرتفوی
+                                    </div>
+                                )}
 
-                                            <div className="truncate text-xs text-muted-foreground">
-                                                {company.fSortName}
-                                            </div>
+                                {!isLoading &&
+                                    !isError &&
+                                    filteredCompanies.length === 0 && (
+                                        <div className="flex min-h-72 flex-col items-center justify-center text-center">
+                                            <CheckCircle2 className="mb-3 size-8 text-muted-foreground" />
 
-                                            <div className="text-center">
-                                                <span className="rounded-full bg-muted px-2 py-1 text-xs">
-                                                    {company.isListed
-                                                        ? "بورسی"
-                                                        : "غیربورسی"}
-                                                </span>
-                                            </div>
-
-                                            <div className="text-center font-semibold">
-                                                {company.occurrenceCount
-                                                    .toLocaleString()}
-                                            </div>
-
-                                            <div className="text-center">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="gap-1 font-semibold"
-                                                    onClick={() =>
-                                                        setExpandedCompany(
-                                                            isExpanded
-                                                                ? null
-                                                                : companyKey,
-                                                        )
-                                                    }
-                                                >
-                                                    {company.parentSymbolCount
-                                                        .toLocaleString()}{" "}
-                                                    نماد
-
-                                                    {isExpanded ? (
-                                                        <ChevronUp className="size-3.5" />
-                                                    ) : (
-                                                        <ChevronDown className="size-3.5" />
-                                                    )}
-                                                </Button>
-                                            </div>
-
-                                            <div>
-                                                <PortfolioCompanyTargetPicker
-                                                    rawCompanyName={company.rawCompanyName}
-                                                    fSortName={company.fSortName}
-                                                    isListed={company.isListed}
-                                                    value={selectedTarget}
-                                                    onChange={(target) =>
-                                                        setSelectedTargets((current) => ({
-                                                            ...current,
-                                                            [companyKey]: target,
-                                                        }))
-                                                    }
-                                                />
-                                            </div>
-
-                                            <div className="text-center">
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    disabled={
-                                                        selectedTarget === null ||
-                                                        matchMutation.isPending
-                                                    }
-                                                    onClick={() => {
-                                                        if (selectedTarget === null) {
-                                                            return;
-                                                        }
-
-                                                        setPendingMatch({
-                                                            company,
-                                                            target: selectedTarget,
-                                                        });
-                                                    }}
-                                                >
-                                                    تطبیق
-                                                </Button>
+                                            <div className="text-sm font-semibold">
+                                                موردی پیدا نشد
                                             </div>
                                         </div>
+                                    )}
 
-                                        {isExpanded && (
-                                            <PortfolioUsageDetails
-                                                fSortName={company.fSortName}
-                                                isListed={company.isListed}
-                                            />
-                                        )}
-                                    </Fragment>
-                                );
-                            })}
-                    </div>
-                </div>
+                                {!isLoading &&
+                                    !isError &&
+                                    filteredCompanies.map(company => {
+                                        const companyKey =
+                                            `${company.fSortName}-${company.isListed}`;
 
-                {!isLoading && !isError && (
-                    <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-                        نمایش{" "}
-                        <strong className="text-foreground">
-                            {filteredCompanies.length
-                                .toLocaleString()}
-                        </strong>{" "}
-                        از{" "}
-                        <strong className="text-foreground">
-                            {companies.length
-                                .toLocaleString()}
-                        </strong>{" "}
-                        نام یکتا
-                    </div>
-                )}
-            </section>
+                                        const isExpanded =
+                                            expandedCompany === companyKey;
+
+                                        const selectedTarget =
+                                            selectedTargets[companyKey] ?? null;
+
+                                        return (
+                                            <Fragment key={companyKey}>
+                                                <div
+                                                    className={[
+                                                        "grid grid-cols-[2.2fr_1.8fr_100px_100px_125px_2fr_115px]",
+                                                        "items-center gap-3 border-b border-border/70",
+                                                        "px-5 py-3 text-sm transition",
+                                                        isExpanded
+                                                            ? "bg-muted/30"
+                                                            : "hover:bg-muted/25",
+                                                    ].join(" ")}
+                                                >
+                                                    <div className="font-medium">
+                                                        {company.rawCompanyName}
+                                                    </div>
+
+                                                    <div className="truncate text-xs text-muted-foreground">
+                                                        {company.fSortName}
+                                                    </div>
+
+                                                    <div className="text-center">
+                                                        <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                                                            {company.isListed
+                                                                ? "بورسی"
+                                                                : "غیربورسی"}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="text-center font-semibold">
+                                                        {company.occurrenceCount
+                                                            .toLocaleString()}
+                                                    </div>
+
+                                                    <div className="text-center">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="gap-1 font-semibold"
+                                                            onClick={() =>
+                                                                setExpandedCompany(
+                                                                    isExpanded
+                                                                        ? null
+                                                                        : companyKey,
+                                                                )
+                                                            }
+                                                        >
+                                                            {company.parentSymbolCount
+                                                                .toLocaleString()}{" "}
+                                                            نماد
+
+                                                            {isExpanded ? (
+                                                                <ChevronUp className="size-3.5" />
+                                                            ) : (
+                                                                <ChevronDown className="size-3.5" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
+
+                                                    <div>
+                                                        <PortfolioCompanyTargetPicker
+                                                            rawCompanyName={
+                                                                company.rawCompanyName
+                                                            }
+                                                            fSortName={
+                                                                company.fSortName
+                                                            }
+                                                            isListed={
+                                                                company.isListed
+                                                            }
+                                                            value={
+                                                                selectedTarget
+                                                            }
+                                                            onChange={target =>
+                                                                setSelectedTargets(
+                                                                    current => ({
+                                                                        ...current,
+                                                                        [companyKey]:
+                                                                            target,
+                                                                    }),
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    <div className="text-center">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            disabled={
+                                                                selectedTarget === null ||
+                                                                matchMutation.isPending
+                                                            }
+                                                            onClick={() => {
+                                                                if (
+                                                                    selectedTarget === null
+                                                                ) {
+                                                                    return;
+                                                                }
+
+                                                                setPendingMatch({
+                                                                    company,
+                                                                    target:
+                                                                        selectedTarget,
+                                                                });
+                                                            }}
+                                                        >
+                                                            تطبیق
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                {isExpanded && (
+                                                    <PortfolioUsageDetails
+                                                        fSortName={
+                                                            company.fSortName
+                                                        }
+                                                        isListed={
+                                                            company.isListed
+                                                        }
+                                                    />
+                                                )}
+                                            </Fragment>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+
+                        {!isLoading && !isError && (
+                            <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+                                نمایش{" "}
+                                <strong className="text-foreground">
+                                    {filteredCompanies.length
+                                        .toLocaleString()}
+                                </strong>{" "}
+                                از{" "}
+                                <strong className="text-foreground">
+                                    {companies.length
+                                        .toLocaleString()}
+                                </strong>{" "}
+                                نام یکتا
+                            </div>
+                        )}
+                    </section>
+                </>
+            )}
+
+            {/* Dialog تطبیق */}
             <Dialog
                 open={pendingMatch !== null}
-                onOpenChange={(open) => {
+                onOpenChange={open => {
                     if (!open) {
                         setPendingMatch(null);
                     }
@@ -505,10 +581,13 @@ export function PortfolioMatchingPage() {
                         </DialogTitle>
 
                         <DialogDescription>
-                            آیا «{pendingMatch?.company.rawCompanyName}»
-                            {" "}به{" "}
-                            «{pendingMatch?.target.companyName}»
-                            تطبیق داده شود؟
+                            آیا «
+                            {pendingMatch?.company.rawCompanyName}
+                            »{" "}
+                            به{" "}
+                            «
+                            {pendingMatch?.target.companyName}
+                            » تطبیق داده شود؟
                         </DialogDescription>
                     </DialogHeader>
 
@@ -516,7 +595,9 @@ export function PortfolioMatchingPage() {
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => setPendingMatch(null)}
+                            onClick={() =>
+                                setPendingMatch(null)
+                            }
                         >
                             انصراف
                         </Button>
@@ -532,11 +613,14 @@ export function PortfolioMatchingPage() {
                                     return;
                                 }
 
-                                const match = pendingMatch;
+                                const match =
+                                    pendingMatch;
 
                                 setPendingMatch(null);
 
-                                matchMutation.mutate(match);
+                                matchMutation.mutate(
+                                    match,
+                                );
                             }}
                         >
                             {matchMutation.isPending
@@ -560,6 +644,7 @@ function PortfolioUsageDetails({
     const {
         data: usage = [],
         isLoading,
+        isFetching,
         isError,
     } = useQuery({
         queryKey: [
@@ -643,7 +728,11 @@ function PortfolioUsageDetails({
                         </div>
                     ))}
             </div>
+           
+
         </div>
+        
+        
     );
 }
 function MatchingStat({

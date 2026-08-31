@@ -326,6 +326,25 @@ export type FiscalYearSales = {
     nextYearEndDate: string | null;
     rows: FiscalYearSalesRow[];
 };
+export type MatchedPortfolioCompany = {
+    rawCompanyName: string;
+    fSortName: string;
+    isListed: boolean;
+    companyId: number;
+    symbol: string | null;
+    companyName: string | null;
+    occurrenceCount: number;
+    parentSymbolCount: number;
+    firstPeriod: string;
+    lastPeriod: string;
+    hasAlias: boolean;
+};
+
+export type UnmatchPortfolioCompanyInput = {
+    fSortName: string;
+    isListed: boolean;
+    companyId: number;
+};
 export function getDataQualityIssues(): Promise<DataQualityIssue[]> {
     return apiFetch<DataQualityIssue[]>(
         "/api/v1/marketintelligence/data-quality/issues",
@@ -381,6 +400,12 @@ export function getUnmatchedPortfolioCompanies():
     );
 }
 
+export function getMatchedPortfolioCompanies():
+    Promise<MatchedPortfolioCompany[]> {
+    return apiFetch<MatchedPortfolioCompany[]>(
+        "/api/v1/marketintelligence/portfolio-matching/matched",
+    );
+}
 export function getPortfolioCompanyUsage(
     fSortName: string,
     isListed: boolean,
@@ -418,11 +443,23 @@ export function createUnlistedPortfolioCompany(
         },
     );
 }
+
 export function matchPortfolioCompany(
     input: MatchPortfolioCompanyInput,
 ): Promise<number> {
     return apiFetch<number>(
         "/api/v1/marketintelligence/portfolio-matching/match",
+        {
+            method: "POST",
+            body: JSON.stringify(input),
+        },
+    );
+}
+export function unmatchPortfolioCompany(
+    input: UnmatchPortfolioCompanyInput,
+): Promise<number> {
+    return apiFetch<number>(
+        "/api/v1/marketintelligence/portfolio-matching/unmatch",
         {
             method: "POST",
             body: JSON.stringify(input),
