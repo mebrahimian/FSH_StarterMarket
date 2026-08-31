@@ -131,7 +131,46 @@ export type SearchDisclosuresParams = {
   pageNumber?: number;
   pageSize?: number;
   sortBy?: DisclosureSortBy;
-  sortDir?: "asc" | "desc";
+    sortDir?: "asc" | "desc";
+};
+export type PortfolioPosition = {
+    id: string;
+    rowSequence: number;
+    childCompanyId: number | null;
+    rawCompanyName: string;
+    fSortName: string;
+    isListed: boolean;
+    symbol: string | null;
+    companyName: string | null;
+    capital: number | null;
+    nominalValue: number | null;
+    beginningQuantity: number | null;
+    beginningCost: number | null;
+    beginningMarketValue: number | null;
+    changeQuantity: number | null;
+    changeCost: number | null;
+    changeMarketValue: number | null;
+    ownershipPercent: number | null;
+    endingQuantity: number | null;
+    endingCost: number | null;
+    endingMarketValue: number | null;
+    endingCostPerShare: number | null;
+    endingMarketPrice: number | null;
+    increaseDecrease: number | null;
+    notes: string | null;
+};
+
+export type PortfolioReport = {
+    disclosureId: string;
+    tracingNo: number;
+    parentCompanyId: number;
+    periodEndDate: string;
+    publishDateTime: string | null;
+    previousDisclosureId: string | null;
+    nextDisclosureId: string | null;
+    listedReportedMarketValue: number | null;
+    unlistedReportedValue: number | null;
+    positions: PortfolioPosition[];
 };
 
 export function searchDisclosures(
@@ -464,5 +503,12 @@ export function unmatchPortfolioCompany(
             method: "POST",
             body: JSON.stringify(input),
         },
+    );
+}
+export function getPortfolioByDisclosureId(
+    disclosureId: string,
+): Promise<PortfolioReport | null> {
+    return apiFetch<PortfolioReport | null>(
+        `/api/v1/marketintelligence/portfolio-viewer/${encodeURIComponent(disclosureId)}`,
     );
 }

@@ -29,6 +29,7 @@ using Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.AspNetCore.Mvc;
 using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
+using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -96,6 +97,7 @@ namespace FSH.Modules.MarketIntelligence
 
             group.MapSearchDisclosuresEndpoint();
             group.MapGetFiscalYearSalesEndpoint();
+            group.MapGetPortfolioByDisclosureIdEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
             group.MapGetUnmatchedPortfolioCompaniesEndpoint();
             group.MapGetPortfolioCompanyUsageEndpoint();

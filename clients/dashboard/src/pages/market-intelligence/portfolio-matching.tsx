@@ -644,7 +644,6 @@ function PortfolioUsageDetails({
     const {
         data: usage = [],
         isLoading,
-        isFetching,
         isError,
     } = useQuery({
         queryKey: [

@@ -88,7 +88,7 @@
   </Folder>
   <!--#if (includeTools) -->
   <Folder Name="/Tools/">
-     <Project Path="Tools/CLI/FSH.CLI.csproj" />
+    <Project Path="Tools/CLI/FSH.CLI.csproj" />
   </Folder>
   <!--#endif -->
 
@@ -129,6 +129,9 @@
     <File Path="../docs/logo/sadaf-mark-monochrome.svg" />
     <File Path="../docs/logo/sadaf-mark-primary-1024.png" />
     <File Path="../docs/logo/sadaf-mark-primary.svg" />
+  </Folder>
+  <Folder Name="/_SystemDocument/features/">
+    <File Path="../docs/features/portfolio.md" />
   </Folder>
   <Project Path="../clients/admin/FSH.Starter.Admin.esproj">
     <Build />

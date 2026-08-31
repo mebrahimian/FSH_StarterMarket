@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 import {
     AlertTriangle,
+    BriefcaseBusiness,
     ChartNoAxesCombined,
     ExternalLink,
     FileText,
@@ -19,6 +20,8 @@ import {
 import {
     getFiscalYearSales,
     searchDisclosures,
+    getPortfolioByDisclosureId,
+    type PortfolioReport,
     type DisclosureDto,
     type DisclosureParseStatus,
     type DisclosureSortBy,
@@ -26,11 +29,8 @@ import {
 } from "@/api/market-intelligence";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-    Combobox,
-    EntityPageHeader,
-    EntityPager,
-} from "@/components/list";
+import { PortfolioReportDialog } from "@/components/market-intelligence/portfolio-report-dialog";
+import { Combobox, EntityPageHeader, EntityPager,} from "@/components/list";
 import { cn } from "@/lib/cn";
 import { describe } from "@/lib/list-helpers";
 import { CodalOperationsPanel } from "./codal-operations-panel";
@@ -86,6 +86,38 @@ export function DisclosuresPage() {
         setFiscalYearSales(result);
         setFiscalYearSalesTitle(title);
         setIsSalesDialogOpen(true);
+    };
+    const handlePortfolioClick = async (
+        disclosureId: string,
+    ) => {
+        const result =
+            await getPortfolioByDisclosureId(
+                disclosureId,
+            );
+
+        if (!result) {
+            alert("برای این اعلامیه پرتفوی پیدا نشد.");
+            return;
+        }
+
+        setPortfolioReport(result);
+        setIsPortfolioDialogOpen(true);
+    };
+    const handlePortfolioNavigation = async (
+        disclosureId: string | null,
+    ) => {
+        if (!disclosureId) {
+            return;
+        }
+
+        const result =
+            await getPortfolioByDisclosureId(
+                disclosureId,
+            );
+
+        if (result) {
+            setPortfolioReport(result);
+        }
     };
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -193,7 +225,11 @@ export function DisclosuresPage() {
 
         setFiscalYearSales(result);
     };
+    const [portfolioReport, setPortfolioReport] =
+        useState<PortfolioReport | null>(null);
 
+    const [isPortfolioDialogOpen, setIsPortfolioDialogOpen] =
+        useState(false);
     return (
         <div className="space-y-4 sm:space-y-6">
             <EntityPageHeader
@@ -253,7 +289,9 @@ export function DisclosuresPage() {
                        items={items}
                        totalCount={data?.totalCount ?? 0}
                        onSalesClick={handleSalesClick}
+                       onPortfolioClick={handlePortfolioClick}
                    />
+
             )}
 
             {items.length > 0 && (
@@ -288,6 +326,23 @@ export function DisclosuresPage() {
                 onNext={() =>
                     void handleSalesNavigation(
                         fiscalYearSales?.nextYearEndDate ?? null,
+                    )
+                }
+            />
+            <PortfolioReportDialog
+                open={isPortfolioDialogOpen}
+                report={portfolioReport}
+                onClose={() =>
+                    setIsPortfolioDialogOpen(false)
+                }
+                onPrevious={() =>
+                    void handlePortfolioNavigation(
+                        portfolioReport?.previousDisclosureId ?? null,
+                    )
+                }
+                onNext={() =>
+                    void handlePortfolioNavigation(
+                        portfolioReport?.nextDisclosureId ?? null,
                     )
                 }
             />
@@ -484,14 +539,20 @@ function DisclosureResults({
     items,
     totalCount,
     onSalesClick,
-}: {
+    onPortfolioClick, }:
+    {
     items: DisclosureDto[];
     totalCount: number;
     onSalesClick: (
         symbol: string,
         title: string,
     ) => Promise<void>;
-}) {    const { t, i18n } = useTranslation("disclosures");
+    onPortfolioClick: (
+        disclosureId: string,
+    ) => Promise<void>;
+    })
+{
+    const { t, i18n } = useTranslation("disclosures");
     const numberLocale =
         i18n.resolvedLanguage
             ?.toLowerCase()
@@ -519,7 +580,7 @@ function DisclosureResults({
 
             <div className="hidden overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs md:block">
                 <div className="min-w-[1050px]">
-                    <div className="grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_120px_80px] gap-3 border-b border-[var(--color-border)] bg-[oklch(from_var(--color-muted)_l_c_h_/_0.4)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                    <div className="grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_120px_112px] gap-3 border-b border-[var(--color-border)] bg-[oklch(from_var(--color-muted)_l_c_h_/_0.4)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
                         <span> {t("table.symbol")} / {t("table.company")} </span>
                         <span> {t("table.disclosure")}</span>
                         <span>{t("table.published")}</span>
@@ -535,6 +596,7 @@ function DisclosureResults({
                             disclosure={disclosure}
                             isLast={index === items.length - 1}
                             onSalesClick={onSalesClick}
+                            onPortfolioClick={onPortfolioClick}
                         />
                     ))}
                 </div>
@@ -547,6 +609,7 @@ function DesktopRow({
     disclosure,
     isLast,
     onSalesClick,
+    onPortfolioClick,
 }: {
     disclosure: DisclosureDto;
     isLast: boolean;
@@ -554,7 +617,11 @@ function DesktopRow({
         symbol: string,
         title: string,
     ) => Promise<void>;
-}) {
+    onPortfolioClick: (
+        disclosureId: string,
+    ) => Promise<void>;
+}) 
+{
     const codalUrl = toCodalUrl(disclosure.url);
 
     return (
@@ -567,7 +634,7 @@ function DesktopRow({
             )}
             style={{
                 gridTemplateColumns:
-                    "150px minmax(300px, 1fr) 170px 110px 120px 80px",
+                    "150px minmax(300px, 1fr) 170px 110px 120px 112px",
             }}
         >
             <div className="min-w-0">
@@ -622,7 +689,7 @@ function DesktopRow({
             <StatusChip
                 status={disclosure.salesParseStatus}
             />
-            <div className="grid grid-cols-[32px_32px] items-center justify-end gap-1">
+            <div className="flex items-center justify-end gap-1">
                 <div className="grid size-8 place-items-center">
                     {hasFiscalDate(disclosure.title) && (
                         <button
@@ -640,7 +707,22 @@ function DesktopRow({
                         </button>
                     )}
                 </div>
-
+                <div className="grid size-8 place-items-center">
+                    {disclosure.rt === 2 && (
+                        <button
+                            type="button"
+                            onClick={() =>
+                                void onPortfolioClick(
+                                    disclosure.id,
+                                )
+                            }
+                            title="مشاهده پرتفوی"
+                            className="grid size-8 place-items-center rounded-md text-[var(--color-primary)] transition-colors hover:bg-[var(--color-muted)]"
+                        >
+                            <BriefcaseBusiness className="size-[20px]" />
+                        </button>
+                    )}
+                </div>
                 <div className="grid size-8 place-items-center">
                     {codalUrl && (
                         <a

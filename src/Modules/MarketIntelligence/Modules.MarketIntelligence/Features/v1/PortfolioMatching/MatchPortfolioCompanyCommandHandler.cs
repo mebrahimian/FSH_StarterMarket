@@ -34,13 +34,14 @@ public sealed class MatchPortfolioCompanyCommandHandler(
                             .BeginTransactionAsync(cancellationToken)
                             .ConfigureAwait(false);
 
+                    // وضعیت بورسی/غیربورسی از CompanyMaster مقصد می‌آید،
+                    // نه از شیت کدال.
                     var targetCompany =
                         await dbContext.CompanyMaster
                             .AsNoTracking()
                             .FirstOrDefaultAsync(
                                 company =>
-                                    company.CompanyId == command.CompanyId &&
-                                    company.IsListed == command.IsListed,
+                                    company.CompanyId == command.CompanyId,
                                 cancellationToken)
                             .ConfigureAwait(false);
 
@@ -50,24 +51,42 @@ public sealed class MatchPortfolioCompanyCommandHandler(
                             "The selected target company was not found.");
                     }
 
-                    var existingAlias =
+                    // تمام Aliasهای همین نام را بررسی می‌کنیم،
+                    // بدون توجه به IsListed.
+                    List<PortfolioCompanyAlias> existingAliases =
                         await dbContext.PortfolioCompanyAliases
-                            .AsNoTracking()
-                            .FirstOrDefaultAsync(
-                                alias =>
-                                    alias.FSortName == fSortName &&
-                                    alias.IsListed == command.IsListed,
-                                cancellationToken)
+                            .Where(alias =>
+                                alias.FSortName == fSortName)
+                            .ToListAsync(cancellationToken)
                             .ConfigureAwait(false);
 
-                    if (existingAlias is not null &&
-                        existingAlias.CompanyId != command.CompanyId)
+                    // اگر Alias صحیح و فعال از قبل وجود دارد، نگهش می‌داریم.
+                    PortfolioCompanyAlias? canonicalAlias =
+                        existingAliases.FirstOrDefault(alias =>
+                            alias.IsActive &&
+                            alias.CompanyId == targetCompany.CompanyId &&
+                            alias.IsListed == targetCompany.IsListed);
+
+                    // Aliasهای متناقض همین FSortName حذف می‌شوند.
+                    List<PortfolioCompanyAlias> aliasesToRemove =
+                        existingAliases
+                            .Where(alias =>
+                                canonicalAlias is null ||
+                                alias.Id != canonicalAlias.Id)
+                            .ToList();
+
+                    if (aliasesToRemove.Count > 0)
                     {
-                        throw new InvalidOperationException(
-                            "This portfolio company name is already matched to another company.");
+                        dbContext.PortfolioCompanyAliases
+                            .RemoveRange(aliasesToRemove);
+
+                        await dbContext
+                            .SaveChangesAsync(cancellationToken)
+                            .ConfigureAwait(false);
                     }
 
-                    if (existingAlias is null)
+                    // اگر Alias صحیح وجود نداشت، یک Alias canonical می‌سازیم.
+                    if (canonicalAlias is null)
                     {
                         dbContext.PortfolioCompanyAliases.Add(
                             new PortfolioCompanyAlias(
@@ -76,24 +95,27 @@ public sealed class MatchPortfolioCompanyCommandHandler(
                                 targetCompany.FSortSymbol,
                                 rawCompanyName,
                                 fSortName,
-                                command.IsListed));
+                                targetCompany.IsListed));
 
                         await dbContext
                             .SaveChangesAsync(cancellationToken)
                             .ConfigureAwait(false);
                     }
 
+                    // تصمیم دستی کاربر برای تمام رکوردهای همین FSortName
+                    // مرجع است؛ حتی اگر قبلاً اشتباه Match شده باشند.
                     int count =
                         await dbContext.InvestmentPortfolioPositions
                             .Where(position =>
-                                position.ChildCompanyId == null &&
-                                position.FSortName == fSortName &&
-                                position.IsListed == command.IsListed)
+                                position.FSortName == fSortName)
                             .ExecuteUpdateAsync(
-                                setters =>
-                                    setters.SetProperty(
+                                setters => setters
+                                    .SetProperty(
                                         position => position.ChildCompanyId,
-                                        command.CompanyId),
+                                        command.CompanyId)
+                                    .SetProperty(
+                                        position => position.IsListed,
+                                        targetCompany.IsListed),
                                 cancellationToken)
                             .ConfigureAwait(false);
 
