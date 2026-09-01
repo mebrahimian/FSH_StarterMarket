@@ -1,0 +1,84 @@
+{
+  "actions": {
+    "close": "بستن"
+  },
+  "salesTable": {
+    "period": "دوره",
+    "monthSales": "فروش ماه",
+    "yearToDate": "فروش تجمعی",
+    "previousYearToDate": "تجمعی سال قبل"
+  },
+  "filters": {
+    "reportType": "نوع فعالیت",
+    "reportLet": "گروه اطلاعیه",
+    "reset": "پاک کردن فیلترها"
+  },
+  "status": {
+    "pending": "در انتظار",
+    "success": "موفق",
+    "failed": "ناموفق",
+    "noData": "بدون داده",
+    "skipped": "ردشده"
+  },
+  "reportTypes": {
+    "0": "تولیدی",
+    "1": "ساختمانی",
+    "2": "سرمایه‌گذاری",
+    "3": "بانک",
+    "4": "لیزینگ",
+    "5": "خدماتی",
+    "6": "بیمه",
+    "7": "حمل‌ونقل دریایی",
+    "8": "کشاورزی",
+    "9": "تأمین سرمایه"
+  },
+  "letterCategories": {
+    "materialInformation": "افشای اطلاعات بااهمیت",
+    "monthlyActivity": "گزارش فعالیت ماهانه",
+    "boardAndAuditCommittee": "اطلاعات هیئت‌مدیره و کمیته حسابرسی",
+    "generalMeetings": "آگهی دعوت به مجمع و تصمیمات",
+    "capitalIncrease": "افزایش سرمایه",
+    "clarifications": "شفاف‌سازی",
+    "other": "سایر موارد"
+  },
+  "healthCenter": {
+    "title": "مرکز سلامت صدف بورس",
+    "eyebrow": "هوشمندی بازار · سلامت داده",
+    "subtitle": "کنترل پوشش، کیفیت و سلامت اطلاعات بازار و ابزارهای بازیابی داده",
+    "dataQualityChecking": "در حال بررسی کیفیت داده‌ها...",
+    "viewSales": "مشاهده فروش",
+    "fiscalYearSalesTitle": "فروش سال مالی {{symbol}} —",
+    "stats": {
+      "disclosures": "اطلاعیه‌ها",
+      "activeSymbols": "نمادهای فعال",
+      "totalDisclosures": "کل اطلاعیه‌ها",
+      "activeSymbolsHint": "دارای فعالیت ماهانه اخیر",
+      "monthlyReports": "گزارش‌های ماهانه",
+      "monthlySummaries": "خلاصه‌های ماهانه",
+      "needsReview": "نیازمند بررسی"
+    },
+    "recentDisclosures": "آخرین اطلاعیه‌های کدال",
+    "dataQualityIssues": "اطلاعیه های مشکل دار",
+    "gapFailedMissing": "کسری / ناموفق / داده مفقود",
+    "backfill": {
+      "title": "تکمیل اطلاعات تاریخی نماد",
+      "description": "تکمیل اطلاعات تاریخی یک نماد در بازه مشخص",
+      "symbol": "نماد",
+      "symbolPlaceholder": "مثلاً غبشهر",
+      "fromDate": "از تاریخ",
+      "toDate": "تا تاریخ",
+      "run": "اجرای تکمیل اطلاعات تاریخی",
+      "send": "در حال ارسال...",
+      "queued": "Job با موفقیت در صف قرار گرفت. JobId: {{jobId}}",
+      "queueError": "خطا در قرار دادن Backfill در صف.",
+      "finishedWithStatus": "Backfill با وضعیت {{status}} پایان یافت.",
+      "validationRequired": "نماد، از تاریخ و تا تاریخ الزامی است.",
+      "runAll": "تکمیل همه نمادهای مشکل‌دار",
+      "bulkRunning": "در حال ارسال Jobها...",
+      "noIssues": "نماد مشکل‌داری وجود ندارد.",
+      "bulkProgress": "{{queued}} از {{total}} نماد در صف قرار گرفت. خطا: {{failed}}",
+      "bulkFinished": "ارسال Jobها تمام شد. موفق: {{queued}}، خطا: {{failed}}",
+      "bulkCurrent": "در حال تکمیل {{symbol}} — {{completed}} از {{total}} انجام شده"
+    }
+  }
+}

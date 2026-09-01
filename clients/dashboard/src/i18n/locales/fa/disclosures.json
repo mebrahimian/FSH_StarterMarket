@@ -1,0 +1,101 @@
+{
+  "page": {
+    "items": "اعلامیه",
+    "unit": "اطلاعیه",
+    "title": "اطلاعیه‌های کدال",
+    "description": "جستجو و بررسی اطلاعیه‌های کدال، فایل‌های منبع، نوع گزارش و وضعیت پردازش فروش ماهانه."
+  },
+  "results": {
+    "found": "{{formattedCount}} اطلاعیه یافت شد"
+  },
+  "actions": {
+    "refresh": "بروزرسانی",
+    "refreshing": "در حال بروزرسانی...",
+    "clearFilters": "پاک‌کردن فیلترها",
+    "openCodal": "مشاهده در کدال"
+  },
+  "search": {
+    "label": "جستجوی اطلاعیه‌ها",
+    "placeholder": "جستجو براساس نماد، شرکت، عنوان یا کد نامه..."
+  },
+  "filters": {
+    "rt": "RT",
+    "let": "LET",
+    "parseStatus": "وضعیت پردازش",
+    "allStatuses": "همه وضعیت‌ها",
+    "sortBy": "مرتب‌سازی براساس",
+    "sortDirection": "جهت مرتب‌سازی",
+    "ascending": "صعودی",
+    "descending": "نزولی",
+    "asc": "صعودی",
+    "desc": "نزولی"
+  },
+  "sort": {
+    "publishDate": "تاریخ انتشار",
+    "tracingNo": "شماره پیگیری",
+    "symbol": "نماد",
+    "company": "شرکت",
+    "parseDate": "تاریخ پردازش"
+  },
+  "table": {
+    "symbol": "نماد",
+    "company": "شرکت",
+    "disclosure": "شـــرح اطــلاعیــه",
+    "title": "عنوان",
+    "publishDate": "تاریخ انتشار",
+    "published": "تاریخ انتشار",
+    "sentDate": "تاریخ ارسال",
+    "endYearDate": "تاریخ سال مالی",
+    "letterCode": "کد نامه",
+    "reportType": "نوع گزارش",
+    "formats": "فایل‌ها",
+    "parseStatus": "وضعیت پردازش",
+    "tracingNo": "شماره پیگیری",
+    "actions": "عملیات",
+    "discrepancy": "مغایرت"
+  },
+  "formats": {
+    "html": "HTML",
+    "excel": "Excel",
+    "pdf": "PDF",
+    "xbrl": "XBRL",
+    "attachment": "پیوست",
+    "none": "بدون فایل منبع"
+  },
+  "empty": {
+    "title": "اطلاعیه‌ای پیدا نشد",
+    "filtered": "هیچ اطلاعیه‌ای با جستجو و فیلترهای فعلی مطابقت ندارد.",
+    "default": "هنوز اطلاعیه‌ای از کدال بارگذاری نشده است."
+  },
+  "errors": {
+    "load": "بارگذاری اطلاعیه‌ها انجام نشد."
+  },
+  "codalOperations": {
+    "title": "عملیات کدال",
+    "collectNew": "دریافت اطلاعیه‌های جدید",
+    "parsePending": "پردازش موارد در انتظار",
+    "backfill": "بارگذاری تاریخی",
+    "queueing": "در حال ثبت عملیات...",
+    "queued": "عملیات با شناسه {{jobId}} در صف قرار گرفت.",
+    "failed": "ثبت عملیات کدال انجام نشد.",
+    "confirmIncremental": "آیا دریافت اعلامیه‌های جدید کدال آغاز شود؟",
+    "confirmParsePending": "آیا پردازش اعلامیه‌های در انتظار آغاز شود؟ این عملیات ممکن است زمان‌بر باشد.",
+    "confirmBackfill": "آیا بازخوانی تاریخی اعلامیه‌های کدال آغاز شود؟ این عملیات ممکن است بسیار زمان‌بر باشد.",
+    "confirmTitle": "تأیید اجرای عملیات",
+    "cancel": "انصراف",
+    "confirm": "اجرا",
+    "jobNumber": "کار شماره {{jobId}}",
+    "progressLabel": "وضعیت اجرای عملیات کدال",
+    "checkingStatus": "در حال بررسی وضعیت عملیات…",
+    "statusUnavailable": "خواندن وضعیت عملیات ممکن نیست.",
+    "status": {
+      "enqueued": "در صف اجرا",
+      "scheduled": "زمان‌بندی‌شده",
+      "processing": "در حال اجرا",
+      "succeeded": "با موفقیت تکمیل شد",
+      "failed": "اجرای ناموفق",
+      "deleted": "متوقف شد",
+      "unknown": "وضعیت نامشخص"
+    }
+  }
+}

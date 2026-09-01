@@ -1,0 +1,84 @@
+{
+  "actions": {
+    "close": "Close"
+  },
+  "salesTable": {
+    "period": "Period",
+    "monthSales": "Monthly sales",
+    "yearToDate": "Year-to-date sales",
+    "previousYearToDate": "Previous year-to-date"
+  },
+  "filters": {
+    "reportType": "Activity type",
+    "reportLet": "Letter Category",
+    "reset": "Clear Filters"
+  },
+  "status": {
+    "pending": "Pending",
+    "success": "Success",
+    "failed": "Failed",
+    "noData": "No data",
+    "skipped": "Skipped"
+  },
+  "reportTypes": {
+    "0": "Manufacturing",
+    "1": "Construction",
+    "2": "Investment",
+    "3": "Banking",
+    "4": "Leasing",
+    "5": "Services",
+    "6": "Insurance",
+    "7": "Maritime transportation",
+    "8": "Agriculture",
+    "9": "Investment banking"
+  },
+  "letterCategories": {
+    "materialInformation": "Disclosure of material information",
+    "monthlyActivity": "Monthly activity reports",
+    "boardAndAuditCommittee": "Board and audit committee information",
+    "generalMeetings": "General meeting notices and resolutions",
+    "capitalIncrease": "Capital increase",
+    "clarifications": "Clarification disclosures",
+    "other": "Other"
+  },
+  "healthCenter": {
+    "title": "Sadaf Bourse Health Center",
+    "eyebrow": "Market Intelligence · Data Health",
+    "subtitle": "Monitor data coverage, quality, market data health, and recovery tools",
+    "dataQualityChecking": "Checking data quality...",
+    "viewSales": "View sales",
+    "fiscalYearSalesTitle": "Fiscal year sales {{symbol}} —",
+    "stats": {
+      "disclosures": "Disclosures",
+      "activeSymbols": "Active Symbols",
+      "totalDisclosures": "Total Disclosures",
+      "activeSymbolsHint": "With recent monthly activity",
+      "monthlyReports": "Monthly Reports",
+      "monthlySummaries": "Monthly Summaries",
+      "needsReview": "Needs Review"
+    },
+    "recentDisclosures": "The Latest Codal Disclosures",
+    "dataQualityIssues": "Data Quality Issues",
+    "gapFailedMissing": "Gap / Failed / Missing",
+    "backfill": {
+      "title": "Symbol Data Recovery",
+      "description": "Run Symbol Backfill for a specific symbol and date range",
+      "symbol": "Symbol",
+      "symbolPlaceholder": "e.g. Ghebshahr",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "run": "Run Symbol Backfill",
+      "send": "Transfering ...",
+      "queued": "Job was successfully queued. JobId: {{jobId}}",
+      "queueError": "Failed to queue the Backfill job.",
+      "finishedWithStatus": "Backfill finished with status {{status}}.",
+      "validationRequired": "Symbol, from date, and to date are required.",
+      "runAll": "Backfill all affected symbols",
+      "bulkRunning": "Queuing jobs...",
+      "noIssues": "No affected symbols found.",
+      "bulkProgress": "{{queued}} of {{total}} symbols queued. Failed: {{failed}}",
+      "bulkFinished": "Job queueing completed. Queued: {{queued}}, Failed: {{failed}}",
+      "bulkCurrent": "Backfilling {{symbol}} — {{completed}} of {{total}} completed"
+    }
+  }
+}

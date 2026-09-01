@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\Persistence\Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Web\Web.csproj" />
+    <ProjectReference Include="..\..\Files\Modules.Files.Contracts\Modules.Files.Contracts.csproj" />
+    <ProjectReference Include="..\Modules.MarketIntelligence.Contracts\Modules.MarketIntelligence.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Domain\Events\" />
+	<None Update="Services\Codal\Configuration\CodalDefinitions.json">
+	      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	</None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" />
+  </ItemGroup>
+
+</Project>

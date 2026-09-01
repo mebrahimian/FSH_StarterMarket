@@ -1,0 +1,103 @@
+{
+  "page": {
+    "items": "Items",
+    "unit": "Items",
+    "title": "Codal disclosures",
+    "description": "Search and review Codal announcements, source formats, report types, and monthly-sales parse status."
+  },
+  "results": {
+    "found": "{{formattedCount}} disclosures found"
+  },
+  "actions": {
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "clearFilters": "Clear filters",
+    "openCodal": "Open in Codal"
+  },
+  "search": {
+    "label": "Search disclosures",
+    "placeholder": "Search by symbol, company, title, or letter code..."
+  },
+  "filters": {
+    "rt": "RT",
+    "let": "LET",
+    "parseStatus": "Parse status",
+    "allStatuses": "All statuses",
+    "sortBy": "Sort by",
+    "sortDirection": "Sort direction",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "asc": "ASC",
+    "desc": "DESC"
+  },
+  "sort": {
+    "publishDate": "Publish date",
+    "tracingNo": "Tracing number",
+    "symbol": "Symbol",
+    "company": "Company",
+    "parseDate": "Parse date"
+  },
+  "table": {
+    "symbol": "Symbol",
+    "company": "Company",
+    "disclosure": "Disclosure",
+    "title": "Title",
+    "publishDate": "Publish date",
+    "published": "Published",
+    "sentDate": "Sent date",
+    "endYearDate": "End Year Date",
+    "letterCode": "Letter code",
+    "reportType": "Report type",
+    "formats": "Formats",
+    "parseStatus": "Parse status",
+    "tracingNo": "Tracing number",
+    "actions": "Actions",
+    "discrepancy": "Discrepancy"
+  },
+  "formats": {
+    "html": "HTML",
+    "excel": "Excel",
+    "pdf": "PDF",
+    "xbrl": "XBRL",
+    "attachment": "Attachment",
+    "none": "No source file"
+  },
+  "empty": {
+    "title": "No disclosures found",
+    "filtered": "No disclosures match the current search and filters.",
+    "default": "No Codal disclosures have been loaded yet."
+  },
+  "errors": {
+    "load": "Could not load disclosures."
+  },
+  "codalOperations": {
+    "title": "Codal operations",
+    "collectNew": "Read new disclosures",
+    "parsePending": "Parse pending",
+    "backfill": "Historical backfill",
+    "queueing": "Queuing...",
+    "queued": "Job {{jobId}} was queued.",
+    "failed": "Could not queue the Codal operation.",
+    "confirmIncremental": "Start collecting new Codal disclosures?",
+    "confirmParsePending": "Start processing pending disclosures? This operation may take a long time.",
+    "confirmBackfill": "Start the historical Codal backfill? This operation may take a long time.",
+    "confirmTitle": "Confirm operation",
+    "cancel": "Cancel",
+    "confirm": "Run",
+    "jobNumber": "Job #{{jobId}}",
+    "progressLabel": "Codal operation progress",
+    "checkingStatus": "Checking operation status…",
+    "statusUnavailable": "Could not read the operation status.",
+    "status": {
+      "enqueued": "Enqueued",
+      "scheduled": "Scheduled",
+      "processing": "Processing",
+      "succeeded": "Completed successfully",
+      "failed": "Failed",
+      "deleted": "Stopped",
+      "unknown": "Unknown status"
+    }
+    
+    
+  }
+}

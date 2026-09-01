@@ -1,0 +1,29 @@
+{
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "persian": "فارسی"
+  },
+  "brand": {
+    "name": "Sadaf Bourse",
+    "subtitle": "Capital Market Intelligence"
+  },
+  "commandPalette": {
+    "search": "Search",
+    "open": "Open command palette"
+  },
+  "actions": {
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "pagination": {
+    "pageOf": "Page {{page}} of {{totalPages}}"
+  },
+  "status": {
+    "loading": "Loading...",
+    "error": "Something went wrong."
+  },
+  "combobox": {
+    "all": "ALL"
+  }
+}

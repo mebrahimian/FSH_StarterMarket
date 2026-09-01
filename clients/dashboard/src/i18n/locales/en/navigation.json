@@ -1,0 +1,34 @@
+{
+  "dashboard": "Dashboard",
+  "items": {
+    "overview": "Overview",
+    "chat": "Chat",
+    "myFiles": "My Files",
+    "settings": "Settings",
+    "liveActivity": "Live activity",
+    "subscription": "Subscription",
+    "whatsAppWallet": "WhatsApp wallet",
+    "invoices": "Invoices",
+    "disclosures": "Disclosures",
+    "marketHealthCenter": "MarketHealthCenter",
+    "products": "Products",
+    "brands": "Brands",
+    "categories": "Categories",
+    "tickets": "Tickets",
+    "users": "Users",
+    "roles": "Roles",
+    "groups": "Groups",
+    "health": "Health",
+    "auditTrail": "Audit trail",
+    "sessions": "Sessions",
+    "trash": "Trash"
+  },
+  "sections": {
+    "operations": "Operations",
+    "marketIntelligence": "Market Intelligence",
+    "catalog": "Catalog",
+    "helpdesk": "Helpdesk",
+    "identity": "Identity",
+    "system": "System"
+  }
+}

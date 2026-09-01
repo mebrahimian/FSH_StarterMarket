@@ -1,0 +1,29 @@
+{
+  "language": {
+    "label": "زبان",
+    "english": "English",
+    "persian": "فارسی"
+  },
+  "brand": {
+    "name": "صدف بورس",
+    "subtitle": "هوشمندی بازار سرمایه"
+  },
+  "commandPalette": {
+    "search": "جستجو",
+    "open": "بازکردن جستجوی سریع"
+  },
+  "actions": {
+    "previous": "صفحه قبل",
+    "next": "صفحه بعد"
+  },
+  "pagination": {
+    "pageOf": "صفحه {{page}} از {{totalPages}}"
+  },
+  "status": {
+    "loading": "در حال بارگذاری...",
+    "error": "خطایی رخ داده است."
+  },
+  "combobox": {
+    "all": "همه"
+  }
+}
