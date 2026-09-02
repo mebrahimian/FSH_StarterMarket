@@ -24,6 +24,8 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<MonthlyActivitySummary> MonthlyActivitySummaries =>  Set<MonthlyActivitySummary>();
     public DbSet<PortfolioCompanyAlias> PortfolioCompanyAliases => Set<PortfolioCompanyAlias>();
     public DbSet<InvestmentPortfolioPosition> InvestmentPortfolioPositions => Set<InvestmentPortfolioPosition>();
+    public DbSet<InvestmentPortfolioReportMetadata> InvestmentPortfolioReportMetadata =>
+    Set<InvestmentPortfolioReportMetadata>();
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -24,14 +24,19 @@ public sealed class InvestmentPortfolioReader(
         {
             Uri reportUri = BuildReportUri(sheet.Url);
             string html =  await DownloadHtmlWithRetryAsync(reportUri, cancellationToken);
-            IReadOnlyList<CodalTableRow> rows = CodalCellReader.ReadTableRows(html, sheet.MetaTableCode);
-            CodalCellResult? metadata = CodalCellReader.FindCellValue(html, sheet.MetaTableCode, 1);
-            result.Add(new InvestmentPortfolioSheetData(
-                           SheetId: sheet.SheetId,
-                           MetaTableCode: sheet.MetaTableCode,
-                           IsListed: sheet.IsListed,
-                           PeriodEndDate: metadata?.PeriodEndToDate,
-                           Rows: rows));
+            CodalTableData? tableData = CodalCellReader.ReadTableData(html, sheet.MetaTableCode);
+            if (tableData is null)
+            {
+                continue;
+            }
+            result.Add(
+                new InvestmentPortfolioSheetData(
+                     SheetId: sheet.SheetId,
+                     MetaTableCode: sheet.MetaTableCode,
+                     IsListed: sheet.IsListed,
+                     PeriodEndDate: tableData.Metadata.PeriodEndToDate,
+                     Metadata: tableData.Metadata,
+                     Rows: tableData.Rows));
         }
 
         return result;
@@ -137,4 +142,5 @@ internal sealed record InvestmentPortfolioSheetData(
     int MetaTableCode,
     bool IsListed,
     string? PeriodEndDate,
+    CodalDatasourceMetadata Metadata,
     IReadOnlyList<CodalTableRow> Rows);

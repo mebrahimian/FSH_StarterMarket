@@ -1,11 +1,12 @@
-﻿using FSH.Modules.MarketIntelligence.Data;
+﻿using FSH.Framework.Shared.Utilities;
+using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
-using FSH.Framework.Shared.Utilities;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 
@@ -19,8 +20,8 @@ public sealed class InvestmentPortfolioProcessor(
     {
         ArgumentNullException.ThrowIfNull(disclosure);
 
-        return disclosure.Let == 58 &&
-               disclosure.Rt == 2;
+        return disclosure.Rt == 2 &&
+               disclosure.Let is 58 or 6;
     }
 
     public async Task ProcessAsync(
@@ -93,9 +94,49 @@ public sealed class InvestmentPortfolioProcessor(
                 $"Portfolio period was not found. " +
                 $"TracingNo: {disclosure.TracingNo}");
         }
+        PortfolioSourceType sourceType = 
+            disclosure.Let == 6
+                ? PortfolioSourceType.FinancialStatement
+                : PortfolioSourceType.MonthlyActivity;
 
-        var entities =
-            new List<InvestmentPortfolioPosition>();
+        PortfolioAuditStatus auditStatus = PortfolioAuditStatus.None;
+
+        if (sheets.Any(x => x.Metadata.MetaTableId is 1529 or 1530))
+        {
+            auditStatus = PortfolioAuditStatus.Audited;
+        }
+        else if (sheets.Any(x => x.Metadata.MetaTableId is 1507 or 1508))
+        {
+            auditStatus = PortfolioAuditStatus.Unaudited;
+        }
+        else if (sheets.Any(x => x.Metadata.MetaTableId is 1470 or 1471) &&
+                       disclosure.Title?.Contains("حسابرسی نشده", StringComparison.Ordinal) == true)
+        {
+            auditStatus =  PortfolioAuditStatus.Unaudited;
+        }
+        else if (sheets.Any(x => x.Metadata.MetaTableId is 1470 or 1471) &&
+                       disclosure.Title?.Contains("حسابرسی شده", StringComparison.Ordinal) == true)
+        {
+            auditStatus = PortfolioAuditStatus.Audited;
+        }
+        //
+        // تست صورت مالی جدید پروسس نشده در کدال
+        //
+        if (sourceType == PortfolioSourceType.FinancialStatement && auditStatus == PortfolioAuditStatus.None)
+        {
+            if (logger.IsEnabled(LogLevel.Warning))
+            {
+                logger.LogWarning(
+                    "Portfolio audit status could not be resolved. " +
+                    "TracingNo: {TracingNo}, Symbol: {Symbol}",
+                    disclosure.TracingNo,
+                    disclosure.Symbol);
+            }
+
+            return;
+        }
+
+        var entities = new List<InvestmentPortfolioPosition>();
 
         foreach (InvestmentPortfolioSheetData sheet in sheets)
         {
@@ -103,6 +144,7 @@ public sealed class InvestmentPortfolioProcessor(
                 sheet.IsListed
                     ? MapListedRows(sheet.Rows)
                     : MapUnlistedRows(sheet.Rows);
+           
 
             foreach (InvestmentPortfolioPositionData position in positions)
             {
@@ -136,6 +178,8 @@ public sealed class InvestmentPortfolioProcessor(
                         rawCompanyName: position.CompanyName,
                         fSortName: fSortName,
                         periodEndDate: periodEndDate,
+                        sourceType: sourceType,
+                        auditStatus: auditStatus,
                         isListed: isListed,
                         rowSequence: position.RowSequence,
                         capital: ParseNullableDecimal(position.Capital),
@@ -160,15 +204,25 @@ public sealed class InvestmentPortfolioProcessor(
             }
         }
 
-        List<InvestmentPortfolioPosition> existing =
-            await dbContext.InvestmentPortfolioPositions
-                .Where(x =>
-                    x.ParentCompanyId == parentCompanyId.Value &&
-                    x.PeriodEndDate == periodEndDate)
-                .ToListAsync(cancellationToken);
+        List<InvestmentPortfolioPosition> existing = await dbContext.InvestmentPortfolioPositions
+                            .Where(x =>
+                                   x.ParentCompanyId == parentCompanyId.Value &&
+                                   x.PeriodEndDate == periodEndDate &&
+                                   x.SourceType == sourceType &&
+                                   x.AuditStatus == auditStatus)
+                            .ToListAsync(cancellationToken);
 
-        dbContext.InvestmentPortfolioPositions
-            .RemoveRange(existing);
+        DateTime? latestExistingPublishDateTime = existing.Count > 0
+                            ? existing.Max(x => x.PublishDateTime)
+                            : null;
+         
+        if (latestExistingPublishDateTime.HasValue &&
+            (!disclosure.PublishDateTime.HasValue ||
+             disclosure.PublishDateTime.Value < latestExistingPublishDateTime.Value))
+        {
+            return;
+        }
+        dbContext.InvestmentPortfolioPositions.RemoveRange(existing);
 
         await dbContext.InvestmentPortfolioPositions
             .AddRangeAsync(

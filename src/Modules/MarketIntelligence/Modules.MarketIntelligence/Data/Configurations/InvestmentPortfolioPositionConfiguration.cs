@@ -29,7 +29,13 @@ public sealed class InvestmentPortfolioPositionConfiguration :
         builder.Property(x => x.PeriodEndDate)
             .HasMaxLength(10)
             .IsRequired();
+        builder.Property(x => x.SourceType)
+            .HasConversion<int>()
+            .IsRequired();
 
+        builder.Property(x => x.AuditStatus)
+            .HasConversion<int>()
+            .IsRequired();
         builder.Property(x => x.Capital).HasPrecision(28, 6);
         builder.Property(x => x.NominalValue).HasPrecision(28, 6);
 

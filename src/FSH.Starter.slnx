@@ -132,6 +132,7 @@
   </Folder>
   <Folder Name="/_SystemDocument/features/">
     <File Path="../docs/features/portfolio.md" />
+    <File Path="../docs/features/PortfolioStructureCodal.md" />
   </Folder>
   <Project Path="../clients/admin/FSH.Starter.Admin.esproj">
     <Build />

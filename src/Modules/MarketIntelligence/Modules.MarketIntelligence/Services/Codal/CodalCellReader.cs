@@ -120,57 +120,57 @@ internal static class CodalCellReader
     }
 
 
-    /*
-     SumColumnValues
-             → جدول ردیف جمع دارد
-             → ولی مقدار ردیف جمع قابل استفاده نیست
-             → همه ردیف‌ها به جز آخرین ردیف را جمع می‌کند
-
-     SumColumnValuesWithoutTotalRow
-             → جدول اصلاً ردیف جمع ندارد
-             → تمام ردیف‌های عددی ستون را جمع می‌کند
-    */
+    
     public static IReadOnlyList<CodalTableRow> ReadTableRows(
     string html,
     int metaTableCode)
     {
-        int datasourceStart = html.IndexOf(
-            "var datasource",
-            StringComparison.OrdinalIgnoreCase);
+        using JsonDocument? document = ParseDatasource(html);
 
-        if (datasourceStart < 0)
-        {
+        if (document is null)
             return [];
-        }
 
-        int jsonStart = html.IndexOf(
-            '{',
-            datasourceStart);
+        return BuildTableRows(document.RootElement,
+            metaTableCode);
+    }
+    public static CodalTableData? ReadTableData(
+    string html,
+    int metaTableCode)
+    {
+        using JsonDocument? document =
+            ParseDatasource(html);
 
-        if (jsonStart < 0)
-        {
-            return [];
-        }
+        if (document is null)
+            return null;
 
-        int jsonEnd = FindJsonObjectEnd(
-            html,
-            jsonStart);
+        JsonElement root =
+            document.RootElement;
 
-        if (jsonEnd < 0)
-        {
-            return [];
-        }
+        CodalDatasourceMetadata? metadata =
+            BuildMetadata(root)
+                .FirstOrDefault(x =>
+                    x.MetaTableCode == metaTableCode);
 
-        string json = html.Substring(
-            jsonStart,
-            jsonEnd - jsonStart + 1);
+        if (metadata is null)
+            return null;
 
-        using var document = JsonDocument.Parse(json);
+        List<CodalTableRow> rows =
+            BuildTableRows(
+                root,
+                metaTableCode);
 
+        return new CodalTableData(
+            metadata,
+            rows);
+    }
+    private static List<CodalTableRow> BuildTableRows(
+    JsonElement root,
+    int metaTableCode)
+    {
         var rows =
             new Dictionary<int, Dictionary<int, string?>>();
 
-        foreach (JsonElement sheet in document.RootElement
+        foreach (JsonElement sheet in root
                      .GetProperty("sheets")
                      .EnumerateArray())
         {
@@ -249,66 +249,75 @@ internal static class CodalCellReader
                     x.Value))
             .ToList();
     }
-    public static CodalDatasourceMetadata? ReadMetadata(
-    string html)
+    private static List<CodalDatasourceMetadata> BuildMetadata(
+    JsonElement root)
     {
-        int datasourceStart = html.IndexOf(
-            "var datasource",
-            StringComparison.OrdinalIgnoreCase);
-
-        if (datasourceStart < 0)
-            return null;
-
-        int jsonStart = html.IndexOf(
-            '{',
-            datasourceStart);
-
-        if (jsonStart < 0)
-            return null;
-
-        int jsonEnd = FindJsonObjectEnd(
-            html,
-            jsonStart);
-
-        if (jsonEnd < 0)
-            return null;
-
-        string json = html.Substring(
-            jsonStart,
-            jsonEnd - jsonStart + 1);
-
-        using var document =
-            JsonDocument.Parse(json);
-
-        JsonElement root =
-            document.RootElement;
-
         long tracingNo =
-            root.TryGetProperty(
-                "tracingNo",
-                out JsonElement tracingNoElement)
-                ? tracingNoElement.GetInt64()
-                : 0;
+            root.GetProperty("tracingNo")
+                .GetInt64();
 
         string? periodEndToDate =
-            root.TryGetProperty(
-                "periodEndToDate",
-                out JsonElement periodElement)
-                ? periodElement.GetString()
-                : null;
+            GetString(root, "periodEndToDate");
 
         string? yearEndToDate =
-            root.TryGetProperty(
-                "yearEndToDate",
-                out JsonElement yearElement)
-                ? yearElement.GetString()
-                : null;
+            GetString(root, "yearEndToDate");
 
-        return new CodalDatasourceMetadata(
-            TracingNo: tracingNo,
-            PeriodEndToDate: periodEndToDate,
-            YearEndToDate: yearEndToDate);
+        string? period =
+            GetRawValue(root, "period");
+
+        string? type =
+            GetRawValue(root, "type");
+
+        var result =
+            new List<CodalDatasourceMetadata>();
+
+        foreach (JsonElement sheet in root
+                     .GetProperty("sheets")
+                     .EnumerateArray())
+        {
+            int sheetCode =
+                GetInt(sheet, "code");
+
+            foreach (JsonElement table in sheet
+                         .GetProperty("tables")
+                         .EnumerateArray())
+            {
+                result.Add(
+                    new CodalDatasourceMetadata(
+                        TracingNo: tracingNo,
+                        PeriodEndToDate: periodEndToDate,
+                        YearEndToDate: yearEndToDate,
+                        Period: period,
+                        Type: type,
+                        SheetCode: GetInt(table, "sheetCode"),
+                        MetaTableId: GetInt(table, "metaTableId"),
+                        MetaTableCode: GetInt(table, "code"),
+                        TitleFa: GetString(table, "title_Fa"),
+                        TitleEn: GetString(table, "title_En")));
+            }
+        }
+
+        return result;
     }
+    public static List<CodalDatasourceMetadata> ReadMetadata(
+    string html)
+    {
+        using JsonDocument? document = ParseDatasource(html);
+
+        if (document is null)  return [];
+
+        return BuildMetadata(document.RootElement);
+    }
+    /*
+     SumColumnValues
+             → جدول ردیف جمع دارد
+             → ولی مقدار ردیف جمع قابل استفاده نیست
+             → همه ردیف‌ها به جز آخرین ردیف را جمع می‌کند
+
+     SumColumnValuesWithoutTotalRow
+             → جدول اصلاً ردیف جمع ندارد
+             → تمام ردیف‌های عددی ستون را جمع می‌کند
+    */
     public static CodalCellResult? SumColumnValues(string html, int metaTableCode, int columnSequence)
     {
         int datasourceStart = html.IndexOf(
@@ -588,9 +597,69 @@ internal static class CodalCellReader
             ReportingTypeCode: reportingTypeCode);
     }
 
+    private static string? GetRawValue(
+    JsonElement element,
+    string propertyName)
+    {
+        if (!element.TryGetProperty(
+                propertyName,
+                out JsonElement property))
+        {
+            return null;
+        }
 
+        return property.ValueKind switch
+        {
+            JsonValueKind.String =>
+                property.GetString(),
 
+            JsonValueKind.Number =>
+                property.GetRawText(),
 
+            JsonValueKind.True =>
+                bool.TrueString,
+
+            JsonValueKind.False =>
+                bool.FalseString,
+
+            JsonValueKind.Null =>
+                null,
+
+            _ =>
+                property.ToString()
+        };
+    }
+
+    private static JsonDocument? ParseDatasource(
+    string html)
+    {
+        int datasourceStart = html.IndexOf(
+            "var datasource",
+            StringComparison.OrdinalIgnoreCase);
+
+        if (datasourceStart < 0)
+            return null;
+
+        int jsonStart = html.IndexOf(
+            '{',
+            datasourceStart);
+
+        if (jsonStart < 0)
+            return null;
+
+        int jsonEnd = FindJsonObjectEnd(
+            html,
+            jsonStart);
+
+        if (jsonEnd < 0)
+            return null;
+
+        string json = html.Substring(
+            jsonStart,
+            jsonEnd - jsonStart + 1);
+
+        return JsonDocument.Parse(json);
+    }
     private static int FindJsonObjectEnd(
         string text,
         int start)
@@ -670,8 +739,17 @@ internal static class CodalCellReader
 internal sealed record CodalDatasourceMetadata(
     long TracingNo,
     string? PeriodEndToDate,
-    string? YearEndToDate);
-
+    string? YearEndToDate,
+    string? Period,
+    string? Type,
+    int SheetCode,
+    int MetaTableId,
+    int MetaTableCode,
+    string? TitleFa,
+    string? TitleEn);
 internal sealed record CodalTableRow(
     int RowSequence,
     IReadOnlyDictionary<int, string?> Values);
+internal sealed record CodalTableData(
+    CodalDatasourceMetadata Metadata,
+    IReadOnlyList<CodalTableRow> Rows);

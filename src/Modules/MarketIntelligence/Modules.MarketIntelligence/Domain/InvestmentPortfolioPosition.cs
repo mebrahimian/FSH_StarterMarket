@@ -1,4 +1,5 @@
 ﻿using FSH.Framework.Core.Domain;
+using FSH.Modules.MarketIntelligence.Domain.Enums;
 
 namespace FSH.Modules.MarketIntelligence.Domain;
 
@@ -16,6 +17,8 @@ public sealed class InvestmentPortfolioPosition :
         string rawCompanyName,
         string fSortName,
         string periodEndDate,
+        PortfolioSourceType sourceType,
+        PortfolioAuditStatus auditStatus,
         bool isListed,
         int rowSequence,
         decimal? capital,
@@ -48,6 +51,8 @@ public sealed class InvestmentPortfolioPosition :
         RawCompanyName = rawCompanyName;
         FSortName = fSortName;
         PeriodEndDate = periodEndDate;
+        SourceType = sourceType;
+        AuditStatus = auditStatus;
         IsListed = isListed;
         RowSequence = rowSequence;
 
@@ -87,7 +92,9 @@ public sealed class InvestmentPortfolioPosition :
     public string FSortName { get; private set; } = string.Empty;
 
     public string PeriodEndDate { get; private set; } = string.Empty;
+    public PortfolioSourceType SourceType { get; private set; }
 
+    public PortfolioAuditStatus AuditStatus { get; private set; }
     public bool IsListed { get; private set; }
 
     public int RowSequence { get; private set; }
