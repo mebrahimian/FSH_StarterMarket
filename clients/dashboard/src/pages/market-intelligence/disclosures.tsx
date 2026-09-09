@@ -345,6 +345,11 @@ export function DisclosuresPage() {
                         portfolioReport?.nextDisclosureId ?? null,
                     )
                 }
+                onNavigate={(disclosureId) =>
+                    void handlePortfolioNavigation(
+                        disclosureId,
+                    )
+                }
             />
             {query.isError && (
                 <div
@@ -560,8 +565,7 @@ function DisclosureResults({
             ? "fa-IR"
             : "en-US";
 
-    const formattedTotalCount =
-        new Intl.NumberFormat(numberLocale)
+    const formattedTotalCount = new Intl.NumberFormat(numberLocale)
             .format(totalCount);
     return (
         <div>
@@ -574,18 +578,18 @@ function DisclosureResults({
                     <MobileCard
                         key={disclosure.id}
                         disclosure={disclosure}
+                        onSalesClick={onSalesClick}
+                        onPortfolioClick={onPortfolioClick}
                     />
                 ))}
             </div>
 
             <div className="hidden overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs md:block">
                 <div className="min-w-[1050px]">
-                    <div className="grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_120px_112px] gap-3 border-b border-[var(--color-border)] bg-[oklch(from_var(--color-muted)_l_c_h_/_0.4)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                    <div className="grid grid-cols-[150px_minmax(300px,1fr)_170px_110px_112px] gap-3 border-b border-[var(--color-border)] bg-[oklch(from_var(--color-muted)_l_c_h_/_0.4)] px-5 py-3 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
                         <span> {t("table.symbol")} / {t("table.company")} </span>
                         <span> {t("table.disclosure")}</span>
                         <span>{t("table.published")}</span>
-                        <span>Type</span>
-                        <span>{t("table.parseStatus")}</span>
                         <span className="text-center">عملیات</span>
 
                     </div>
@@ -657,7 +661,7 @@ function DesktopRow({
                 <div
                     dir="auto"
                     title={disclosure.title}
-                    className="truncate text-[13px] font-medium text-[var(--color-foreground)]"
+                    className="whitespace-normal break-words text-[13px] font-medium leading-5 text-[var(--color-foreground)]"
                 >
                     {disclosure.title}
                 </div>
@@ -686,9 +690,7 @@ function DesktopRow({
                 <div>LET: {disclosure.let ?? "—"}</div>
             </div>
 
-            <StatusChip
-                status={disclosure.salesParseStatus}
-            />
+            
             <div className="flex items-center justify-end gap-1">
                 <div className="grid size-8 place-items-center">
                     {hasFiscalDate(disclosure.title) && (
@@ -708,7 +710,7 @@ function DesktopRow({
                     )}
                 </div>
                 <div className="grid size-8 place-items-center">
-                    {disclosure.rt === 2 && (
+                    {disclosure.hasPortfolio && (
                         <button
                             type="button"
                             onClick={() =>
@@ -744,8 +746,17 @@ function DesktopRow({
 
 function MobileCard({
     disclosure,
+    onSalesClick,
+    onPortfolioClick,
 }: {
     disclosure: DisclosureDto;
+    onSalesClick: (
+        symbol: string,
+        title: string,
+    ) => Promise<void>;
+    onPortfolioClick: (
+        disclosureId: string,
+    ) => Promise<void>;
 }) {
     const codalUrl = toCodalUrl(disclosure.url);
 
@@ -759,6 +770,7 @@ function MobileCard({
                     >
                         {disclosure.symbol}
                     </div>
+
                     <div
                         dir="auto"
                         className="mt-0.5 truncate text-[11px] text-[var(--color-muted-foreground)]"
@@ -767,14 +779,12 @@ function MobileCard({
                     </div>
                 </div>
 
-                <StatusChip
-                    status={disclosure.salesParseStatus}
-                />
+                
             </div>
 
             <p
                 dir="auto"
-                className="mt-3 line-clamp-2 text-[13px] font-medium leading-6 text-[var(--color-foreground)]"
+                className="mt-3 whitespace-normal break-words text-[13px] font-medium leading-6 text-[var(--color-foreground)]"
             >
                 {disclosure.title}
             </p>
@@ -783,22 +793,55 @@ function MobileCard({
                 <span dir="ltr" className="font-mono">
                     {disclosure.publishDateTimeRaw ?? "—"}
                 </span>
+
                 <span>RT {disclosure.rt ?? "—"}</span>
                 <span>LET {disclosure.let ?? "—"}</span>
-                <FormatBadges disclosure={disclosure} />
-            </div>
 
-            {codalUrl && (
-                <a
-                    href={codalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-primary)]"
-                >
-                    Open on Codal
-                    <ExternalLink className="size-3.5" />
-                </a>
-            )}
+                <FormatBadges disclosure={disclosure} />
+                {hasFiscalDate(disclosure.title) && (
+                    <button
+                        type="button"
+                        onClick={() =>
+                            void onSalesClick(
+                                disclosure.symbol,
+                                disclosure.title,
+                            )
+                        }
+                        title="مشاهده فروش"
+                        className="grid size-9 place-items-center rounded-md text-[var(--color-success)] transition-colors hover:bg-[var(--color-muted)]"
+                    >
+                        <ChartNoAxesCombined className="size-[22px]" />
+                    </button>
+                )}
+
+                {disclosure.hasPortfolio && (
+                    <button
+                        type="button"
+                        onClick={() =>
+                            void onPortfolioClick(
+                                disclosure.id,
+                            )
+                        }
+                        title="مشاهده پرتفوی"
+                        className="grid size-9 place-items-center rounded-md text-[var(--color-primary)] transition-colors hover:bg-[var(--color-muted)]"
+                    >
+                        <BriefcaseBusiness className="size-[20px]" />
+                    </button>
+                )}
+
+                {codalUrl && (
+                    <a
+                        href={codalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="مشاهده در کدال"
+                        aria-label={`Open ${disclosure.symbol} on Codal`}
+                        className="grid size-9 place-items-center rounded-md text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-primary)]"
+                    >
+                        <ExternalLink className="size-4" />
+                    </a>
+                )}
+            </div>            
         </article>
     );
 }
@@ -841,38 +884,6 @@ function FormatBadges({
     );
 }
 
-function StatusChip({
-    status,
-}: {
-    status: DisclosureParseStatus;
-}) {
-    const tones: Record<
-        DisclosureParseStatus,
-        string
-    > = {
-        Pending:
-            "bg-[var(--color-muted)] text-[var(--color-muted-foreground)]",
-        Success:
-            "bg-[oklch(from_var(--color-success)_l_c_h_/_0.14)] text-[var(--color-success)]",
-        Failed:
-            "bg-[oklch(from_var(--color-destructive)_l_c_h_/_0.14)] text-[var(--color-destructive)]",
-        NoData:
-            "bg-[oklch(from_var(--color-warning)_l_c_h_/_0.14)] text-[var(--color-warning)]",
-        Skipped:
-            "bg-[var(--color-secondary)] text-[var(--color-secondary-foreground)]",
-    };
-
-    return (
-        <span
-            className={cn(
-                "inline-flex h-6 w-fit items-center rounded-full px-2.5 text-[10px] font-semibold uppercase tracking-wider",
-                tones[status],
-            )}
-        >
-            {status}
-        </span>
-    );
-}
 
 function EmptyResults({
     searchActive,

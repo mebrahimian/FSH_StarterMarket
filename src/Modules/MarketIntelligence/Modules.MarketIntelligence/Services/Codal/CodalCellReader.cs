@@ -146,8 +146,12 @@ internal static class CodalCellReader
         JsonElement root =
             document.RootElement;
 
+        CodalReportHeaderData header = ReadReportHeader(html);
+
         CodalDatasourceMetadata? metadata =
-            BuildMetadata(root)
+            BuildMetadata(
+                root,
+                header)
                 .FirstOrDefault(x =>
                     x.MetaTableCode == metaTableCode);
 
@@ -249,8 +253,138 @@ internal static class CodalCellReader
                     x.Value))
             .ToList();
     }
+    private static CodalReportHeaderData ReadReportHeader(
+    string html)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(html);
+
+        static string? ReadSpanText(
+            string source,
+            params string[] elementIds)
+        {
+            foreach (string elementId in elementIds)
+            {
+                int idIndex = source.IndexOf(
+                    $"id=\"{elementId}\"",
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (idIndex < 0)
+                    continue;
+
+                int valueStart = source.IndexOf(
+                    '>',
+                    idIndex);
+
+                if (valueStart < 0)
+                    continue;
+
+                int valueEnd = source.IndexOf(
+                    "</span>",
+                    valueStart,
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (valueEnd < 0)
+                    continue;
+
+                string innerHtml = source.Substring(
+                    valueStart + 1,
+                    valueEnd - valueStart - 1);
+
+                // بعضی قالب‌های قدیمی کدال مقدار را داخل
+                // <font>...</font> قرار می‌دهند.
+                char[] buffer = new char[innerHtml.Length];
+                int writeIndex = 0;
+                bool insideTag = false;
+
+                foreach (char character in innerHtml)
+                {
+                    if (character == '<')
+                    {
+                        insideTag = true;
+                        continue;
+                    }
+
+                    if (character == '>')
+                    {
+                        insideTag = false;
+                        continue;
+                    }
+
+                    if (!insideTag)
+                    {
+                        buffer[writeIndex++] = character;
+                    }
+                }
+
+                string value =
+                    System.Net.WebUtility
+                        .HtmlDecode(
+                            new string(buffer[..writeIndex]))
+                        .Trim();
+
+                if (!string.IsNullOrWhiteSpace(value))
+                    return value;
+            }
+
+            return null;
+        }
+
+        static decimal? ReadDecimal(
+            string source,
+            params string[] elementIds)
+        {
+            string? value = ReadSpanText(
+                source,
+                elementIds);
+
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            string normalizedValue = value
+                .Replace(
+                    ",",
+                    string.Empty,
+                    StringComparison.Ordinal)
+                .Replace(
+                    "٬",
+                    string.Empty,
+                    StringComparison.Ordinal);
+
+            return decimal.TryParse(
+                normalizedValue,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out decimal parsedValue)
+                    ? parsedValue
+                    : null;
+        }
+
+        string? reportSymbol = ReadSpanText(
+            html,
+            "ctl00_txbSymbol",
+            "ctl00_lblDisplaySymbol");
+
+        string? reportCompanyName = ReadSpanText(
+            html,
+            "ctl00_txbCompanyName");
+
+        decimal? registeredCapital = ReadDecimal(
+            html,
+            "ctl00_lblListedCapital");
+
+        decimal? unauthorizedCapital = ReadDecimal(
+            html,
+            "ctl00_txbUnauthorizedCapital");
+
+        return new CodalReportHeaderData(
+            ReportSymbol: reportSymbol,
+            ReportCompanyName: reportCompanyName,
+            RegisteredCapital: registeredCapital,
+            UnauthorizedCapital: unauthorizedCapital);
+    }
     private static List<CodalDatasourceMetadata> BuildMetadata(
-    JsonElement root)
+    JsonElement root,
+    CodalReportHeaderData header)
     {
         long tracingNo =
             root.GetProperty("tracingNo")
@@ -293,7 +427,11 @@ internal static class CodalCellReader
                         MetaTableId: GetInt(table, "metaTableId"),
                         MetaTableCode: GetInt(table, "code"),
                         TitleFa: GetString(table, "title_Fa"),
-                        TitleEn: GetString(table, "title_En")));
+                        TitleEn: GetString(table, "title_En"),
+                        ReportSymbol: header.ReportSymbol,
+                        ReportCompanyName: header.ReportCompanyName,
+                        RegisteredCapital: header.RegisteredCapital,
+                        UnauthorizedCapital: header.UnauthorizedCapital));
             }
         }
 
@@ -304,9 +442,15 @@ internal static class CodalCellReader
     {
         using JsonDocument? document = ParseDatasource(html);
 
-        if (document is null)  return [];
+        if (document is null)
+            return [];
 
-        return BuildMetadata(document.RootElement);
+        CodalReportHeaderData header =
+            ReadReportHeader(html);
+
+        return BuildMetadata(
+            document.RootElement,
+            header);
     }
     /*
      SumColumnValues
@@ -746,10 +890,20 @@ internal sealed record CodalDatasourceMetadata(
     int MetaTableId,
     int MetaTableCode,
     string? TitleFa,
-    string? TitleEn);
+    string? TitleEn,
+    string? ReportSymbol,
+    string? ReportCompanyName,
+    decimal? RegisteredCapital,
+    decimal? UnauthorizedCapital);
+
 internal sealed record CodalTableRow(
     int RowSequence,
     IReadOnlyDictionary<int, string?> Values);
 internal sealed record CodalTableData(
     CodalDatasourceMetadata Metadata,
     IReadOnlyList<CodalTableRow> Rows);
+internal sealed record CodalReportHeaderData(
+    string? ReportSymbol,
+    string? ReportCompanyName,
+    decimal? RegisteredCapital,
+    decimal? UnauthorizedCapital);

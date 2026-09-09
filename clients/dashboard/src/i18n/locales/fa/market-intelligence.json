@@ -80,5 +80,75 @@
       "bulkFinished": "ارسال Jobها تمام شد. موفق: {{queued}}، خطا: {{failed}}",
       "bulkCurrent": "در حال تکمیل {{symbol}} — {{completed}} از {{total}} انجام شده"
     }
+  },
+  "codalSchedule": {
+    "title": "زمان‌بندی دریافت خودکار کدال",
+    "description": "ساعات فعالیت و فاصله دریافت اطلاعیه‌ها",
+    "startHour": "شروع فعالیت",
+    "morningEndHour": "پایان صبح",
+    "endHour": "پایان فعالیت",
+    "busyPeriod": "دوره پرترافیک",
+    "firstDaysOfPersianMonth": "روز اول هر ماه شمسی",
+    "weekdays": "شنبه تا چهارشنبه",
+    "thursday": "پنج‌شنبه",
+    "friday": "جمعه",
+    "busyDays": "روزهای پرترافیک",
+    "normalDays": "سایر روزها",
+    "morning": "صبح",
+    "afternoon": "بعدازظهر",
+    "minutes": "{{count}} دقیقه",
+    "save": "ذخیره تنظیمات",
+    "saving": "در حال ذخیره...",
+    "open": "زمان‌بندی دریافت داده از کدال",
+    "close": "بستن زمان‌بندی"
+
+  },
+  "portfolioMatching": "تطبیق شرکت‌های پرتفوی",
+  "missingPortfolio": "پرتفوی ثبت نشده {{period}}",
+  "codalDisclosureIssue": "اشکال در اعلامیه کدال {{period}}",
+  "portfolioViewer": {
+    "title": "پرتفوی سرمایه‌گذاری",
+    "period": "دوره",
+    "tracingNo": "کد رهگیری",
+    "previousReport": "گزارش قبلی",
+    "nextReport": "گزارش بعدی",
+
+    "tabs": {
+      "monthlyActivity": "فعالیت ماهانه",
+      "financialStatements": "صورت‌های مالی",
+      "unaudited": "حسابرسی نشده",
+      "audited": "حسابرسی شده"
+    },
+
+    "summary": {
+      "listedReportedMarketValue": "ارزش بازار بورسی گزارش‌شده",
+      "unlistedReportedValue": "بهای تمام‌شده غیربورسی",
+      "totalCompanies": "مجموع شرکت‌ها",
+      "listedCompanies": "تعداد بورسی",
+      "unlistedCompanies": "تعداد غیربورسی",
+      "totalReportedPortfolioValue": "مجموع ارزش پرتفوی گزارش‌شده"
+    },
+
+    "table": {
+      "company": "شرکت",
+      "type": "نوع",
+      "ownershipPercent": "درصد مالکیت",
+      "endingQuantity": "تعداد پایان دوره",
+      "endingCost": "بهای تمام‌شده",
+      "endingMarketValue": "ارزش بازار",
+      "endingCostPerShare": "بهای هر سهم",
+      "endingMarketPrice": "قیمت بازار"
+    },
+
+    "groups": {
+      "listedInvestments": "سرمایه‌گذاری‌های بورسی",
+      "unlistedInvestments": "سرمایه‌گذاری‌های غیربورسی",
+      "countItems": "({{count}} مورد)"
+    },
+
+    "types": {
+      "listed": "بورسی",
+      "unlisted": "غیربورسی"
+    }
   }
 }

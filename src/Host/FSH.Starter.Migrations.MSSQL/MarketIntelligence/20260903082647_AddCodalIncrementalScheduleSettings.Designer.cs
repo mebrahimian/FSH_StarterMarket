@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    partial class MarketIntelligenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260903082647_AddCodalIncrementalScheduleSettings")]
+    partial class AddCodalIncrementalScheduleSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -300,8 +303,8 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<byte>("AuditStatus")
-                        .HasColumnType("tinyint");
+                    b.Property<int>("AuditStatus")
+                        .HasColumnType("int");
 
                     b.Property<decimal?>("BeginningCost")
                         .HasPrecision(28, 6)
@@ -403,8 +406,8 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.Property<int>("RowSequence")
                         .HasColumnType("int");
 
-                    b.Property<byte>("SourceType")
-                        .HasColumnType("tinyint");
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
 
                     b.Property<long>("TracingNo")
                         .HasColumnType("bigint");
@@ -430,8 +433,8 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<byte>("AuditStatus")
-                        .HasColumnType("tinyint");
+                    b.Property<int>("AuditStatus")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("DisclosureId")
                         .HasColumnType("uniqueidentifier");
@@ -453,23 +456,11 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<decimal?>("RegisteredCapital")
-                        .HasPrecision(28, 3)
-                        .HasColumnType("decimal(28,3)");
-
-                    b.Property<string>("ReportCompanyName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("ReportSymbol")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<int>("SheetCode")
                         .HasColumnType("int");
 
-                    b.Property<byte>("SourceType")
-                        .HasColumnType("tinyint");
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
 
                     b.Property<string>("TitleEn")
                         .HasMaxLength(512)
@@ -485,10 +476,6 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.Property<string>("Type")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
-
-                    b.Property<decimal?>("UnauthorizedCapital")
-                        .HasPrecision(28, 3)
-                        .HasColumnType("decimal(28,3)");
 
                     b.Property<string>("YearEndToDate")
                         .HasMaxLength(10)

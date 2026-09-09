@@ -86,7 +86,11 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     public DisclosureParseStatus SalesParseStatus { get; set; } = DisclosureParseStatus.Pending;  // 0=New,1=Success,2=Failed,3=Ignored
 
     public DateTime? SalesParsedAt { get; set; }
-
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Major Code Smell",
+    "S1144:Unused private types or members should be removed",
+    Justification = "Private setter is used by EF Core materialization.")]
+    public DateTime? CollectedAt { get; private set; }
     private Disclosure()
     {
     }
@@ -117,7 +121,8 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         byte? rt,
         byte? ct,
         short? ft,
-        int? reportingTypeCode  )
+        int? reportingTypeCode
+        )
     {
         TracingNo = tracingNo;
         Symbol = symbol;
@@ -145,5 +150,6 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         Ct = ct;
         Ft = ft;
         ReportingTypeCode = reportingTypeCode;
+        CollectedAt = DateTime.UtcNow;
     }
 }

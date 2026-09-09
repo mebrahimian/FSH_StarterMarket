@@ -7,29 +7,31 @@ using FSH.Framework.Web.Modules;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
+using FSH.Modules.MarketIntelligence.Features.v1.CodalIncrementalSchedule;
 using FSH.Modules.MarketIntelligence.Features.v1.DataQualityIssues;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
+using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
+using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 using FSH.Modules.MarketIntelligence.Services.Codal;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
+using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Modules.MarketIntelligence.Services.Codal.Processors;
-using Microsoft.AspNetCore.Mvc;
-using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
-using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
-using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -99,6 +101,8 @@ namespace FSH.Modules.MarketIntelligence
             group.MapGetFiscalYearSalesEndpoint();
             group.MapGetPortfolioByDisclosureIdEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
+            group.MapGetCodalIncrementalScheduleEndpoint();
+            group.MapUpdateCodalIncrementalScheduleEndpoint();
             group.MapGetUnmatchedPortfolioCompaniesEndpoint();
             group.MapGetPortfolioCompanyUsageEndpoint();
             group.MapSearchPortfolioCompaniesEndpoint();
@@ -120,19 +124,29 @@ namespace FSH.Modules.MarketIntelligence
                 .CodalOperations
                 .Execute);
 
-            group.MapPost("/codal/import", (IJobService jobService) =>
-                {
-                    string jobId =
-                        jobService.Enqueue<CodalBackgroundJob>(
-                            job =>
-                                job.RunBackfillAsync(CancellationToken.None));
+            ////////////////////////////
+            group.MapPost("/codal/backfill",
+                    IResult (IJobService jobService,
+                             IConfiguration configuration) =>
+               {
+                 int startPage = 
+                   configuration.GetValue<int?>("MarketIntelligence:Codal:BackfillStartPage") ?? 4000;
 
-                    return Results.Accepted(
-                        value: new
-                        { jobId, message = "Codal backfill queued." });
-                }).RequirePermission(MarketIntelligencePermissions
-                        .CodalOperations
-                        .Execute);
+                 int endPage = Math.Max(1, startPage - 199);
+
+                 string jobId = jobService.Enqueue<CodalBackgroundJob>(
+                    job => job.RunBackfillChunkAsync(startPage, endPage,
+                               CancellationToken.None));
+
+                 return Results.Accepted(value: new
+                    {
+                      jobId,
+                      startPage,
+                      endPage,
+                      message = "Codal backfill queued.",
+                    });
+               }).RequirePermission(MarketIntelligencePermissions.CodalOperations.Execute);
+            ////////////////////////////
             group.MapPost("/codal/symbol-backfill", IResult
                      (CodalSymbolBackfillRequest request, IJobService jobService) =>
                 {
@@ -339,23 +353,13 @@ namespace FSH.Modules.MarketIntelligence
 
             if (jobManager is not null)
             {
-                jobManager.AddOrUpdate(
-                    "market-intelligence-codal-incremental-morning",
-                    Job.FromExpression<CodalBackgroundJob>(
-                        job => job.RunIncrementalAsync(
-                            CancellationToken.None)),
-                    "*/30 5-10 * * *",
-                    new RecurringJobOptions
-                    {
-                        TimeZone = TimeZoneInfo.Utc,
-                    });
+                jobManager.RemoveIfExists("market-intelligence-codal-incremental-morning");
+                jobManager.RemoveIfExists("market-intelligence-codal-incremental-afternoon");
 
                 jobManager.AddOrUpdate(
-                    "market-intelligence-codal-incremental-afternoon",
-                    Job.FromExpression<CodalBackgroundJob>(
-                        job => job.RunIncrementalAsync(
-                            CancellationToken.None)),
-                    "0 11-23 * * *",
+                    "market-intelligence-codal-incremental",
+                    Job.FromExpression<CodalBackgroundJob>(job => job.RunScheduledIncrementalAsync(CancellationToken.None)),
+                    "*/5 * * * *",
                     new RecurringJobOptions
                     {
                         TimeZone = TimeZoneInfo.Utc,

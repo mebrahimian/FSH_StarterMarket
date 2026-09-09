@@ -42,32 +42,37 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
         logger.LogInformation("Portfolio handler started");
         var firstPosition = positions[0];
 
-        int parentCompanyId =
-            firstPosition.ParentCompanyId;
+        int parentCompanyId = firstPosition.ParentCompanyId;
+        string periodEndDate = firstPosition.PeriodEndDate;
+        var sourceType = firstPosition.SourceType;
+        var auditStatus = firstPosition.AuditStatus;
 
-        string periodEndDate =
-            firstPosition.PeriodEndDate;
+        var navigationReports =
+    await dbContext.InvestmentPortfolioPositions
+        .AsNoTracking()
+        .Where(position =>
+            position.ParentCompanyId == parentCompanyId)
+        .Select(position => new
+        {
+            position.DisclosureId,
+            position.PeriodEndDate,
+            position.SourceType,
+            position.AuditStatus,
+        })
+        .Distinct()
+        .ToListAsync(cancellationToken)
+        .ConfigureAwait(false);
 
-        var reportPeriods =
-            await dbContext.InvestmentPortfolioPositions
-                .AsNoTracking()
-                .Where(position =>
-                    position.ParentCompanyId == parentCompanyId)
-                .Select(position => new
-                {
-                    position.DisclosureId,
-                    position.PeriodEndDate,
-                })
-                .Distinct()
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
         logger.LogInformation("Portfolio handler started");
         var orderedReports =
-            reportPeriods
-                .OrderBy(report =>
-                    report.PeriodEndDate,
-                    StringComparer.Ordinal)
-                .ToList();
+    navigationReports
+        .Where(report =>
+            report.SourceType == sourceType &&
+            report.AuditStatus == auditStatus)
+        .OrderBy(
+            report => report.PeriodEndDate,
+            StringComparer.Ordinal)
+        .ToList();
 
         int currentIndex =
             orderedReports.FindIndex(report =>
@@ -86,6 +91,35 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                 ? orderedReports[currentIndex + 1]
                     .DisclosureId
                 : null;
+        var navigationTargets =
+    navigationReports
+        .GroupBy(report => new
+        {
+            report.SourceType,
+            report.AuditStatus,
+        })
+        .Select(group =>
+        {
+            var reports =
+                group
+                    .OrderBy(
+                        report => report.PeriodEndDate,
+                        StringComparer.Ordinal)
+                    .ToList();
+
+            var target = reports.Find(report => report.PeriodEndDate == periodEndDate)
+                       ?? reports.FindLast(report => 
+                           string.CompareOrdinal(report.PeriodEndDate,
+                           periodEndDate) <= 0)
+                       ?? reports[0];
+
+            return new PortfolioNavigationTargetDto(
+                (byte)group.Key.SourceType,
+                (byte)group.Key.AuditStatus,
+                target.DisclosureId,
+                target.PeriodEndDate);
+        })
+        .ToList();
 
         int[] childCompanyIds =
             positions
@@ -188,8 +222,11 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
             parentCompanyId,
             periodEndDate,
             firstPosition.PublishDateTime,
+            (byte)sourceType,
+            (byte)auditStatus,
             previousDisclosureId,
             nextDisclosureId,
+            navigationTargets,
             listedReportedMarketValue,
             unlistedReportedValue,
             rows);

@@ -118,8 +118,23 @@ export type DisclosureDto = {
   reportingTypeCode?: number | null;
   salesParseStatus: DisclosureParseStatus;
   salesParsedAt?: string | null;
+  hasPortfolio: boolean;
 };
-
+export type CodalIncrementalSchedule = {
+    startHour: number;
+    morningEndHour: number;
+    endHour: number;
+    busyPeriodEndDay: number;
+    busyMorningMinutes: number;
+    busyAfternoonMinutes: number;
+    normalMorningMinutes: number;
+    normalAfternoonMinutes: number;
+    thursdayBusyMorningMinutes: number;
+    thursdayBusyAfternoonMinutes: number;
+    thursdayNormalMorningMinutes: number;
+    thursdayNormalAfternoonMinutes: number;
+    fridayMinutes: number;
+};
 export type SearchDisclosuresParams = {
   search?: string;
     let?: number | null;
@@ -159,20 +174,50 @@ export type PortfolioPosition = {
     increaseDecrease: number | null;
     notes: string | null;
 };
+export const PortfolioSourceType = {
+    None: 0,
+    MonthlyActivity: 1,
+    FinancialStatement: 2,
+} as const;
 
+export type PortfolioSourceType =
+    (typeof PortfolioSourceType)[keyof typeof PortfolioSourceType];
+
+export const PortfolioAuditStatus = {
+    None: 0,
+    Unaudited: 1,
+    Audited: 2,
+} as const;
+
+export type PortfolioAuditStatus =
+    (typeof PortfolioAuditStatus)[keyof typeof PortfolioAuditStatus];
+
+export type PortfolioNavigationTarget = {
+    sourceType: PortfolioSourceType;
+    auditStatus: PortfolioAuditStatus;
+    disclosureId: string;
+    periodEndDate: string;
+};
 export type PortfolioReport = {
     disclosureId: string;
     tracingNo: number;
     parentCompanyId: number;
     periodEndDate: string;
     publishDateTime: string | null;
+
+    sourceType: PortfolioSourceType;
+    auditStatus: PortfolioAuditStatus;
+
     previousDisclosureId: string | null;
     nextDisclosureId: string | null;
+
+    navigationTargets: PortfolioNavigationTarget[];
+
     listedReportedMarketValue: number | null;
     unlistedReportedValue: number | null;
+
     positions: PortfolioPosition[];
 };
-
 export function searchDisclosures(
   params: SearchDisclosuresParams = {},
 ): Promise<PagedResponse<DisclosureDto>> {
@@ -247,6 +292,11 @@ export function getCodalDataQuality(
         `/api/v1/marketintelligence/codal/data-quality?coverageYears=${coverageYears}`,
     );
 }
+export function getCodalIncrementalSchedule(): Promise<CodalIncrementalSchedule> {
+    return apiFetch<CodalIncrementalSchedule>(
+        "/api/v1/marketintelligence/codal/incremental-schedule",
+    );
+}
 export type CreateUnlistedPortfolioCompanyInput = {
     rawCompanyName: string;
     fSortName: string;
@@ -289,7 +339,7 @@ export function getCodalJobStatus(
 
 export function collectCodalBackfill(): Promise<CodalOperationResponse> {
     return apiFetch<CodalOperationResponse>(
-        "/api/v1/marketintelligence/codal/import",
+        "/api/v1/marketintelligence/codal/backfill",
         {
             method: "POST",
         },
@@ -510,5 +560,19 @@ export function getPortfolioByDisclosureId(
 ): Promise<PortfolioReport | null> {
     return apiFetch<PortfolioReport | null>(
         `/api/v1/marketintelligence/portfolio-viewer/${encodeURIComponent(disclosureId)}`,
+    );
+}
+export function updateCodalIncrementalSchedule(
+    request: CodalIncrementalSchedule,
+): Promise<CodalIncrementalSchedule> {
+    return apiFetch<CodalIncrementalSchedule>(
+        "/api/v1/marketintelligence/codal/incremental-schedule",
+        {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(request),
+        },
     );
 }

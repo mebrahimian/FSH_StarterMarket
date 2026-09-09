@@ -81,7 +81,12 @@ public sealed class InvestmentPortfolioProcessor(
             await reader.ReadAsync(
                 disclosure.Url,
                 cancellationToken);
+        bool hasPortfolioSheet = sheets.Any(x => x.Metadata.MetaTableCode is 1470 or 1471);
 
+        if (!hasPortfolioSheet)
+        {
+            return;
+        }
         string? periodEndDate =
             sheets
                 .Select(x => x.PeriodEndDate)
@@ -90,14 +95,49 @@ public sealed class InvestmentPortfolioProcessor(
 
         if (string.IsNullOrWhiteSpace(periodEndDate))
         {
-            throw new InvalidOperationException(
-                $"Portfolio period was not found. " +
-                $"TracingNo: {disclosure.TracingNo}");
+            return;
         }
-        PortfolioSourceType sourceType = 
-            disclosure.Let == 6
-                ? PortfolioSourceType.FinancialStatement
-                : PortfolioSourceType.MonthlyActivity;
+        PortfolioSourceType sourceType = disclosure.Let == 6
+        ? PortfolioSourceType.FinancialStatement
+        : PortfolioSourceType.MonthlyActivity;
+
+        string? reportSymbol =
+            sheets
+                .Select(x => x.Metadata.ReportSymbol)
+                .FirstOrDefault(x =>
+                    !string.IsNullOrWhiteSpace(x));
+
+        if (sourceType == PortfolioSourceType.FinancialStatement &&
+            !string.IsNullOrWhiteSpace(reportSymbol) &&
+            !string.Equals(FSort.Normalize(reportSymbol),
+                           FSort.Normalize(disclosure.Symbol), StringComparison.Ordinal))
+        {
+            int deletedPositions =
+                await dbContext.InvestmentPortfolioPositions
+                    .Where(x => x.DisclosureId == disclosure.Id)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+            int deletedMetadata =
+                await dbContext.InvestmentPortfolioReportMetadata
+                    .Where(x => x.DisclosureId == disclosure.Id)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.LogInformation(
+                    "Financial statement belongs to a different report symbol. " +
+                    "TracingNo: {TracingNo}, DisclosureSymbol: {DisclosureSymbol}, " +
+                    "ReportSymbol: {ReportSymbol}, DeletedPositions: {DeletedPositions}, " +
+                    "DeletedMetadata: {DeletedMetadata}",
+                    disclosure.TracingNo,
+                    disclosure.Symbol,
+                    reportSymbol,
+                    deletedPositions,
+                    deletedMetadata);
+            }
+
+            return;
+        }
 
         PortfolioAuditStatus auditStatus = PortfolioAuditStatus.None;
 
@@ -134,6 +174,63 @@ public sealed class InvestmentPortfolioProcessor(
             }
 
             return;
+        }
+
+        ///////////////////////////////////////////
+        List<InvestmentPortfolioReportMetadata> existingMetadata = 
+            await dbContext.InvestmentPortfolioReportMetadata
+                           .Where(x => x.TracingNo == disclosure.TracingNo)
+                           .ToListAsync(cancellationToken);
+
+        foreach (CodalDatasourceMetadata metadata in
+                 sheets.Select(sheet => sheet.Metadata))
+        {
+            InvestmentPortfolioReportMetadata? existingReportMetadata =
+                existingMetadata.FirstOrDefault(x =>
+                       x.SheetCode == metadata.SheetCode &&
+                       x.MetaTableId == metadata.MetaTableId &&
+                       x.MetaTableCode == metadata.MetaTableCode);
+
+            if (existingReportMetadata is not null)
+            {
+                existingReportMetadata.UpdateReportHeader(
+                    metadata.ReportSymbol,
+                    metadata.ReportCompanyName,
+                    metadata.RegisteredCapital,
+                    metadata.UnauthorizedCapital);
+
+                continue;
+            }
+
+            dbContext.InvestmentPortfolioReportMetadata.Add(
+                new InvestmentPortfolioReportMetadata(
+                disclosure.Id,
+                disclosure.TracingNo,
+                metadata.PeriodEndToDate,
+                metadata.YearEndToDate,
+                metadata.Period,
+                metadata.Type,
+                metadata.SheetCode,
+                metadata.MetaTableId,
+                metadata.MetaTableCode,
+                metadata.TitleFa,
+                metadata.TitleEn,
+                sourceType,
+                auditStatus,
+                metadata.ReportSymbol,
+                metadata.ReportCompanyName,
+                metadata.RegisteredCapital,
+                metadata.UnauthorizedCapital));
+        }
+        //////////////////////////////////////////
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.ToString());
+            throw;
         }
 
         var entities = new List<InvestmentPortfolioPosition>();

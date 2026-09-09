@@ -80,5 +80,74 @@
       "bulkFinished": "Job queueing completed. Queued: {{queued}}, Failed: {{failed}}",
       "bulkCurrent": "Backfilling {{symbol}} — {{completed}} of {{total}} completed"
     }
+  },
+  "codalSchedule": {
+    "title": "Codal Automatic Collection Schedule",
+    "description": "Configure active hours and disclosure collection intervals",
+    "startHour": "Start time",
+    "morningEndHour": "End of morning",
+    "endHour": "End time",
+    "busyPeriod": "High-activity period",
+    "firstDaysOfPersianMonth": "first days of each Persian month",
+    "weekdays": "Saturday to Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "busyDays": "High-activity days",
+    "normalDays": "Other days",
+    "morning": "Morning",
+    "afternoon": "Afternoon",
+    "minutes": "{{count}} min",
+    "save": "Save settings",
+    "saving": "Saving...",
+    "open": "Codal Schedule Settings",
+    "close": "Close Schedule"
+  },
+  "portfolioMatching": "Portfolio Company Matching",
+  "missingPortfolio": "Portfolio not recorded {{period}}",
+  "codalDisclosureIssue": "Codal disclosure issue {{period}}",
+  "portfolioViewer": {
+    "title": "Investment Portfolio",
+    "period": "Period",
+    "tracingNo": "Tracing No.",
+    "previousReport": "Previous report",
+    "nextReport": "Next report",
+
+    "tabs": {
+      "monthlyActivity": "Monthly Activity",
+      "financialStatements": "Financial Statements",
+      "unaudited": "Unaudited",
+      "audited": "Audited"
+    },
+
+    "summary": {
+      "listedReportedMarketValue": "Reported Listed Market Value",
+      "unlistedReportedValue": "Unlisted Cost",
+      "totalCompanies": "Total Companies",
+      "listedCompanies": "Listed Companies",
+      "unlistedCompanies": "Unlisted Companies",
+      "totalReportedPortfolioValue": "total Reported PortfolioValue"
+    },
+
+    "table": {
+      "company": "Company",
+      "type": "Type",
+      "ownershipPercent": "Ownership %",
+      "endingQuantity": "Ending Quantity",
+      "endingCost": "Ending Cost",
+      "endingMarketValue": "Market Value",
+      "endingCostPerShare": "Cost per Share",
+      "endingMarketPrice": "Market Price"
+    },
+
+    "groups": {
+      "listedInvestments": "Listed Investments",
+      "unlistedInvestments": "Unlisted Investments",
+      "countItems": "({{count}} items)"
+    },
+
+    "types": {
+      "listed": "Listed",
+      "unlisted": "Unlisted"
+    }
   }
 }

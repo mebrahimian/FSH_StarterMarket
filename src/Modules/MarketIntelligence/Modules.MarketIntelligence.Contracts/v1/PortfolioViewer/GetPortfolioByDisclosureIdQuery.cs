@@ -12,8 +12,11 @@ public sealed record PortfolioReportDto(
     int ParentCompanyId,
     string PeriodEndDate,
     DateTime? PublishDateTime,
+    byte SourceType,
+    byte AuditStatus,
     Guid? PreviousDisclosureId,
     Guid? NextDisclosureId,
+    IReadOnlyList<PortfolioNavigationTargetDto> NavigationTargets,
     decimal? ListedReportedMarketValue,
     decimal? UnlistedReportedValue,
     IReadOnlyList<PortfolioPositionDto> Positions);
@@ -43,3 +46,9 @@ public sealed record PortfolioPositionDto(
     decimal? EndingMarketPrice,
     decimal? IncreaseDecrease,
     string? Notes);
+
+public sealed record PortfolioNavigationTargetDto(
+    byte SourceType,
+    byte AuditStatus,
+    Guid DisclosureId,
+    string PeriodEndDate);

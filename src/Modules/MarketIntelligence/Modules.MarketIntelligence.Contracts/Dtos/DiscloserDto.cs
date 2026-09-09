@@ -29,4 +29,5 @@ public sealed record DisclosureDto(
     short? Ft,
     int? ReportingTypeCode,
     string SalesParseStatus,
-    DateTime? SalesParsedAt);
+    DateTime? SalesParsedAt,
+    bool HasPortfolio);

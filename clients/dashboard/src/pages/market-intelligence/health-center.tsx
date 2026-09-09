@@ -26,6 +26,9 @@ import {
     getCodalJobStatus,
     getDataQualityIssues,
     queueCodalSymbolBackfill,
+    getCodalIncrementalSchedule,
+    updateCodalIncrementalSchedule,
+    type CodalIncrementalSchedule,
     type DataQualityIssue,
     type FiscalYearSales,
     type DisclosureParseStatus,
@@ -68,6 +71,32 @@ import {
 
 import { FiscalYearSalesDialog } from
     "@/components/market-intelligence/fiscal-year-sales-dialog";
+type ScheduleIntervalSelectProps = {
+    value: number;
+    onChange: (value: number) => void;
+};
+
+function ScheduleIntervalSelect({
+    value,
+    onChange,
+}: ScheduleIntervalSelectProps) {
+    const { t: tMarket } = useTranslation("marketIntelligence");
+    const options = [5, 10, 15, 30, 60];
+
+    return (
+        <select
+            value={value}
+            onChange={(event) => onChange(Number(event.target.value))}
+            className="h-9 rounded-md border border-[var(--color-border)] bg-transparent px-2"
+        >
+            {options.map((minutes) => (
+                <option key={minutes} value={minutes}>
+                    {tMarket("codalSchedule.minutes", { count: minutes })}
+                </option>
+            ))}
+        </select>
+    );
+}
 export function MarketHealthCenterPage() {
     const navigate = useNavigate();
     const [rtFilter, ] = useState("");
@@ -78,12 +107,13 @@ export function MarketHealthCenterPage() {
         useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
     const [backfillSymbol, setBackfillSymbol] = useState("");
-
+    const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const [backfillFromDate, setBackfillFromDate] = useState<DateObject | null>(null);
     const [backfillToDate, setBackfillToDate] = useState<DateObject | null>(null);
     const [backfillMessage, setBackfillMessage] = useState("");
     const [backfillJobId, setBackfillJobId] = useState<string | null>(null);
-
+    const [codalSchedule, setCodalSchedule] =
+        useState<CodalIncrementalSchedule | null>(null);
     const {
         data: dataQualityIssues = [],
         isLoading: isDataQualityIssuesLoading,
@@ -194,6 +224,7 @@ export function MarketHealthCenterPage() {
             setBackfillJobId(null);
         }
     }, [backfillStatusQuery.data?.status]);
+    
     const normalizeDateDigits = (value: string) =>
         value
             .replace(/[۰-۹]/g, (digit) =>
@@ -262,6 +293,21 @@ export function MarketHealthCenterPage() {
             (code): code is number =>
                 code !== null,
         ) ?? [];
+    const codalScheduleQuery = useQuery<CodalIncrementalSchedule>({
+        queryKey: ["market-intelligence", "codal-incremental-schedule"],
+        queryFn: getCodalIncrementalSchedule,
+    });
+    const codalScheduleMutation = useMutation({
+        mutationFn: updateCodalIncrementalSchedule,
+        onSuccess: (result) => {
+            setCodalSchedule(result);
+        },
+    });
+    useEffect(() => {
+        if (codalScheduleQuery.data) {
+            setCodalSchedule(codalScheduleQuery.data);
+        }
+    }, [codalScheduleQuery.data]);
 
     const includeNullLet =
         selectedLetterCategory?.letCodes.includes(
@@ -501,6 +547,17 @@ export function MarketHealthCenterPage() {
                             type="button"
                             variant="outline"
                             size="sm"
+                            onClick={() => setIsScheduleOpen((current) => !current)}
+                        >
+                            {isScheduleOpen
+                                ? tMarket("codalSchedule.close")
+                                : tMarket("codalSchedule.open")}
+                        </Button>
+                        
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
                             className="gap-2"
                             onClick={() =>
                                 navigate(
@@ -509,9 +566,8 @@ export function MarketHealthCenterPage() {
                             }
                         >
                             <Link2 className="size-3.5" />
-                            تطبیق شرکت‌های پرتفوی
+                            {tMarket("portfolioMatching")}
                         </Button>
-
                         <Button
                             type="button"
                             variant="outline"
@@ -533,6 +589,7 @@ export function MarketHealthCenterPage() {
                             />
                             {t("actions.refresh")}
                         </Button>
+                        
                     </div>
                 }
             />
@@ -578,6 +635,242 @@ export function MarketHealthCenterPage() {
                     hint={tMarket("healthCenter.gapFailedMissing")}
                 />
             </section>
+
+            {isScheduleOpen && codalSchedule && (
+                <section className="mt-3 rounded-xl border border-[var(--color-border)] p-4 shadow-xs">
+                    <div className="mb-4">
+                        <h2 className="text-base font-semibold">
+                            {tMarket("codalSchedule.title")}
+                        </h2>
+                        <p>
+                            {tMarket("codalSchedule.description")}
+                        </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                        <label className="space-y-1.5 text-sm">
+                            <span>{tMarket("codalSchedule.startHour")}</span>
+                            <select
+                                value={codalSchedule.startHour}
+                                onChange={(event) =>
+                                    setCodalSchedule({
+                                        ...codalSchedule,
+                                        startHour: Number(event.target.value),
+                                    })
+                                }
+                                className="h-9 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3"
+                            >
+                                {Array.from({ length: 24 }, (_, hour) => (
+                                    <option key={hour} value={hour}>
+                                        {hour.toString().padStart(2, "0")}:00
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="space-y-1.5 text-sm">
+                            <span>{tMarket("codalSchedule.morningEndHour")}  </span>
+                            <select
+                                value={codalSchedule.morningEndHour}
+                                onChange={(event) =>
+                                    setCodalSchedule({
+                                        ...codalSchedule,
+                                        morningEndHour: Number(event.target.value),
+                                    })
+                                }
+                                className="h-9 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3"
+                            >
+                                {Array.from({ length: 24 }, (_, hour) => (
+                                    <option key={hour} value={hour}>
+                                        {hour.toString().padStart(2, "0")}:00
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="space-y-1.5 text-sm">
+                            <span>{tMarket("codalSchedule.endHour")}</span>
+                            <select
+                                value={codalSchedule.endHour}
+                                onChange={(event) =>
+                                    setCodalSchedule({
+                                        ...codalSchedule,
+                                        endHour: Number(event.target.value),
+                                    })
+                                }
+                                className="h-9 w-full rounded-md border border-[var(--color-border)] bg-transparent px-3"
+                            >
+                                {Array.from({ length: 24 }, (_, hour) => (
+                                    <option key={hour} value={hour}>
+                                        {hour.toString().padStart(2, "0")}:00
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
+                    <div className="mt-5 border-t border-[var(--color-border)] pt-4">
+                        <div className="mb-4 flex items-center gap-2 text-sm">
+                            <span>{tMarket("codalSchedule.busyPeriod")}</span>
+
+                            <select
+                                value={codalSchedule.busyPeriodEndDay}
+                                onChange={(event) =>
+                                    setCodalSchedule({
+                                        ...codalSchedule,
+                                        busyPeriodEndDay: Number(event.target.value),
+                                    })
+                                }
+                                className="h-9 rounded-md border border-[var(--color-border)] bg-transparent px-3"
+                            >
+                                {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                                    <option key={day} value={day}>
+                                        {day}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <span>{tMarket("codalSchedule.firstDaysOfPersianMonth")}</span>
+                        </div>
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            <div className="rounded-lg border border-[var(--color-border)] p-3">
+                                <div className="mb-3 font-medium">
+                                    {tMarket("codalSchedule.weekdays")}
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 text-sm">
+                                    <span />
+                                    <span className="text-center">{tMarket("codalSchedule.busyDays")}</span>
+                                    <span className="text-center">{tMarket("codalSchedule.normalDays")}</span>
+
+                                    <span>{tMarket("codalSchedule.morning")}</span>
+                                    <ScheduleIntervalSelect
+                                        value={codalSchedule.busyMorningMinutes}
+                                        onChange={(value) =>
+                                            setCodalSchedule({
+                                                ...codalSchedule,
+                                                busyMorningMinutes: value,
+                                            })
+                                        }
+                                    />
+                                    <ScheduleIntervalSelect
+                                        value={codalSchedule.normalMorningMinutes}
+                                        onChange={(value) =>
+                                            setCodalSchedule({
+                                                ...codalSchedule,
+                                                normalMorningMinutes: value,
+                                            })
+                                        }
+                                    />
+
+                                    <span>{tMarket("codalSchedule.afternoon")}</span>
+                                    <ScheduleIntervalSelect
+                                        value={codalSchedule.busyAfternoonMinutes}
+                                        onChange={(value) =>
+                                            setCodalSchedule({
+                                                ...codalSchedule,
+                                                busyAfternoonMinutes: value,
+                                            })
+                                        }
+                                    />
+                                    <ScheduleIntervalSelect
+                                        value={codalSchedule.normalAfternoonMinutes}
+                                        onChange={(value) =>
+                                            setCodalSchedule({
+                                                ...codalSchedule,
+                                                normalAfternoonMinutes: value,
+                                            })
+                                        }
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="rounded-lg border border-[var(--color-border)] p-3">
+                            <div className="mb-3 font-medium">
+                                {tMarket("codalSchedule.thursday")}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 text-sm">
+                                <span />
+                                <span>{tMarket("codalSchedule.busyPeriod")}</span>
+                                {tMarket("codalSchedule.weekdays")}
+
+                                <span>{tMarket("codalSchedule.morning")}</span>
+                                <ScheduleIntervalSelect
+                                    value={codalSchedule.thursdayBusyMorningMinutes}
+                                    onChange={(value) =>
+                                        setCodalSchedule({
+                                            ...codalSchedule,
+                                            thursdayBusyMorningMinutes: value,
+                                        })
+                                    }
+                                />
+                                <ScheduleIntervalSelect
+                                    value={codalSchedule.thursdayNormalMorningMinutes}
+                                    onChange={(value) =>
+                                        setCodalSchedule({
+                                            ...codalSchedule,
+                                            thursdayNormalMorningMinutes: value,
+                                        })
+                                    }
+                                />
+
+                                <span>{tMarket("codalSchedule.afternoon")}</span>
+                                <ScheduleIntervalSelect
+                                    value={codalSchedule.thursdayBusyAfternoonMinutes}
+                                    onChange={(value) =>
+                                        setCodalSchedule({
+                                            ...codalSchedule,
+                                            thursdayBusyAfternoonMinutes: value,
+                                        })
+                                    }
+                                />
+                                <ScheduleIntervalSelect
+                                    value={codalSchedule.thursdayNormalAfternoonMinutes}
+                                    onChange={(value) =>
+                                        setCodalSchedule({
+                                            ...codalSchedule,
+                                            thursdayNormalAfternoonMinutes: value,
+                                        })
+                                    }
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-4 rounded-lg border border-[var(--color-border)] p-3">
+                            <div className="grid items-center gap-3 sm:grid-cols-[1fr_200px]">
+                                <span className="font-medium">
+                                    {tMarket("codalSchedule.friday")}
+                                </span>
+
+                                <ScheduleIntervalSelect
+                                    value={codalSchedule.fridayMinutes}
+                                    onChange={(value) =>
+                                        setCodalSchedule({
+                                            ...codalSchedule,
+                                            fridayMinutes: value,
+                                        })
+                                    }
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end border-t border-[var(--color-border)] pt-4">
+                            <Button
+                                type="button"
+                                disabled={!codalSchedule || codalScheduleMutation.isPending}
+                                onClick={() => {
+                                    if (codalSchedule) {
+                                        codalScheduleMutation.mutate(codalSchedule);
+                                    }
+                                }}
+                            >
+                                {codalScheduleMutation.isPending
+                                    ? tMarket("codalSchedule.saving")
+                                    : tMarket("codalSchedule.save")}
+                            </Button>
+                        </div>
+                    </div>
+                </section>
+            )}
             <section className="mt-2 pt-5 pr-5 pb-0 mb-0 overflow-hidden rounded-xl border border-[var(--color-border)]  shadow-xs sm:h-[280px]">
                 
                 <h2 className="-mt-5 mb-2 text-center text-base font-semibold">
@@ -602,9 +895,12 @@ export function MarketHealthCenterPage() {
                                 .map((issue, index) => {
                                     const issueDescription =
                                         issue.issueCode === "MissingPortfolio"
-                                            ? `پرتفوی ثبت نشده ${issue.periodEndDate ?? "—"}`
-                                            : `اشکال در اعلامیه کدال ${issue.periodEndDate ?? "—"}`;
-
+                                            ? tMarket("missingPortfolio", {
+                                                period: issue.periodEndDate ?? "—",
+                                            })
+                                            : tMarket("codalDisclosureIssue", {
+                                                period: issue.periodEndDate ?? "—",
+                                            });
                                     return (
                                         <div
                                             key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}

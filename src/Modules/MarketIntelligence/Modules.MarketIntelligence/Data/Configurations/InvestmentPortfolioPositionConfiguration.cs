@@ -7,8 +7,7 @@ namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 public sealed class InvestmentPortfolioPositionConfiguration :
     IEntityTypeConfiguration<InvestmentPortfolioPosition>
 {
-    public void Configure(
-        EntityTypeBuilder<InvestmentPortfolioPosition> builder)
+    public void Configure(EntityTypeBuilder<InvestmentPortfolioPosition> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -72,5 +71,12 @@ public sealed class InvestmentPortfolioPositionConfiguration :
 
         builder.HasIndex(x => x.DisclosureId);
         builder.HasIndex(x => x.FSortName);
+        builder.Property(x => x.SourceType)
+               .HasConversion<byte>()
+               .HasColumnType("tinyint");
+
+        builder.Property(x => x.AuditStatus)
+            .HasConversion<byte>()
+            .HasColumnType("tinyint");
     }
 }

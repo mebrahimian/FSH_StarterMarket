@@ -1,8 +1,15 @@
+import { useTranslation } from "react-i18next";
+
 import {
     useRef,
     useState,
     type PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+    PortfolioAuditStatus,
+    PortfolioSourceType,
+} from "@/api/market-intelligence";
+
 import type {
     PortfolioPosition,
     PortfolioReport,
@@ -14,6 +21,7 @@ type PortfolioReportDialogProps = {
     onClose: () => void;
     onPrevious?: () => void;
     onNext?: () => void;
+    onNavigate?: (disclosureId: string) => void;
 };
 
 export function PortfolioReportDialog({
@@ -22,7 +30,17 @@ export function PortfolioReportDialog({
     onClose,
     onPrevious,
     onNext,
+    onNavigate,
 }: PortfolioReportDialogProps) {
+    const { t: tMarket, i18n } = useTranslation("marketIntelligence");
+
+    const numberLocale =
+        i18n.resolvedLanguage
+            ?.toLowerCase()
+            .startsWith("fa")
+            ? "fa-IR"
+            : "en-US";
+
     const [windowOffset, setWindowOffset] =
         useState({ x: 0, y: 0 });
 
@@ -92,6 +110,46 @@ export function PortfolioReportDialog({
     if (!open || !report) {
         return null;
     }
+    const monthlyTarget =
+        report.navigationTargets.find(
+            (target) =>
+                target.sourceType ===
+                PortfolioSourceType.MonthlyActivity,
+        );
+
+    const financialUnauditedTarget =
+        report.navigationTargets.find(
+            (target) =>
+                target.sourceType ===
+                PortfolioSourceType.FinancialStatement &&
+                target.auditStatus ===
+                PortfolioAuditStatus.Unaudited,
+        );
+
+    const financialAuditedTarget =
+        report.navigationTargets.find(
+            (target) =>
+                target.sourceType ===
+                PortfolioSourceType.FinancialStatement &&
+                target.auditStatus ===
+                PortfolioAuditStatus.Audited,
+        );
+
+    const isMonthly =
+        report.sourceType ===
+        PortfolioSourceType.MonthlyActivity;
+
+    const isFinancial =
+        report.sourceType ===
+        PortfolioSourceType.FinancialStatement;
+
+    const isUnaudited =
+        report.auditStatus ===
+        PortfolioAuditStatus.Unaudited;
+
+    const isAudited =
+        report.auditStatus ===
+        PortfolioAuditStatus.Audited;
 
     const listedPositions = report.positions
         .filter((position) => position.isListed)
@@ -108,10 +166,24 @@ export function PortfolioReportDialog({
                 (b.endingCost ?? 0) -
                 (a.endingCost ?? 0),
         );
-
+    const totalPositions = listedPositions.length + unlistedPositions.length;
+    const totalReportedPortfolioValue =
+        (report.listedReportedMarketValue ?? 0) +
+        (report.unlistedReportedValue ?? 0);
+    const financialTarget =
+        isFinancial
+            ? (
+                isAudited
+                    ? financialAuditedTarget
+                    : financialUnauditedTarget
+            )
+            : (
+                financialUnauditedTarget ??
+                financialAuditedTarget
+            );
     return (
         <div
-            dir="rtl"
+            dir={i18n.dir()}
             className="fixed left-1/2 top-12 z-50 w-[min(1200px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-2xl"
             style={{
                 transform:
@@ -123,103 +195,289 @@ export function PortfolioReportDialog({
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerUp}
-                className="relative flex touch-none select-none items-center justify-center border-b border-[var(--color-border)] px-4 py-3 cursor-grab active:cursor-grabbing"
+                className="relative flex min-h-[64px] touch-none select-none items-center justify-center border-b border-[var(--color-border)] px-4 py-2 cursor-grab active:cursor-grabbing"
             >
-                <div className="text-center">
+                {/* Right side: Previous / Next + Monthly / Financial */}
+                <div className="absolute right-3 flex items-center gap-2">
+                    <div className="flex items-center overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] shadow-xs">
+                        <button
+                            type="button"
+                            onPointerDown={(event) =>
+                                event.stopPropagation()
+                            }
+                            onClick={onPrevious}
+                            disabled={
+                                !report.previousDisclosureId ||
+                                !onPrevious
+                            }
+                            className="grid size-8 place-items-center text-xl font-medium transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-30"
+                            title={tMarket(
+                                "portfolioViewer.previousReport",
+                            )}
+                        >
+                            ‹
+                        </button>
+
+                        <div className="h-5 w-px bg-[var(--color-border)]" />
+
+                        <button
+                            type="button"
+                            onPointerDown={(event) =>
+                                event.stopPropagation()
+                            }
+                            onClick={onNext}
+                            disabled={
+                                !report.nextDisclosureId ||
+                                !onNext
+                            }
+                            className="grid size-8 place-items-center text-xl font-medium transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-30"
+                            title={tMarket(
+                                "portfolioViewer.nextReport",
+                            )}
+                        >
+                            ›
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-1 rounded-lg bg-[var(--color-muted)] p-1">
+                        <button
+                            type="button"
+                            onPointerDown={(event) =>
+                                event.stopPropagation()
+                            }
+                            disabled={!monthlyTarget || !onNavigate}
+                            onClick={() => {
+                                if (
+                                    monthlyTarget &&
+                                    !isMonthly
+                                ) {
+                                    onNavigate?.(
+                                        monthlyTarget.disclosureId,
+                                    );
+                                }
+                            }}
+                            className={
+                                `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ` +
+                                (
+                                    isMonthly
+                                        ? "bg-[var(--color-background)] shadow-sm"
+                                        : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                                ) +
+                                " disabled:cursor-not-allowed disabled:opacity-40"
+                            }
+                        >
+                            {tMarket(
+                                "portfolioViewer.tabs.monthlyActivity",
+                            )}
+                        </button>
+
+                        <button
+                            type="button"
+                            onPointerDown={(event) =>
+                                event.stopPropagation()
+                            }
+                            disabled={!financialTarget || !onNavigate}
+                            onClick={() => {
+                                if (
+                                    financialTarget &&
+                                    !isFinancial
+                                ) {
+                                    onNavigate?.(
+                                        financialTarget.disclosureId,
+                                    );
+                                }
+                            }}
+                            className={
+                                `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ` +
+                                (
+                                    isFinancial
+                                        ? "bg-[var(--color-background)] shadow-sm"
+                                        : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                                ) +
+                                " disabled:cursor-not-allowed disabled:opacity-40"
+                            }
+                        >
+                            {tMarket(
+                                "portfolioViewer.tabs.financialStatements",
+                            )}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Center: report title */}
+                <div className="max-w-[420px] text-center">
                     <div className="font-semibold">
-                        پرتفوی سرمایه‌گذاری
+                        {tMarket("portfolioViewer.title")}
                     </div>
 
                     <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
-                        دوره{" "}
+                        {tMarket("portfolioViewer.period")}{" "}
                         <span
                             dir="ltr"
                             className="tabular-nums"
                         >
                             {report.periodEndDate}
                         </span>
+
+                        {" — "}
+
+                        <span className="font-bold text-[var(--color-destructive)]">
+                            {isMonthly
+                                ? tMarket(
+                                    "portfolioViewer.tabs.monthlyActivity",
+                                )
+                                : isFinancial
+                                    ? tMarket(
+                                        "portfolioViewer.tabs.financialStatements",
+                                    )
+                                    : null}
+                        </span>
+
                         {" · "}
-                        کد رهگیری{" "}
+
+                        {tMarket("portfolioViewer.tracingNo")}{" "}
                         <span className="tabular-nums">
                             {report.tracingNo.toLocaleString()}
                         </span>
                     </div>
                 </div>
 
-                <div className="absolute right-3 flex items-center overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] shadow-xs">
+                {/* Left side: Audit status + Close */}
+                <div className="absolute left-3 flex items-center gap-2">
+                    {isFinancial && (
+                        <div className="flex items-center gap-1 rounded-lg bg-[var(--color-muted)] p-1">
+                            <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                    event.stopPropagation()
+                                }
+                                disabled={
+                                    !financialUnauditedTarget ||
+                                    !onNavigate
+                                }
+                                onClick={() => {
+                                    if (
+                                        financialUnauditedTarget &&
+                                        !isUnaudited
+                                    ) {
+                                        onNavigate?.(
+                                            financialUnauditedTarget
+                                                .disclosureId,
+                                        );
+                                    }
+                                }}
+                                className={
+                                    `rounded-md px-3 py-1.5 text-xs font-medium transition-colors ` +
+                                    (
+                                        isUnaudited
+                                            ? "bg-[var(--color-background)] shadow-sm"
+                                            : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                                    ) +
+                                    " disabled:cursor-not-allowed disabled:opacity-40"
+                                }
+                            >
+                                {tMarket(
+                                    "portfolioViewer.tabs.unaudited",
+                                )}
+                            </button>
+
+                            <button
+                                type="button"
+                                onPointerDown={(event) =>
+                                    event.stopPropagation()
+                                }
+                                disabled={
+                                    !financialAuditedTarget ||
+                                    !onNavigate
+                                }
+                                onClick={() => {
+                                    if (
+                                        financialAuditedTarget &&
+                                        !isAudited
+                                    ) {
+                                        onNavigate?.(
+                                            financialAuditedTarget
+                                                .disclosureId,
+                                        );
+                                    }
+                                }}
+                                className={
+                                    `rounded-md px-3 py-1.5 text-xs font-medium transition-colors ` +
+                                    (
+                                        isAudited
+                                            ? "bg-[var(--color-background)] shadow-sm"
+                                            : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                                    ) +
+                                    " disabled:cursor-not-allowed disabled:opacity-40"
+                                }
+                            >
+                                {tMarket(
+                                    "portfolioViewer.tabs.audited",
+                                )}
+                            </button>
+                        </div>
+                    )}
+
                     <button
                         type="button"
                         onPointerDown={(event) =>
                             event.stopPropagation()
                         }
-                        onClick={onPrevious}
-                        disabled={
-                            !report.previousDisclosureId ||
-                            !onPrevious
-                        }
-                        className="grid size-8 place-items-center text-xl font-medium transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-30"
-                        title="گزارش قبلی"
+                        onClick={onClose}
+                        className="grid size-8 place-items-center rounded-md text-xl leading-none text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+                        aria-label={tMarket("actions.close")}
+                        title={tMarket("actions.close")}
                     >
-                        ‹
-                    </button>
-
-                    <div className="h-5 w-px bg-[var(--color-border)]" />
-
-                    <button
-                        type="button"
-                        onPointerDown={(event) =>
-                            event.stopPropagation()
-                        }
-                        onClick={onNext}
-                        disabled={
-                            !report.nextDisclosureId ||
-                            !onNext
-                        }
-                        className="grid size-8 place-items-center text-xl font-medium transition-colors hover:bg-[var(--color-muted)] disabled:cursor-not-allowed disabled:opacity-30"
-                        title="گزارش بعدی"
-                    >
-                        ›
+                        ×
                     </button>
                 </div>
-
-                <button
-                    type="button"
-                    onPointerDown={(event) =>
-                        event.stopPropagation()
-                    }
-                    onClick={onClose}
-                    className="absolute left-3 grid size-8 place-items-center rounded-md text-xl leading-none text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-                    aria-label="بستن"
-                    title="بستن"
-                >
-                    ×
-                </button>
             </div>
-
             <div className="max-h-[78vh] overflow-auto p-4">
-                <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                     <SummaryCard
-                        label="ارزش بازار بورسی گزارش‌شده"
-                        value={
-                            report.listedReportedMarketValue
-                        }
+                        label={tMarket(
+                            "portfolioViewer.summary.listedReportedMarketValue",
+                        )}
+                        value={report.listedReportedMarketValue}
+                        locale={numberLocale}
                     />
 
                     <SummaryCard
-                        label="بهای تمام‌شده غیربورسی"
-                        value={
-                            report.unlistedReportedValue
-                        }
+                        label={tMarket(
+                            "portfolioViewer.summary.unlistedReportedValue",
+                        )}
+                        value={report.unlistedReportedValue}
+                        locale={numberLocale}
+                    />
+                    <SummaryCard
+                        label={tMarket(
+                            "portfolioViewer.summary.totalReportedPortfolioValue",
+                        )}
+                        value={totalReportedPortfolioValue}
+                        locale={numberLocale}
+                    />
+                    <SummaryCard
+                        label={tMarket(
+                            "portfolioViewer.summary.totalCompanies",
+                        )}
+                        value={totalPositions}
+                        locale={numberLocale}
                     />
 
                     <SummaryCard
-                        label="تعداد بورسی"
+                        label={tMarket(
+                            "portfolioViewer.summary.listedCompanies",
+                        )}
                         value={listedPositions.length}
+                        locale={numberLocale}
                     />
 
                     <SummaryCard
-                        label="تعداد غیربورسی"
+                        label={tMarket(
+                            "portfolioViewer.summary.unlistedCompanies",
+                        )}
                         value={unlistedPositions.length}
+                        locale={numberLocale}
                     />
                 </div>
 
@@ -265,22 +523,33 @@ export function PortfolioReportDialog({
                             {listedPositions.length > 0 && (
                                 <>
                                     <PortfolioGroupHeader
-                                        title="سرمایه‌گذاری‌های بورسی"
-                                        count={
-                                            listedPositions.length
-                                        }
+                                        title={tMarket(
+                                            "portfolioViewer.groups.listedInvestments",
+                                        )}
+                                        countLabel={tMarket(
+                                            "portfolioViewer.groups.countItems",
+                                            {
+                                                count:
+                                                    listedPositions.length.toLocaleString(
+                                                        numberLocale,
+                                                    ),
+                                            },
+                                        )}
                                         isListed
                                     />
 
                                     {listedPositions.map(
                                         (position) => (
                                             <PortfolioRow
-                                                key={
-                                                    position.id
-                                                }
-                                                position={
-                                                    position
-                                                }
+                                                key={position.id}
+                                                position={position}
+                                                locale={numberLocale}
+                                                listedLabel={tMarket(
+                                                    "portfolioViewer.types.listed",
+                                                )}
+                                                unlistedLabel={tMarket(
+                                                    "portfolioViewer.types.unlisted",
+                                                )}
                                             />
                                         ),
                                     )}
@@ -290,23 +559,34 @@ export function PortfolioReportDialog({
                             {unlistedPositions.length >
                                 0 && (
                                     <>
-                                        <PortfolioGroupHeader
-                                            title="سرمایه‌گذاری‌های غیربورسی"
-                                            count={
-                                                unlistedPositions.length
-                                            }
-                                            isListed={false}
-                                        />
+                                    <PortfolioGroupHeader
+                                        title={tMarket(
+                                            "portfolioViewer.groups.unlistedInvestments",
+                                        )}
+                                        countLabel={tMarket(
+                                            "portfolioViewer.groups.countItems",
+                                            {
+                                                count:
+                                                    unlistedPositions.length.toLocaleString(
+                                                        numberLocale,
+                                                    ),
+                                            },
+                                        )}
+                                        isListed={false}
+                                    />
 
                                         {unlistedPositions.map(
                                             (position) => (
                                                 <PortfolioRow
-                                                    key={
-                                                        position.id
-                                                    }
-                                                    position={
-                                                        position
-                                                    }
+                                                    key={position.id}
+                                                    position={position}
+                                                    locale={numberLocale}
+                                                    listedLabel={tMarket(
+                                                        "portfolioViewer.types.listed",
+                                                    )}
+                                                    unlistedLabel={tMarket(
+                                                        "portfolioViewer.types.unlisted",
+                                                    )}
                                                 />
                                             ),
                                         )}
@@ -323,9 +603,11 @@ export function PortfolioReportDialog({
 function SummaryCard({
     label,
     value,
+    locale,
 }: {
     label: string;
     value: number | null;
+    locale: string;
 }) {
     return (
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3">
@@ -337,19 +619,20 @@ function SummaryCard({
                 dir="ltr"
                 className="mt-1 text-lg font-semibold tabular-nums"
             >
-                {formatNumber(value)}
+                {formatNumber(value, locale)}
             </div>
         </div>
     );
+
 }
 
 function PortfolioGroupHeader({
     title,
-    count,
+    countLabel,
     isListed,
 }: {
     title: string;
-    count: number;
+    countLabel: string;
     isListed: boolean;
 }) {
     return (
@@ -358,14 +641,14 @@ function PortfolioGroupHeader({
                 colSpan={8}
                 className={
                     isListed
-                        ? "border-y border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5 text-right font-semibold text-emerald-700 dark:text-emerald-300"
-                        : "border-y border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-right font-semibold text-amber-700 dark:text-amber-300"
+                        ? "border-y border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5 text-start font-semibold text-emerald-700 dark:text-emerald-300"
+                        : "border-y border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-start font-semibold text-amber-700 dark:text-amber-300"
                 }
             >
                 {title}
 
-                <span className="mr-2 text-xs font-normal opacity-70">
-                    ({count.toLocaleString()} مورد)
+                <span className="ms-2 text-xs font-normal opacity-70">
+                    {countLabel}
                 </span>
             </td>
         </tr>
@@ -374,8 +657,14 @@ function PortfolioGroupHeader({
 
 function PortfolioRow({
     position,
+    locale,
+    listedLabel,
+    unlistedLabel,
 }: {
     position: PortfolioPosition;
+    locale: string;
+    listedLabel: string;
+    unlistedLabel: string;
 }) {
     const displayName =
         position.symbol ??
@@ -405,54 +694,61 @@ function PortfolioRow({
 
             <td className="px-3 py-2">
                 {position.isListed
-                    ? "بورسی"
-                    : "غیربورسی"}
+                    ? listedLabel
+                    : unlistedLabel}
             </td>
 
             <NumberCell
                 value={position.ownershipPercent}
+                locale={locale}
             />
 
             <NumberCell
                 value={position.endingQuantity}
+                locale={locale}
             />
 
             <NumberCell
                 value={position.endingCost}
+                locale={locale}
             />
 
             <NumberCell
                 value={position.endingMarketValue}
+                locale={locale}
             />
 
             <NumberCell
                 value={position.endingCostPerShare}
+                locale={locale}
             />
 
             <NumberCell
                 value={position.endingMarketPrice}
+                locale={locale}
             />
         </tr>
     );
 }
-
 function NumberCell({
     value,
+    locale,
 }: {
     value: number | null;
+    locale: string;
 }) {
     return (
         <td
             dir="ltr"
             className="px-3 py-2 tabular-nums"
         >
-            {formatNumber(value)}
+            {formatNumber(value, locale)}
         </td>
     );
 }
-
 function formatNumber(
     value: number | null,
+    locale: string,
 ) {
-    return value?.toLocaleString() ?? "—";
+    return value?.toLocaleString(locale) ?? "—";
 }

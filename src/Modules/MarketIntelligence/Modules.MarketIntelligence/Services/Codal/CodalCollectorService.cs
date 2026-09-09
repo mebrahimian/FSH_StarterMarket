@@ -7,13 +7,14 @@ using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Utilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
-using FSH.Modules.MarketIntelligence.Utilities;
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class CodalCollectorService : ICodalCollectorService
@@ -22,12 +23,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
     private readonly MarketIntelligenceDbContext _dbContext;
     private readonly IEnumerable<ICodalDisclosureProcessor> _processors;
     private readonly ILogger<CodalCollectorService> _logger;
-
     public CodalCollectorService(
     ICodalClient codalClient,
     MarketIntelligenceDbContext dbContext,
     HttpClient httpClient,
     ILogger<CodalCollectorService> logger,
+    IConfiguration configuration,
     IEnumerable<ICodalDisclosureProcessor> processors)
     {
         _codalClient = codalClient;
@@ -349,7 +350,6 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 await _codalClient.SearchAsync(
                     new CodalSearchRequest
                     {
-                        Category = 3,
                         Symbol = normalizedSymbol,
                         FromDate = windowFromDate,
                         ToDate = windowToDate,
@@ -374,7 +374,6 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     await _codalClient.SearchAsync(
                         new CodalSearchRequest
                         {
-                            Category = 3,
                             Symbol = normalizedSymbol,
                             FromDate = windowFromDate,
                             ToDate = windowToDate,
@@ -570,7 +569,226 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
 
     }
-    public async Task CollectBackfillAsync(CancellationToken cancellationToken = default)
+    private static (short? let, byte? rt, byte? ct, short? ft) ParseUrlParameters(string? url, string? title)
+    {
+        short? let =
+            title?.Contains(
+                "گزارش فعالیت ماهانه",
+                StringComparison.Ordinal) == true
+                ? (short)58
+                : null;
+
+        if (string.IsNullOrWhiteSpace(url))
+            return (let, null, null, null);
+
+#pragma warning disable S1075
+        var query = System.Web.HttpUtility.ParseQueryString(
+            new Uri("https://dummy.local" + url).Query);
+#pragma warning restore S1075
+
+        if (let is null)
+        {
+            let = short.TryParse(
+                query["let"],
+                out var l)
+                ? l
+                : null;
+        }
+
+        byte? rt =
+            byte.TryParse(
+                query["rt"],
+                out var r)
+                ? r
+                : null;
+
+        byte? ct =
+            byte.TryParse(
+                query["ct"],
+                out var c)
+                ? c
+                : null;
+
+        short? ft =
+            short.TryParse(
+                query["ft"],
+                out var f)
+                ? f
+                : null;
+
+        if (rt is null &&
+            int.TryParse(
+                query["ReportingType"],
+                out var reportingType) &&
+            reportingType == 1000002)
+        {
+            rt = 2;
+        }
+
+        return (let, rt, ct, ft);
+    }
+    public async Task<bool> ParsePendingDisclosuresAsync(
+    CancellationToken cancellationToken = default)
+    {
+        const int batchSize = 20;
+        const int maxDisclosuresPerRun = 200;
+        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(5);
+
+        DateTime lastPublishDate = DateTime.MinValue;
+        long lastTracingNo = long.MinValue;
+
+        var pageNumber = 1;
+        var firstBatch = true;
+        var processedCount = 0;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int remaining = maxDisclosuresPerRun - processedCount;
+            if (remaining <= 0)
+            {
+                break;
+            }
+            IQueryable<Disclosure> query = 
+                 _dbContext.Disclosures.Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending);
+            if (!firstBatch)
+            {
+                DateTime cursorDate = lastPublishDate;
+                long cursorTracingNo = lastTracingNo;
+
+                query = query.Where(x => (x.PublishDateTime ?? DateTime.MinValue) > cursorDate ||
+                                         ((x.PublishDateTime ?? DateTime.MinValue) == cursorDate &&
+                                           x.TracingNo > cursorTracingNo)
+                                   );
+            }
+
+            List<Disclosure> disclosures =
+                await query
+                    .OrderBy(x =>
+                        x.PublishDateTime ?? DateTime.MinValue)
+                    .ThenBy(x => x.TracingNo)
+                    .Take(Math.Min(batchSize, remaining))
+                    .ToListAsync(cancellationToken);
+
+            if (disclosures.Count == 0)
+            {
+                break;
+            }
+            
+            foreach (Disclosure disclosure in disclosures)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                List<ICodalDisclosureProcessor> processors =
+                    _processors
+                        .Where(x => x.CanProcess(disclosure))
+                        .ToList();
+
+                bool processorFailed = false;
+
+                if (processors.Count == 0)
+                {
+                    disclosure.SalesParseStatus =
+                        DisclosureParseStatus.Skipped;
+
+                    disclosure.SalesParsedAt =
+                        DateTime.UtcNow;
+
+                    await _dbContext.SaveChangesAsync(
+                        cancellationToken);
+
+                    continue;
+                }
+
+
+                foreach (ICodalDisclosureProcessor processor in processors)
+                {
+                    try
+                    {
+                        await processor.ProcessAsync(
+                            disclosure,
+                            cancellationToken);
+
+                        await Task.Delay(
+                            delayBetweenRequests,
+                            cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                        when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (HttpRequestException ex)
+                        when (ex.StatusCode ==
+                              HttpStatusCode.TooManyRequests)
+                    {
+                        throw;
+                    }
+                    catch (HttpRequestException)
+                    {
+                        return false;
+                    }
+                    catch (IOException)
+                    {
+                        return false;
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        processorFailed = true;
+                        _logger.LogError(
+                            ex,
+                            "Processor {Processor} failed for Disclosure {TracingNo}.",
+                            processor.GetType().Name,
+                            disclosure.TracingNo);
+                    }
+                    catch (FormatException ex)
+                    {
+                        processorFailed = true;
+                        _logger.LogError(
+                            ex,
+                            "Processor {Processor} failed for Disclosure {TracingNo}.",
+                            processor.GetType().Name,
+                            disclosure.TracingNo);
+                    }
+                    catch (JsonException ex)
+                    {
+                        processorFailed = true;
+                        _logger.LogError(
+                            ex,
+                            "Processor {Processor} failed for Disclosure {TracingNo}.",
+                            processor.GetType().Name,
+                            disclosure.TracingNo);
+                    }
+                }
+                if (processorFailed)
+                {
+                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+                else if (disclosure.SalesParseStatus == DisclosureParseStatus.Pending)
+                {
+                    disclosure.SalesParseStatus = DisclosureParseStatus.Success;
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+            processedCount += disclosures.Count;
+            Disclosure lastDisclosure = disclosures[^1];
+
+            lastPublishDate = lastDisclosure.PublishDateTime ?? DateTime.MinValue;
+            lastTracingNo = lastDisclosure.TracingNo;
+            firstBatch = false;
+            _dbContext.ChangeTracker.Clear();
+            Console.WriteLine($"Disclosure scan batch saved: {pageNumber}");
+            pageNumber++;
+        }
+        _logger.LogInformation("End Of Parse Pending Disclosures.");
+        return processedCount >= maxDisclosuresPerRun;
+    }
+    public async Task CollectBackfillChunkAsync(
+    int startPage,
+    int endPage,
+    CancellationToken cancellationToken = default)
     {
         var lastPublishDateStr = await _dbContext.Disclosures
             .OrderByDescending(x => x.PublishDateTimeRaw)
@@ -584,7 +802,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         var definitions = CodalDefinitionsProvider.Load();
 
-        var pageNumber = 1;
+        int pageNumber = startPage;
         var stop = false;
 
         while (!stop)
@@ -654,10 +872,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
                 // هنوز به اطلاعات قدیمی نرسیدیم
-                if (lastPublishDate >= pub)
+                if (pub <= lastPublishDate)
                 {
-                    stop = true;
-                    break;
+                    continue;
                 }
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
                 if (rt is null)
@@ -698,10 +915,16 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 disclosures.Add(disclosure);
                 _dbContext.Disclosures.Add(disclosure);
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                var processor = _processors.SingleOrDefault(x => x.CanProcess(disclosure));
-                if (processor is not null)
+                IReadOnlyList<ICodalDisclosureProcessor> processors =
+                       _processors
+                          .Where(x => x.CanProcess(disclosure))
+                          .ToList();
+
+                foreach (ICodalDisclosureProcessor processor in processors)
                 {
-                    await processor.ProcessAsync(disclosure, cancellationToken);
+                    await processor.ProcessAsync(
+                        disclosure,
+                        cancellationToken);
                 }
 
             }
@@ -711,8 +934,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
             if (stop)
                 break;
 
+            if (pageNumber <= endPage)
+            {
+                break;
+            }
 
-            pageNumber++;
+            pageNumber--;
 
 
             var delay = result.TotalPages > 10
@@ -725,186 +952,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _logger.LogInformation("Backfill process completed.");
 
     }
-    private static (short? let, byte? rt, byte? ct, short? ft) ParseUrlParameters(
-    string? url,
-    string? title)
-    {
-        short? let =
-            title?.Contains(
-                "گزارش فعالیت ماهانه",
-                StringComparison.Ordinal) == true
-                ? (short)58
-                : null;
-
-        if (string.IsNullOrWhiteSpace(url))
-            return (let, null, null, null);
-
-#pragma warning disable S1075
-        var query = System.Web.HttpUtility.ParseQueryString(
-            new Uri("https://dummy.local" + url).Query);
-#pragma warning restore S1075
-
-        if (let is null)
-        {
-            let = short.TryParse(
-                query["let"],
-                out var l)
-                ? l
-                : null;
-        }
-
-        byte? rt =
-            byte.TryParse(
-                query["rt"],
-                out var r)
-                ? r
-                : null;
-
-        byte? ct =
-            byte.TryParse(
-                query["ct"],
-                out var c)
-                ? c
-                : null;
-
-        short? ft =
-            short.TryParse(
-                query["ft"],
-                out var f)
-                ? f
-                : null;
-
-        if (rt is null &&
-            int.TryParse(
-                query["ReportingType"],
-                out var reportingType) &&
-            reportingType == 1000002)
-        {
-            rt = 2;
-        }
-
-        return (let, rt, ct, ft);
-    }
-    public async Task ParsePendingDisclosuresAsync(
-    CancellationToken cancellationToken = default)
-    {
-        const int batchSize = 20;
-
-        TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(5);
-
-        var definitions = CodalDefinitionsProvider.Load();
-        byte[] supportedReportTypes = definitions.MonthlyActivities.Keys.ToArray();
-        var pageNumber = 1;
-        while (true)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            List<Disclosure> disclosures =
-                await _dbContext.Disclosures
-                      .Where(x => (x.Let == 58 || (x.Rt == 2 && x.Let == 8)) &&
-                                  x.Rt.HasValue &&
-                                  supportedReportTypes.Contains(x.Rt.Value) &&
-                                  x.SalesParseStatus == DisclosureParseStatus.Pending
-                            )
-                      .OrderByDescending(x => x.PublishDateTime ?? DateTime.MinValue)
-                      .ThenByDescending(x => x.Id)
-                      .Take(batchSize)
-                      .ToListAsync(cancellationToken);
-
-            if (disclosures.Count == 0)
-            {
-                break;
-            }
-
-            foreach (Disclosure disclosure in disclosures)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                ICodalDisclosureProcessor? processor =
-                    _processors.SingleOrDefault(
-                        x => x.CanProcess(disclosure));
-
-                if (processor is null)
-                {
-                    throw new InvalidOperationException(
-                        $"No processor was found for disclosure " +
-                        $"{disclosure.TracingNo}.");
-                }
-
-                try
-                {
-                    await processor.ProcessAsync(
-                        disclosure,
-                        cancellationToken);
-                }
-                catch (OperationCanceledException)
-                    when (cancellationToken.IsCancellationRequested)
-                {
-                    throw;
-                }
-                catch (HttpRequestException ex)
-                    when (ex.StatusCode ==
-                          HttpStatusCode.TooManyRequests)
-                {
-                    // کدال کد امنیتی درخواست کرده است.
-                    // پردازش متوقف می‌شود و رکورد Pending باقی می‌ماند.
-                    throw;
-                }
-                catch (HttpRequestException)
-                {
-                    // خطای موقت شبکه؛ رکورد Pending باقی بماند.
-                    // برای جلوگیری از انتخاب دوباره همین رکورد
-                    // در حلقه جاری، کل عملیات متوقف می‌شود.
-                    return;
-                }
-                catch (IOException)
-                {
-                    // قطع ارتباط هنگام خواندن پاسخ کدال.
-                    // رکورد Pending باقی می‌ماند.
-                    return;
-                }
-                catch (InvalidOperationException)
-                {
-                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
-
-                    disclosure.SalesParsedAt = DateTime.UtcNow;
-
-                    await _dbContext.SaveChangesAsync(
-                        cancellationToken);
-                }
-                catch (FormatException)
-                {
-                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
-
-                    disclosure.SalesParsedAt = DateTime.UtcNow;
-
-                    await _dbContext.SaveChangesAsync(
-                        cancellationToken);
-                }
-                catch (JsonException)
-                {
-                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
-
-                    disclosure.SalesParsedAt = DateTime.UtcNow;
-
-                    await _dbContext.SaveChangesAsync(
-                        cancellationToken);
-                }
-
-                await Task.Delay(
-                    delayBetweenRequests,
-                    cancellationToken);
-            }
-
-            _dbContext.ChangeTracker.Clear();
-            Console.WriteLine($"Page Saved: {pageNumber}");
-            pageNumber++;
-        }
-        _logger.LogInformation("End Of Parse Pending Disclosures.");
-    }
-    private static string?
-    ExtractPeriodDateFromTitle(
-        string? title)
+    private static string? ExtractPeriodDateFromTitle(string? title)
     {
         if (string.IsNullOrWhiteSpace(title))
         {

@@ -101,6 +101,17 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        List<Guid> disclosureIds =  disclosures.Select(x => x.Id).ToList();
+
+        HashSet<Guid> portfolioDisclosureIds =
+            await dbContext.InvestmentPortfolioReportMetadata
+                .AsNoTracking()
+                .Where(x => disclosureIds.Contains(x.DisclosureId))
+                .Select(x => x.DisclosureId)
+                .Distinct()
+                .ToHashSetAsync(cancellationToken)
+                .ConfigureAwait(false);
+
         return new PagedResponse<DisclosureDto>
         {
             Items = disclosures.Select(disclosure => new DisclosureDto(
@@ -132,7 +143,8 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
                 Ft: disclosure.Ft,
                 ReportingTypeCode: disclosure.ReportingTypeCode,
                 SalesParseStatus: disclosure.SalesParseStatus.ToString(),
-                SalesParsedAt: disclosure.SalesParsedAt))
+                SalesParsedAt: disclosure.SalesParsedAt,
+                HasPortfolio: portfolioDisclosureIds.Contains(disclosure.Id)))
             .ToList(),
             PageNumber = page,
             PageSize = size,

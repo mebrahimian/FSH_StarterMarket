@@ -7,8 +7,7 @@ namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 public sealed class InvestmentPortfolioReportMetadataConfiguration :
     IEntityTypeConfiguration<InvestmentPortfolioReportMetadata>
 {
-    public void Configure(
-        EntityTypeBuilder<InvestmentPortfolioReportMetadata> builder)
+    public void Configure(EntityTypeBuilder<InvestmentPortfolioReportMetadata> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -33,12 +32,26 @@ public sealed class InvestmentPortfolioReportMetadataConfiguration :
         builder.Property(x => x.TitleEn)
             .HasMaxLength(512);
 
+        builder.Property(x => x.ReportSymbol)
+            .HasMaxLength(50);
+
+        builder.Property(x => x.ReportCompanyName)
+            .HasMaxLength(256);
+
+        builder.Property(x => x.RegisteredCapital)
+            .HasPrecision(28, 3);
+
+        builder.Property(x => x.UnauthorizedCapital)
+            .HasPrecision(28, 3);
+
         builder.Property(x => x.SourceType)
-            .HasConversion<int>()
+            .HasConversion<byte>()
+            .HasColumnType("tinyint")
             .IsRequired();
 
         builder.Property(x => x.AuditStatus)
-            .HasConversion<int>()
+            .HasConversion<byte>()
+            .HasColumnType("tinyint")
             .IsRequired();
 
         builder.HasIndex(x => new
@@ -53,5 +66,8 @@ public sealed class InvestmentPortfolioReportMetadataConfiguration :
         builder.HasIndex(x => x.DisclosureId);
 
         builder.HasIndex(x => x.TracingNo);
+       
+
+       
     }
 }
