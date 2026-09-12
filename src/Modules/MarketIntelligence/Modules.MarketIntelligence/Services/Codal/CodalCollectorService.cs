@@ -648,8 +648,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
             {
                 break;
             }
-            IQueryable<Disclosure> query = 
-                 _dbContext.Disclosures.Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending);
+
+            IQueryable<Disclosure> query =
+    _dbContext.Disclosures
+        .Where(x =>
+            x.SalesParseStatus == DisclosureParseStatus.Pending &&
+            x.TracingNo == 1590394);
             if (!firstBatch)
             {
                 DateTime cursorDate = lastPublishDate;

@@ -20,6 +20,7 @@ public sealed class GetUnmatchedPortfolioCompaniesQueryHandler(
     "اوراقمشارکتپذیرفتهشدهدربورس",
     "اوراقمشارکت(پذیرفتهشدهدربورس)",
     "(حقتقدم)",
+    "دراوراقبهاداربادرآمدثابتکاریزما",
     "سایرسهامدرجشدهدربازارهایپایهفرابورس"];
 
     public async ValueTask<IReadOnlyList<UnmatchedPortfolioCompanyDto>> Handle(

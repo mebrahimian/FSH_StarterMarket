@@ -200,7 +200,7 @@ public sealed class MonthlyActivityProcessor(
                         publishDateTime: disclosure.PublishDateTime,
                         disclosureId: disclosure.Id,
                         tracingNo: disclosure.TracingNo);
-
+                
                 await dbContext.MonthlyActivitySummaries
                     .AddAsync(
                         summary,
@@ -230,6 +230,8 @@ public sealed class MonthlyActivityProcessor(
                     publishDateTime: disclosure.PublishDateTime,
                     disclosureId: disclosure.Id,
                     tracingNo: disclosure.TracingNo);
+
+                
             }
 
             disclosure.SalesParseStatus = DisclosureParseStatus.Success;
@@ -307,7 +309,6 @@ public sealed class MonthlyActivityProcessor(
         }
 
     }
-
     private static Uri BuildReportUri(string disclosureUrl)
     {
         if (Uri.TryCreate(

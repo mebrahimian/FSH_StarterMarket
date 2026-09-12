@@ -5,5 +5,4 @@ public sealed record MarketPriceSnapshot(
     string? Symbol,
     decimal? LastPrice,
     decimal? ClosingPrice,
-    string? TradeDate,
-    long? ShareCount);
+    string? TradeDate);

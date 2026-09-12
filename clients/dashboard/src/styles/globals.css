@@ -16,192 +16,165 @@
    ========================================================================== */
 
 :root {
-  /* ── 1. PRIMITIVES ──────────────────────────────────────────────────── */
-
-  /* Neutrals — true greys (chroma 0). The earlier "warm paper" chassis
+    /* ── 1. PRIMITIVES ──────────────────────────────────────────────────── */
+    /* Neutrals — true greys (chroma 0). The earlier "warm paper" chassis
      tinted every surface yellow-cream, which fought with non-rose
      accent palettes and read as a global yellow cast in dark mode.
      Neutrals are now untinted so the selected accent (rose, indigo,
      violet, sky, emerald, amber) is the only colour in the room. */
-  --neutral-0:    oklch(1.000 0  0);
-  --neutral-50:   oklch(0.985 0  0);
-  --neutral-100:  oklch(0.960 0  0);
-  --neutral-200:  oklch(0.920 0  0);
-  --neutral-300:  oklch(0.870 0  0);
-  --neutral-400:  oklch(0.735 0  0);
-  --neutral-500:  oklch(0.575 0  0);
-  --neutral-600:  oklch(0.460 0  0);
-  --neutral-700:  oklch(0.360 0  0);
-  --neutral-800:  oklch(0.245 0  0);
-  --neutral-850:  oklch(0.200 0  0);
-  --neutral-900:  oklch(0.155 0  0);
-  --neutral-950:  oklch(0.110 0  0);
-  --neutral-1000: oklch(0.075 0  0);
-
-  /* Brand — confident rose (#f91942 at the 600 stop). 600 is the
+    --neutral-0: oklch(1.000 0 0);
+    --neutral-50: oklch(0.985 0 0);
+    --neutral-100: oklch(0.960 0 0);
+    --neutral-200: oklch(0.920 0 0);
+    --neutral-300: oklch(0.870 0 0);
+    --neutral-400: oklch(0.735 0 0);
+    --neutral-500: oklch(0.575 0 0);
+    --neutral-600: oklch(0.460 0 0);
+    --neutral-700: oklch(0.360 0 0);
+    --neutral-800: oklch(0.245 0 0);
+    --neutral-850: oklch(0.200 0 0);
+    --neutral-900: oklch(0.155 0 0);
+    --neutral-950: oklch(0.110 0 0);
+    --neutral-1000: oklch(0.075 0 0);
+    /* Brand — confident rose (#f91942 at the 600 stop). 600 is the
      workhorse; 500 is for dark mode. Override these eleven stops via
      an `accent-{id}` class on :root (defined further down) to swap the
      entire brand palette. */
-  --brand-50:   oklch(0.972 0.022  13);
-  --brand-100:  oklch(0.945 0.045  13);
-  --brand-200:  oklch(0.895 0.090  13);
-  --brand-300:  oklch(0.825 0.145  13);
-  --brand-400:  oklch(0.720 0.195  13);
-  --brand-500:  oklch(0.640 0.225  13);
-  --brand-600:  oklch(0.575 0.232  13);
-  --brand-700:  oklch(0.495 0.215  13);
-  --brand-800:  oklch(0.410 0.180  13);
-  --brand-900:  oklch(0.330 0.140  13);
-  --brand-950:  oklch(0.235 0.095  13);
-
-  /* Saffron — secondary warm accent. Used sparingly for the second
+    --brand-50: oklch(0.972 0.020 232);
+    --brand-100: oklch(0.945 0.040 232);
+    --brand-200: oklch(0.895 0.078 232);
+    --brand-300: oklch(0.825 0.130 232);
+    --brand-400: oklch(0.720 0.170 232);
+    --brand-500: oklch(0.620 0.180 232);
+    --brand-600: oklch(0.555 0.180 232);
+    --brand-700: oklch(0.485 0.170 232);
+    --brand-800: oklch(0.405 0.150 232);
+    --brand-900: oklch(0.325 0.115 232);
+    --brand-950: oklch(0.230 0.078 232);
+    /* Saffron — secondary warm accent. Used sparingly for the second
      channel of warmth against rose (gradient endpoints, hero numerals,
      trust marks). Mirrors dentalOS #e8a54b. */
-  --saffron-400: oklch(0.815 0.115  72);
-  --saffron-500: oklch(0.760 0.137  72);
-  --saffron-600: oklch(0.680 0.135  68);
-
-  /* Status scales — emerald, amber, sky, rose. All at L≈0.6/0.7 so they
+    --saffron-400: oklch(0.815 0.115 72);
+    --saffron-500: oklch(0.760 0.137 72);
+    --saffron-600: oklch(0.680 0.135 68);
+    /* Status scales — emerald, amber, sky, rose. All at L≈0.6/0.7 so they
      read as a coherent set when stacked next to each other. */
-  --success-500: oklch(0.660 0.155 162);
-  --success-600: oklch(0.575 0.155 162);
-  --warning-500: oklch(0.770 0.155  76);
-  --warning-600: oklch(0.685 0.155  76);
-  --info-500:    oklch(0.685 0.150 232);
-  --info-600:    oklch(0.605 0.150 232);
-  --danger-500:  oklch(0.625 0.220  20);
-  --danger-600:  oklch(0.555 0.220  20);
-
-  /* ── 2. SEMANTICS (light) ──────────────────────────────────────────── */
-  --background:                 var(--neutral-50);
-  --foreground:                 var(--neutral-950);
-
-  --card:                       var(--neutral-0);
-  --card-foreground:            var(--neutral-950);
-  --popover:                    var(--neutral-0);
-  --popover-foreground:         var(--neutral-950);
-
-  --primary:                    var(--brand-600);
-  /* Derive from the active brand stop so accent swaps re-tone these
+    --success-500: oklch(0.660 0.155 162);
+    --success-600: oklch(0.575 0.155 162);
+    --warning-500: oklch(0.770 0.155 76);
+    --warning-600: oklch(0.685 0.155 76);
+    --info-500: oklch(0.685 0.150 232);
+    --info-600: oklch(0.605 0.150 232);
+    --danger-500: oklch(0.625 0.220 20);
+    --danger-600: oklch(0.555 0.220 20);
+    /* ── 2. SEMANTICS (light) ──────────────────────────────────────────── */
+    --background: var(--neutral-50);
+    --foreground: var(--neutral-950);
+    --card: var(--neutral-0);
+    --card-foreground: var(--neutral-950);
+    --popover: var(--neutral-0);
+    --popover-foreground: var(--neutral-950);
+    --primary: var(--brand-600);
+    /* Derive from the active brand stop so accent swaps re-tone these
      too. The `from <color>` relative-color syntax resolves at runtime. */
-  --primary-foreground:         oklch(from var(--brand-600) 0.990 0.005 h);
-  --primary-hover:              var(--brand-700);
-  --primary-soft:               oklch(from var(--brand-600) l c h / 0.10);
-
-  /* Theme-independent. For content that sits on top of imagery or a dark
+    --primary-foreground: oklch(from var(--brand-600) 0.990 0.005 h);
+    --primary-hover: var(--brand-700);
+    --primary-soft: oklch(from var(--brand-600) l c h / 0.10);
+    /* Theme-independent. For content that sits on top of imagery or a dark
      scrim (caption text, overlay action icons) and for the thumb of a
      filled control — white stays legible in both light and dark, so these
      are intentionally NOT flipped in the .dark block. */
-  --overlay:                    oklch(0 0 0 / 0.55);
-  --overlay-foreground:         oklch(1 0 0);
-
-  --secondary:                  var(--neutral-100);
-  --secondary-foreground:       var(--neutral-900);
-
-  --muted:                      var(--neutral-100);
-  /* Bumped from neutral-500 (L=0.575) to L=0.500 so that all muted body
+    --overlay: oklch(0 0 0 / 0.55);
+    --overlay-foreground: oklch(1 0 0);
+    --secondary: var(--neutral-100);
+    --secondary-foreground: var(--neutral-900);
+    --muted: var(--neutral-100);
+    /* Bumped from neutral-500 (L=0.575) to L=0.500 so that all muted body
      copy and micro-labels clear WCAG 2.2 AA 4.5:1 contrast on every
      surface, including the alpha-mask variants used for placeholders
      and chevrons. */
-  --muted-foreground:           oklch(0.500 0  0);
-
-  /* Accent = neutral hover chip. Was previously a warm cream tint that
+    --muted-foreground: oklch(0.500 0 0);
+    /* Accent = neutral hover chip. Was previously a warm cream tint that
      contributed to the global yellow cast; same L as before but with
      zero chroma, so it still reads as a distinct hover chip a notch
      darker than --muted / --secondary. */
-  --accent:                     oklch(0.940 0  0);
-  --accent-foreground:          var(--neutral-800);
-  --saffron:                    var(--saffron-500);
-  --saffron-foreground:         oklch(0.250 0.060  68);
-
-  --destructive:                var(--danger-600);
-  --destructive-foreground:     oklch(0.990 0.005  20);
-
-  --success:                    var(--success-600);
-  --success-foreground:         oklch(0.990 0.005 162);
-  --warning:                    var(--warning-600);
-  --warning-foreground:         var(--neutral-950);
-  --info:                       var(--info-600);
-  --info-foreground:            oklch(0.990 0.005 232);
-
-  --border:                     oklch(0.895 0  0 / 0.85);
-  --border-strong:              oklch(0.840 0  0);
-  --input:                      var(--neutral-200);
-  --ring:                       var(--brand-500);
-
-  /* ── 3. SURFACES — explicit elevation. Use these instead of mixing
+    --accent: oklch(0.940 0 0);
+    --accent-foreground: var(--neutral-800);
+    --saffron: var(--saffron-500);
+    --saffron-foreground: oklch(0.250 0.060 68);
+    --destructive: var(--danger-600);
+    --destructive-foreground: oklch(0.990 0.005 20);
+    --success: var(--success-600);
+    --success-foreground: oklch(0.990 0.005 162);
+    --warning: var(--warning-600);
+    --warning-foreground: var(--neutral-950);
+    --info: var(--info-600);
+    --info-foreground: oklch(0.990 0.005 232);
+    --border: oklch(0.895 0 0 / 0.85);
+    --border-strong: oklch(0.840 0 0);
+    --input: var(--neutral-200);
+    --ring: var(--brand-500);
+    /* ── 3. SURFACES — explicit elevation. Use these instead of mixing
      card/muted/accent ad-hoc.
      Light mode: canvas → tier-2 panel → tier-3 popover/sticky → tier-4 hover.
      Each tier is one perceptual step distinct so cards visually float
      above the canvas instead of merging into a hairline-edged plane. */
-  --surface-1:                  var(--neutral-50);   /* canvas */
-  --surface-2:                  var(--neutral-0);    /* sidebar, panels */
-  --surface-3:                  oklch(0.992 0  0);   /* cards, popovers, sticky chrome */
-  --surface-4:                  var(--neutral-100);  /* hover, raised */
-  --surface-1-hover:            var(--neutral-100);
-  --surface-2-hover:            var(--neutral-50);
-
-  /* ── Charts — laddered around the rose brand axis. Saffron is the
+    --surface-1: var(--neutral-50); /* canvas */
+    --surface-2: var(--neutral-0); /* sidebar, panels */
+    --surface-3: oklch(0.992 0 0); /* cards, popovers, sticky chrome */
+    --surface-4: var(--neutral-100); /* hover, raised */
+    --surface-1-hover: var(--neutral-100);
+    --surface-2-hover: var(--neutral-50);
+    /* ── Charts — laddered around the rose brand axis. Saffron is the
      primary counter-hue (warm pair), with teal/emerald/violet rounding
      out the harmonic ladder. ────────────────────────────────────────── */
-  --chart-1: var(--brand-500);                       /* rose */
-  --chart-2: var(--saffron-500);                     /* saffron */
-  --chart-3: oklch(0.700 0.135 195);                 /* teal */
-  --chart-4: oklch(0.660 0.180 320);                 /* violet */
-  --chart-5: oklch(0.665 0.155 162);                 /* emerald */
-  --chart-grid: oklch(0.895 0  0 / 0.6);
-
-  /* ── 4. SYSTEM ─────────────────────────────────────────────────────── */
-  /* Display = Outfit (rounded geometric, headings + hero numerals).
+    --chart-1: var(--brand-500); /* rose */
+    --chart-2: var(--saffron-500); /* saffron */
+    --chart-3: oklch(0.700 0.135 195); /* teal */
+    --chart-4: oklch(0.660 0.180 320); /* violet */
+    --chart-5: oklch(0.665 0.155 162); /* emerald */
+    --chart-grid: oklch(0.895 0 0 / 0.6);
+    /* ── 4. SYSTEM ─────────────────────────────────────────────────────── */
+    /* Display = Outfit (rounded geometric, headings + hero numerals).
      Body = Figtree (warm open sans-serif, everything else).
      Mono = JetBrains Mono (terminal/console flourishes, tabular data). */
-  --font-display: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  /* Body uses tabular numerals so times, tokens, and costs don't jitter
+    --font-display: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    /* Body uses tabular numerals so times, tokens, and costs don't jitter
      between digits. Display reads with default proportional numerals
      except where overridden (.text-display, mono numerics in lists). */
-  --font-feature-default: "tnum";
-  --font-feature-tabular: "tnum";
-
-  --radius:     0.625rem;
-  --radius-sm:  calc(var(--radius) - 4px);
-  --radius-md:  calc(var(--radius) - 2px);
-  --radius-lg:  var(--radius);
-  --radius-xl:  calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-
-  --ease-out-cubic:    cubic-bezier(0.215, 0.610, 0.355, 1.000);
-  --ease-out-quart:    cubic-bezier(0.165, 0.840, 0.440, 1.000);
-  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1.000);
-  --duration-fast:     120ms;
-  --duration-default:  200ms;
-  --duration-slow:     320ms;
-
-  /* Neutral shadows — cast in pure black so they read as a cool
+    --font-feature-default: "tnum";
+    --font-feature-tabular: "tnum";
+    --radius: 0.625rem;
+    --radius-sm: calc(var(--radius) - 4px);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 4px);
+    --radius-2xl: calc(var(--radius) + 8px);
+    --ease-out-cubic: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    --ease-out-quart: cubic-bezier(0.165, 0.840, 0.440, 1.000);
+    --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1.000);
+    --duration-fast: 120ms;
+    --duration-default: 200ms;
+    --duration-slow: 320ms;
+    /* Neutral shadows — cast in pure black so they read as a cool
      shadow on any chassis (no warm tint bleeding into the canvas). */
-  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.06),
-               0 1px 3px 0 oklch(0 0 0 / 0.07);
-  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.08),
-               0 2px 4px -2px oklch(0 0 0 / 0.06);
-  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.10),
-               0 4px 6px -4px oklch(0 0 0 / 0.06);
-  --shadow-lift: 0 12px 32px -16px oklch(0 0 0 / 0.22),
-                 0 4px 8px -4px oklch(0 0 0 / 0.12);
-
-  /* Top-edge highlight — kept very subtle. Earlier value (0.55 alpha)
+    --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.06), 0 1px 3px 0 oklch(0 0 0 / 0.07);
+    --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.06);
+    --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.10), 0 4px 6px -4px oklch(0 0 0 / 0.06);
+    --shadow-lift: 0 12px 32px -16px oklch(0 0 0 / 0.22), 0 4px 8px -4px oklch(0 0 0 / 0.12);
+    /* Top-edge highlight — kept very subtle. Earlier value (0.55 alpha)
      read as 2014-era glassmorphism gloss; toned to 0.14 so it
      whispers rather than shouts. Only present on surfaces that
      explicitly opt in via `surface-edge`, `gradient-border`, etc. */
-  --highlight-top: inset 0 1px 0 oklch(1 0 0 / 0.14);
-
-  /* Display-weight tracking ratio applied to hero headings and page
+    --highlight-top: inset 0 1px 0 oklch(1 0 0 / 0.14);
+    /* Display-weight tracking ratio applied to hero headings and page
      titles. Tighter than body, slightly heavier optical weight. */
-  --tracking-display: -0.025em;
-  --tracking-tight:   -0.015em;
-
-  --color-scheme: light;
+    --tracking-display: -0.025em;
+    --tracking-tight: -0.015em;
+    --color-scheme: light;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

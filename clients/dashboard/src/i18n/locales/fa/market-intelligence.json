@@ -106,6 +106,7 @@
   "portfolioMatching": "تطبیق شرکت‌های پرتفوی",
   "missingPortfolio": "پرتفوی ثبت نشده {{period}}",
   "codalDisclosureIssue": "اشکال در اعلامیه کدال {{period}}",
+  "incompletePortfolioMetadata": "اطلاعات گزارش پرتفوی ناقص {{period}}",
   "portfolioViewer": {
     "title": "پرتفوی سرمایه‌گذاری",
     "period": "دوره",
@@ -126,7 +127,9 @@
       "totalCompanies": "مجموع شرکت‌ها",
       "listedCompanies": "تعداد بورسی",
       "unlistedCompanies": "تعداد غیربورسی",
-      "totalReportedPortfolioValue": "مجموع ارزش پرتفوی گزارش‌شده"
+      "totalReportedPortfolioValue": "مجموع ارزش پرتفوی گزارش‌شده",
+      "currentListedValue": "ارزش روز بورسی",
+      "currentPortfolioValue": "ارزش روز کل پرتفوی"
     },
 
     "table": {

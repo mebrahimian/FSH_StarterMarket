@@ -1,5 +1,6 @@
 ﻿using FSH.Modules.MarketIntelligence.Contracts.v1.PortfolioViewer;
 using FSH.Modules.MarketIntelligence.Data;
+using FSH.Modules.MarketIntelligence.Services.MarketData;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -8,8 +9,8 @@ namespace Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 
 public sealed class GetPortfolioByDisclosureIdQueryHandler(
     MarketIntelligenceDbContext dbContext,
-    ILogger<GetPortfolioByDisclosureIdQueryHandler> logger)
-    : IQueryHandler<
+    IMarketPriceProvider marketPriceProvider,
+    ILogger<GetPortfolioByDisclosureIdQueryHandler> logger) : IQueryHandler<
         GetPortfolioByDisclosureIdQuery,
         PortfolioReportDto?>
 {
@@ -47,58 +48,61 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
         var sourceType = firstPosition.SourceType;
         var auditStatus = firstPosition.AuditStatus;
 
-        var navigationReports =
-    await dbContext.InvestmentPortfolioPositions
-        .AsNoTracking()
-        .Where(position =>
-            position.ParentCompanyId == parentCompanyId)
-        .Select(position => new
-        {
-            position.DisclosureId,
-            position.PeriodEndDate,
-            position.SourceType,
-            position.AuditStatus,
-        })
-        .Distinct()
-        .ToListAsync(cancellationToken)
-        .ConfigureAwait(false);
+        var navigationReports = await dbContext.InvestmentPortfolioPositions
+               .AsNoTracking()
+               .Where(position => position.ParentCompanyId == parentCompanyId)
+               .Select(position => new
+                 {
+                    position.DisclosureId,
+                    position.PeriodEndDate,
+                    position.PublishDateTime,
+                    position.SourceType,
+                    position.AuditStatus,
+                 })
+               .Distinct()
+               .ToListAsync(cancellationToken)
+               .ConfigureAwait(false);
+
+        var latestReport = navigationReports
+            .OrderByDescending(report => report.PeriodEndDate, StringComparer.Ordinal)
+            .ThenByDescending(report => report.PublishDateTime)
+            .FirstOrDefault();
+
+        bool isLatestPortfolio = latestReport is not null &&
+                                 latestReport.DisclosureId == query.DisclosureId; decimal? registeredCapital =
+        await dbContext.InvestmentPortfolioReportMetadata
+            .Where(x =>
+                   x.DisclosureId == query.DisclosureId &&
+                   x.RegisteredCapital.HasValue)
+            .Select(x => x.RegisteredCapital)
+            .FirstOrDefaultAsync(cancellationToken);
 
         logger.LogInformation("Portfolio handler started");
-        var orderedReports =
-    navigationReports
-        .Where(report =>
-            report.SourceType == sourceType &&
-            report.AuditStatus == auditStatus)
-        .OrderBy(
-            report => report.PeriodEndDate,
-            StringComparer.Ordinal)
-        .ToList();
+        var orderedReports = navigationReports
+              .Where(report => report.SourceType == sourceType &&
+                               report.AuditStatus == auditStatus)
+              .OrderBy(report => report.PeriodEndDate, StringComparer.Ordinal)
+              .ToList();
 
-        int currentIndex =
-            orderedReports.FindIndex(report =>
-                report.DisclosureId ==
-                query.DisclosureId);
+        int currentIndex = orderedReports.FindIndex(report => report.DisclosureId == query.DisclosureId);
 
-        Guid? previousDisclosureId =
-            currentIndex > 0
-                ? orderedReports[currentIndex - 1]
-                    .DisclosureId
-                : null;
+        Guid? previousDisclosureId = currentIndex > 0
+                       ? orderedReports[currentIndex - 1]
+                            .DisclosureId
+                       : null;
 
-        Guid? nextDisclosureId =
-            currentIndex >= 0 &&
-            currentIndex < orderedReports.Count - 1
-                ? orderedReports[currentIndex + 1]
-                    .DisclosureId
-                : null;
-        var navigationTargets =
-    navigationReports
-        .GroupBy(report => new
-        {
-            report.SourceType,
-            report.AuditStatus,
-        })
-        .Select(group =>
+        Guid? nextDisclosureId = currentIndex >= 0 &&
+                      currentIndex < orderedReports.Count - 1
+                        ? orderedReports[currentIndex + 1]
+                             .DisclosureId
+                        : null;
+        var navigationTargets = navigationReports
+                .GroupBy(report => new
+                    {
+                       report.SourceType,
+                       report.AuditStatus,
+                    })
+                .Select(group =>
         {
             var reports =
                 group
@@ -130,6 +134,28 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                 .Distinct()
                 .ToArray();
 
+        int[] listedChildCompanyIds = positions
+                .Where(position => position.IsListed &&
+                                   position.ChildCompanyId.HasValue)
+                .Select(position => position.ChildCompanyId!.Value)
+                .Distinct()
+                .ToArray();
+
+        IReadOnlyDictionary<int, MarketPriceSnapshot> currentPrices =
+            new Dictionary<int, MarketPriceSnapshot>();
+
+        if (
+            isLatestPortfolio &&
+            listedChildCompanyIds.Length > 0)
+        {
+            currentPrices =
+                await marketPriceProvider
+                    .GetLatestPricesAsync(
+                        listedChildCompanyIds,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+        }
+
         var companyIdSet =
             childCompanyIds.ToHashSet();
 
@@ -159,7 +185,10 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                 {
                     string? symbol = null;
                     string? companyName = null;
-
+                    decimal? currentPrice = null;
+                    decimal? currentValue = null;
+                    string? currentPriceTradeDate = null;
+                    bool usesCurrentMarketPrice = false;
                     if (
                         position.ChildCompanyId.HasValue &&
                         companies.TryGetValue(
@@ -169,7 +198,45 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                         symbol = company.Symbol;
                         companyName = company.CompanyName;
                     }
+                    if (isLatestPortfolio)
+                    {
+                        if (
+                            position.IsListed &&
+                            position.ChildCompanyId.HasValue &&
+                            currentPrices.TryGetValue(
+                                position.ChildCompanyId.Value,
+                                out var marketPrice))
+                        {
+                            currentPrice =
+                                marketPrice.LastPrice ??
+                                marketPrice.ClosingPrice;
 
+                            currentPriceTradeDate =
+                                marketPrice.TradeDate;
+
+                            if (
+                                currentPrice.HasValue &&
+                                position.EndingQuantity.HasValue)
+                            {
+                                currentValue =
+                                    position.EndingQuantity.Value *
+                                    currentPrice.Value /
+                                    1_000_000m;
+
+                                usesCurrentMarketPrice = true;
+                            }
+                            else
+                            {
+                                currentValue =
+                                    position.EndingCost;
+                            }
+                        }
+                        else
+                        {
+                            currentValue =
+                                position.EndingCost;
+                        }
+                    }
                     return new PortfolioPositionDto(
                         position.Id,
                         position.RowSequence,
@@ -194,7 +261,13 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                         position.EndingCostPerShare,
                         position.EndingMarketPrice,
                         position.IncreaseDecrease,
-                        position.Notes);
+                        position.Notes)
+                    {
+                        CurrentPrice = currentPrice,
+                        CurrentValue = currentValue,
+                        CurrentPriceTradeDate = currentPriceTradeDate,
+                        UsesCurrentMarketPrice = usesCurrentMarketPrice,
+                    };
                 })
                 .ToList();
 
@@ -215,20 +288,46 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                 .Select(position =>
                     position.EndingCost)
                 .Sum();
+        decimal? currentListedValue = isLatestPortfolio
+                 ? rows.Where(row => row.IsListed &&
+                                     row.CurrentValue.HasValue)
+                       .Sum(row => row.CurrentValue)
+                 : null;
+
+        decimal? currentPortfolioValue = isLatestPortfolio
+                  ? (currentListedValue ?? 0m) + (unlistedReportedValue ?? 0m)
+                  : null;
+        const decimal parentNominalValue = 1000m;
+
+        decimal? currentPortfolioValuePerShare =
+            currentPortfolioValue.HasValue &&
+            registeredCapital.HasValue &&
+            registeredCapital.Value > 0m
+                ? (currentPortfolioValue.Value / registeredCapital.Value)
+                    * parentNominalValue
+                : null;
+
         logger.LogInformation("Portfolio handler returning response");
         return new PortfolioReportDto(
-            firstPosition.DisclosureId,
-            firstPosition.TracingNo,
-            parentCompanyId,
-            periodEndDate,
-            firstPosition.PublishDateTime,
-            (byte)sourceType,
-            (byte)auditStatus,
-            previousDisclosureId,
-            nextDisclosureId,
-            navigationTargets,
-            listedReportedMarketValue,
-            unlistedReportedValue,
-            rows);
+                  firstPosition.DisclosureId,
+                  firstPosition.TracingNo,
+                  parentCompanyId,
+                  periodEndDate,
+                  firstPosition.PublishDateTime,
+                  (byte)sourceType,
+                  (byte)auditStatus,
+                  previousDisclosureId,
+                  nextDisclosureId,
+                  navigationTargets,
+                  listedReportedMarketValue,
+                  unlistedReportedValue,
+                  rows)
+        {
+            IsLatestPortfolio = isLatestPortfolio,
+            CurrentListedValue = currentListedValue,
+            CurrentPortfolioValue = currentPortfolioValue,
+            RegisteredCapital = registeredCapital,
+            CurrentPortfolioValuePerShare = currentPortfolioValuePerShare,
+        };
     }
 }

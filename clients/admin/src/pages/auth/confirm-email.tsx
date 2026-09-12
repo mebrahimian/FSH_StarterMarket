@@ -85,7 +85,7 @@ export function ConfirmEmailPage() {
         <div className="mb-8 flex flex-col items-center">
           <div className="flex items-center gap-2.5">
             <img
-              src="/branding/sadaf/sadaf-mark-primary.svg"
+              src="/branding/sadaf2/sadaf-mark-primary.svg"
               alt="SadafBourse"
               className="size-9 object-contain"
             />

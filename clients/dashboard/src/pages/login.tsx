@@ -164,14 +164,14 @@ export function LoginPage() {
                 >
                     {/* Mobile background */}
                     <img
-                        src="/branding/sadaf/sadaf-splash-bgm.png"
+                        src="/branding/sadaf2/sadaf-splash-bgm.png"
                         alt=""
                         className="block h-full w-full object-contain object-top lg:hidden"
                     />
 
                     {/* Desktop background */}
                     <img
-                        src="/branding/sadaf/sadaf-splash-bg.png"
+                        src="/branding/sadaf2/sadaf-splash-bg.png"
                         alt=""
                         className="hidden h-full w-full object-cover object-top lg:block"
                     />
@@ -203,8 +203,8 @@ export function LoginPage() {
                                           backdrop-blur-md
 
                                           lg:absolute
-                                          lg:left-[2.5%]
-                                          lg:top-[14%]
+                                          lg:left-[2.0%]
+                                          lg:top-[16%]
                                           lg:w-[25.5%]
                                           lg:max-w-none
                                           lg:mx-0
@@ -231,7 +231,9 @@ export function LoginPage() {
                             <div className="h-1.5 w-12 rounded-full bg-slate-300" />
                         </div>
                         <div className="mb-5">
-                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600">
+                            <div // 1) badge «ورود امن»
+                                className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary-soft)] px-3 py-1 text-[11px] font-bold text-[var(--color-primary)]">
+
                                 <ShieldCheck className="size-3.5" />
                                 ورود امن
                             </div>
@@ -382,7 +384,7 @@ export function LoginPage() {
                                     !password ||
                                     !tenant
                                 }
-                                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-rose-600 to-rose-500 px-4 text-[13px] font-black text-white shadow-[0_12px_28px_rgba(225,29,72,0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                                className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[var(--color-primary)] to-[var(--color-primary-hover)] px-4 text-[13px] font-black text-white shadow-[0_12px_28px_oklch(from_var(--color-primary)_l_c_h_/_0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
                             >
                                 {submitting ? (
                                     <>

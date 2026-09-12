@@ -107,10 +107,8 @@ public sealed class InvestmentPortfolioProcessor(
                 .FirstOrDefault(x =>
                     !string.IsNullOrWhiteSpace(x));
 
-        if (sourceType == PortfolioSourceType.FinancialStatement &&
-            !string.IsNullOrWhiteSpace(reportSymbol) &&
-            !string.Equals(FSort.Normalize(reportSymbol),
-                           FSort.Normalize(disclosure.Symbol), StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(reportSymbol) &&
+            !string.Equals(FSort.Normalize(reportSymbol), FSort.Normalize(disclosure.Symbol), StringComparison.Ordinal))
         {
             int deletedPositions =
                 await dbContext.InvestmentPortfolioPositions
@@ -125,7 +123,7 @@ public sealed class InvestmentPortfolioProcessor(
             if (logger.IsEnabled(LogLevel.Information))
             {
                 logger.LogInformation(
-                    "Financial statement belongs to a different report symbol. " +
+                    "Portfolio report belongs to a different report symbol." +
                     "TracingNo: {TracingNo}, DisclosureSymbol: {DisclosureSymbol}, " +
                     "ReportSymbol: {ReportSymbol}, DeletedPositions: {DeletedPositions}, " +
                     "DeletedMetadata: {DeletedMetadata}",

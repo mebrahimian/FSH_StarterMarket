@@ -203,14 +203,14 @@ export function Topbar() {
             {/* Mobile brand — desktop branding lives in the sidebar. */}
             <div className="flex min-w-0 items-center gap-2 md:hidden">
                 <img
-                    src="/branding/sadaf/sadaf-mark-primary.svg"
+                    src="/branding/sadaf2/sadaf-mark-primary.svg"
                     alt=""
                     aria-hidden
                     className="size-7 shrink-0 dark:hidden"
                 />
 
                 <img
-                    src="/branding/sadaf/sadaf-mark-dark.svg"
+                    src="/branding/sadaf2/sadaf-mark-dark.svg"
                     alt=""
                     aria-hidden
                     className="hidden size-7 shrink-0 dark:block"

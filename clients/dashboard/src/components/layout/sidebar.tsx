@@ -100,7 +100,7 @@ export function Sidebar() {
               >
                   {/* نسخهٔ اصلی برای Light Mode */}
                   <img
-                      src="/branding/sadaf/sadaf-mark-primary.svg"
+                      src="/branding/sadaf2/sadaf-mark-primary.svg"
                       alt=""
                       aria-hidden
                       className="size-8 shrink-0 dark:hidden"
@@ -108,7 +108,7 @@ export function Sidebar() {
 
                   {/* نسخهٔ روشن برای Dark Mode */}
                   <img
-                      src="/branding/sadaf/sadaf-mark-dark.svg"
+                      src="/branding/sadaf2/sadaf-mark-dark.svg"
                       alt=""
                       aria-hidden
                       className="hidden size-8 shrink-0 dark:block"

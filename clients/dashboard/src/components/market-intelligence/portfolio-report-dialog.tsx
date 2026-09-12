@@ -433,7 +433,7 @@ export function PortfolioReportDialog({
                 </div>
             </div>
             <div className="max-h-[78vh] overflow-auto p-4">
-                <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+                <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[2fr_2fr_2fr_1fr_1fr_1fr]">
                     <SummaryCard
                         label={tMarket(
                             "portfolioViewer.summary.listedReportedMarketValue",
@@ -480,7 +480,27 @@ export function PortfolioReportDialog({
                         locale={numberLocale}
                     />
                 </div>
+                {report.isLatestPortfolio && (
+                    <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                        <SummaryCard
+                            label="ارزش روز پرتفوی (میلیون ریال)"
+                            value={report.currentPortfolioValue}
+                            locale={numberLocale}
+                        />
 
+                        <SummaryCard
+                            label="سرمایه ثبت‌شده (میلیون ریال)"
+                            value={report.registeredCapital}
+                            locale={numberLocale}
+                        />
+
+                        <SummaryCard
+                            label="ارزش روز پرتفوی به ازای هر سهم (ریال)"
+                            value={report.currentPortfolioValuePerShare}
+                            locale={numberLocale}
+                        />
+                    </div>
+                )}
                 <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
                     <table className="w-full min-w-[1000px] border-collapse text-center text-sm">
                         <thead>

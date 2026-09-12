@@ -1,5 +1,6 @@
-﻿using Mediator;
-
+﻿using FSH.Modules.MarketIntelligence.Contracts.v1.PortfolioViewer;
+using Mediator;
+using Microsoft.Extensions.Logging;
 namespace FSH.Modules.MarketIntelligence.Contracts.v1.PortfolioViewer;
 
 public sealed record GetPortfolioByDisclosureIdQuery(
@@ -19,8 +20,18 @@ public sealed record PortfolioReportDto(
     IReadOnlyList<PortfolioNavigationTargetDto> NavigationTargets,
     decimal? ListedReportedMarketValue,
     decimal? UnlistedReportedValue,
-    IReadOnlyList<PortfolioPositionDto> Positions);
+    IReadOnlyList<PortfolioPositionDto> Positions)
+{
+    public bool IsLatestPortfolio { get; init; }
 
+    public decimal? CurrentListedValue { get; init; }
+
+    public decimal? CurrentPortfolioValue { get; init; }
+
+    public decimal? RegisteredCapital { get; init; }
+
+    public decimal? CurrentPortfolioValuePerShare { get; init; }
+}
 public sealed record PortfolioPositionDto(
     Guid Id,
     int RowSequence,
@@ -45,7 +56,16 @@ public sealed record PortfolioPositionDto(
     decimal? EndingCostPerShare,
     decimal? EndingMarketPrice,
     decimal? IncreaseDecrease,
-    string? Notes);
+    string? Notes)
+{
+    public decimal? CurrentPrice { get; init; }
+
+    public decimal? CurrentValue { get; init; }
+
+    public string? CurrentPriceTradeDate { get; init; }
+
+    public bool UsesCurrentMarketPrice { get; init; }
+}
 
 public sealed record PortfolioNavigationTargetDto(
     byte SourceType,

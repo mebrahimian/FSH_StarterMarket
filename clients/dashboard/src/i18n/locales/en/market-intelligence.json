@@ -105,6 +105,7 @@
   "portfolioMatching": "Portfolio Company Matching",
   "missingPortfolio": "Portfolio not recorded {{period}}",
   "codalDisclosureIssue": "Codal disclosure issue {{period}}",
+  "incompletePortfolioMetadata": "Incomplete portfolio report information {{period}}",
   "portfolioViewer": {
     "title": "Investment Portfolio",
     "period": "Period",
@@ -124,7 +125,6 @@
       "unlistedReportedValue": "Unlisted Cost",
       "totalCompanies": "Total Companies",
       "listedCompanies": "Listed Companies",
-      "unlistedCompanies": "Unlisted Companies",
       "totalReportedPortfolioValue": "total Reported PortfolioValue"
     },
 

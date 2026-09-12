@@ -83,7 +83,7 @@ export function Sidebar() {
       >
               <div className={cn("flex items-center", collapsed ? "" : "gap-2.5")}>
                   <img
-                      src="/branding/sadaf/sadaf-mark-primary.svg"
+                      src="/branding/sadaf2/sadaf-mark-primary.svg"
                       alt="صدف بورس"
                       className="size-8 shrink-0 object-contain"
                   />

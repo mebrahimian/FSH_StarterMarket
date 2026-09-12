@@ -21,6 +21,7 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.MarketData;
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -65,7 +66,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<InvestmentPortfolioReader>();
             builder.Services.AddScoped<ICodalDisclosureProcessor,InvestmentPortfolioProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
-
+            builder.Services.AddScoped<IMarketPriceProvider, BorsMarketPriceProvider>();
             //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(

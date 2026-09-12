@@ -114,7 +114,7 @@ export const accents: AccentOption[] = [
   { id: "amber",   label: "Amber",   description: "Warm, energetic.",                swatch: "oklch(0.620 0.180  76)" },
 ];
 
-export const DEFAULT_ACCENT = "rose";
+export const DEFAULT_ACCENT = "sky";
 export const CUSTOM_ACCENT_ID = "custom";
 
 export const FONT_STORAGE_KEY = "fsh.font";

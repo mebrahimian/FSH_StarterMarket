@@ -83,7 +83,7 @@ public sealed class MonthlyActivitySummary :
     public DateTime? PublishDateTime { get; private set; }
 
     public DateTime? ParsedAt { get; private set; }
-
+    
     public void Update(
         string? yearEndDate,
         byte? rt,
@@ -119,4 +119,5 @@ public sealed class MonthlyActivitySummary :
         TracingNo = tracingNo;
         ParsedAt = DateTime.UtcNow;
     }
+    
 }

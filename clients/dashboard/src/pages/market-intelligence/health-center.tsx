@@ -898,9 +898,13 @@ export function MarketHealthCenterPage() {
                                             ? tMarket("missingPortfolio", {
                                                 period: issue.periodEndDate ?? "—",
                                             })
-                                            : tMarket("codalDisclosureIssue", {
-                                                period: issue.periodEndDate ?? "—",
-                                            });
+                                            : issue.issueCode === "IncompletePortfolioMetadata"
+                                                ? tMarket("incompletePortfolioMetadata", {
+                                                    period: issue.periodEndDate ?? "—",
+                                                })
+                                                : tMarket("codalDisclosureIssue", {
+                                                    period: issue.periodEndDate ?? "—",
+                                                });
                                     return (
                                         <div
                                             key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}

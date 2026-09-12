@@ -4,7 +4,7 @@ export function BrandMark({ className }: { className?: string }) {
     return (
         <div className={cn("inline-flex select-none items-center gap-2.5", className)}>
             <img
-                src="/branding/sadaf/sadaf-mark-primary.svg"
+                src="/branding/sadaf2/sadaf-mark-primary.svg"
                 alt="صدف بورس"
                 className="size-9 object-contain"
             />
@@ -27,7 +27,7 @@ export function BrandMarkXL({ className }: { className?: string }) {
         <div className={cn("space-y-3", className)}>
             <div className="flex items-center gap-2.5">
                 <img
-                    src="/branding/sadaf/sadaf-mark-primary.svg"
+                    src="/branding/sadaf2/sadaf-mark-primary.svg"
                     alt="صدف بورس"
                     className="size-8 object-contain"
                 />

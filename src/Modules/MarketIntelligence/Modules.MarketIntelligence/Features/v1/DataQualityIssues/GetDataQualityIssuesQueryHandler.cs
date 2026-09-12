@@ -167,6 +167,72 @@ public sealed class GetDataQualityIssuesQueryHandler(
                     null,
                     null));
         }
+        var incompletePortfolioMetadataDisclosures =
+    await dbContext.Disclosures
+        .AsNoTracking()
+        .Where(disclosure =>
+            dbContext.InvestmentPortfolioPositions
+                .Any(position =>
+                    position.DisclosureId ==
+                    disclosure.Id) &&
+            (
+                !dbContext.InvestmentPortfolioReportMetadata
+                    .Any(metadata =>
+                        metadata.DisclosureId ==
+                        disclosure.Id) ||
+
+                !dbContext.InvestmentPortfolioReportMetadata
+                    .Any(metadata =>
+                        metadata.DisclosureId ==
+                            disclosure.Id &&
+                        metadata.ReportSymbol != null &&
+                        metadata.ReportSymbol.Trim() !=
+                            string.Empty) ||
+
+                !dbContext.InvestmentPortfolioReportMetadata
+                    .Any(metadata =>
+                        metadata.DisclosureId ==
+                            disclosure.Id &&
+                        metadata.ReportCompanyName != null &&
+                        metadata.ReportCompanyName.Trim() !=
+                            string.Empty) ||
+
+                !dbContext.InvestmentPortfolioReportMetadata
+                    .Any(metadata =>
+                        metadata.DisclosureId ==
+                            disclosure.Id &&
+                        metadata.RegisteredCapital.HasValue)
+            ))
+        .Select(disclosure => new
+        {
+            disclosure.Symbol,
+            disclosure.Title,
+            disclosure.PublishDateTimeRaw,
+        })
+        .ToListAsync(cancellationToken)
+        .ConfigureAwait(false);
+
+        foreach (var disclosure in incompletePortfolioMetadataDisclosures)
+        {
+            string periodEndDate =
+                PersianDateTextParser.TryExtract(
+                    disclosure.Title)
+                ?? string.Empty;
+
+            string? publishDate =
+                PersianDateTextParser.TryExtract(
+                    disclosure.PublishDateTimeRaw);
+
+            issues.Add(
+                new DataQualityIssueDto(
+                    disclosure.Symbol,
+                    null,
+                    periodEndDate,
+                    publishDate,
+                    "IncompletePortfolioMetadata",
+                    null,
+                    null));
+        }
         return issues;
     }
 }

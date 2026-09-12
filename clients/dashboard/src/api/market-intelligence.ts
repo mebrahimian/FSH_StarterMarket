@@ -216,6 +216,12 @@ export type PortfolioReport = {
     listedReportedMarketValue: number | null;
     unlistedReportedValue: number | null;
 
+    isLatestPortfolio: boolean;
+    currentListedValue: number | null;
+    currentPortfolioValue: number | null;
+    registeredCapital: number | null;
+    currentPortfolioValuePerShare: number | null;
+
     positions: PortfolioPosition[];
 };
 export function searchDisclosures(

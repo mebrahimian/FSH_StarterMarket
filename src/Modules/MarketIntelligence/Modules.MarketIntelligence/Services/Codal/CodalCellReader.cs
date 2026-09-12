@@ -119,8 +119,6 @@ internal static class CodalCellReader
                          );
     }
 
-
-    
     public static IReadOnlyList<CodalTableRow> ReadTableRows(
     string html,
     int metaTableCode)
