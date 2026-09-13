@@ -60,6 +60,14 @@
     "recentDisclosures": "آخرین اطلاعیه‌های کدال",
     "dataQualityIssues": "اطلاعیه های مشکل دار",
     "gapFailedMissing": "کسری / ناموفق / داده مفقود",
+    "analyticsMaintenance": {
+      "title": "نگهداری تحلیل‌ها",
+      "description": "محاسبه و ایجاد تحلیل‌های فروش ماهانه‌ای که Snapshot آنها هنوز ساخته نشده است.",
+      "rebuildMissing": "بازسازی تحلیل‌های مفقود",
+      "queuing": "در حال ارسال...",
+      "queued": "بازسازی در صف قرار گرفت. JobId: {{jobId}}",
+      "queueError": "خطا در شروع بازسازی تحلیل‌ها."
+    },
     "backfill": {
       "title": "تکمیل اطلاعات تاریخی نماد",
       "description": "تکمیل اطلاعات تاریخی یک نماد در بازه مشخص",

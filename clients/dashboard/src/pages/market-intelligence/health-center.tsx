@@ -27,6 +27,7 @@ import {
     getDataQualityIssues,
     queueCodalSymbolBackfill,
     getCodalIncrementalSchedule,
+    rebuildMissingSalesPerformanceSnapshots,
     updateCodalIncrementalSchedule,
     type CodalIncrementalSchedule,
     type DataQualityIssue,
@@ -112,8 +113,9 @@ export function MarketHealthCenterPage() {
     const [backfillToDate, setBackfillToDate] = useState<DateObject | null>(null);
     const [backfillMessage, setBackfillMessage] = useState("");
     const [backfillJobId, setBackfillJobId] = useState<string | null>(null);
-    const [codalSchedule, setCodalSchedule] =
-        useState<CodalIncrementalSchedule | null>(null);
+    const [codalSchedule, setCodalSchedule] = useState<CodalIncrementalSchedule | null>(null);
+    const salesInsightRebuildMutation = useMutation({ mutationFn: rebuildMissingSalesPerformanceSnapshots, });
+
     const {
         data: dataQualityIssues = [],
         isLoading: isDataQualityIssuesLoading,
@@ -635,7 +637,80 @@ export function MarketHealthCenterPage() {
                     hint={tMarket("healthCenter.gapFailedMissing")}
                 />
             </section>
+            <section className="mt-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-xs">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                        <ToneIconTile
+                            icon={ChartNoAxesCombined}
+                            tone="muted"
+                            size="md"
+                        />
 
+                        <div>
+                            <h2 className="text-sm font-semibold text-[var(--color-foreground)]">
+                                {tMarket(
+                                    "healthCenter.analyticsMaintenance.title",
+                                )}
+                            </h2>
+
+                            <p className="mt-1 max-w-2xl text-xs leading-5 text-[var(--color-muted-foreground)]">
+                                {tMarket(
+                                    "healthCenter.analyticsMaintenance.description",
+                                )}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-start gap-2 sm:items-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="gap-2"
+                            disabled={salesInsightRebuildMutation.isPending}
+                            onClick={() =>
+                                salesInsightRebuildMutation.mutate()
+                            }
+                        >
+                            <RefreshCw
+                                className={cn(
+                                    "size-3.5",
+                                    salesInsightRebuildMutation.isPending &&
+                                    "animate-spin",
+                                )}
+                            />
+
+                            {salesInsightRebuildMutation.isPending
+                                ? tMarket(
+                                    "healthCenter.analyticsMaintenance.queuing",
+                                )
+                                : tMarket(
+                                    "healthCenter.analyticsMaintenance.rebuildMissing",
+                                )}
+                        </Button>
+
+                        {salesInsightRebuildMutation.isSuccess && (
+                            <p className="text-xs text-[var(--color-success)]">
+                                {tMarket(
+                                    "healthCenter.analyticsMaintenance.queued",
+                                    {
+                                        jobId:
+                                            salesInsightRebuildMutation.data
+                                                .jobId,
+                                    },
+                                )}
+                            </p>
+                        )}
+
+                        {salesInsightRebuildMutation.isError && (
+                            <p className="text-xs text-[var(--color-destructive)]">
+                                {tMarket(
+                                    "healthCenter.analyticsMaintenance.queueError",
+                                )}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </section>
             {isScheduleOpen && codalSchedule && (
                 <section className="mt-3 rounded-xl border border-[var(--color-border)] p-4 shadow-xs">
                     <div className="mb-4">

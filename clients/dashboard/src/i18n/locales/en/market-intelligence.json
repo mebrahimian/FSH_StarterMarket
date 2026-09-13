@@ -60,6 +60,14 @@
     "recentDisclosures": "The Latest Codal Disclosures",
     "dataQualityIssues": "Data Quality Issues",
     "gapFailedMissing": "Gap / Failed / Missing",
+    "analyticsMaintenance": {
+      "title": "Analytics Maintenance",
+      "description": "Calculate and create missing monthly sales performance snapshots.",
+      "rebuildMissing": "Rebuild Missing Insights",
+      "queuing": "Queuing...",
+      "queued": "Rebuild was queued. JobId: {{jobId}}",
+      "queueError": "Failed to start the analytics rebuild."
+    },
     "backfill": {
       "title": "Symbol Data Recovery",
       "description": "Run Symbol Backfill for a specific symbol and date range",

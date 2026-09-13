@@ -584,3 +584,12 @@ export function updateCodalIncrementalSchedule(
         },
     );
 }
+export function rebuildMissingSalesPerformanceSnapshots():
+    Promise<CodalOperationResponse> {
+    return apiFetch<CodalOperationResponse>(
+        "/api/v1/marketintelligence/insights/sales-performance/rebuild-missing",
+        {
+            method: "POST",
+        },
+    );
+}

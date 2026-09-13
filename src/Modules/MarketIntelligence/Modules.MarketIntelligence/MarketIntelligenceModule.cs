@@ -23,6 +23,7 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Insights;
+using FSH.Modules.MarketIntelligence.Services.Insights.Jobs;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
 using Hangfire;
 using Hangfire.Common;
@@ -73,7 +74,8 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<CompanyIdBackfillService>();
             builder.Services.AddScoped<SalesPerformanceAnalyzer>();
             builder.Services.AddScoped<SalesPerformanceSnapshotService>();
-            builder.Services.AddScoped<DisclosureInsightPipeline>();
+            builder.Services.AddScoped<SalesPerformanceSnapshotRebuildService>();
+            builder.Services.AddScoped<DisclosureInsightPipeline>();          
             builder.Services.AddScoped<IDisclosureInsightProcessor, SalesPerformanceInsightProcessor>();
             
             builder.Services.AddHealthChecks()
@@ -83,6 +85,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
             builder.Services.AddScoped<SalesRecordBrokenDetector>();
             builder.Services.AddTransient<CodalBackgroundJob>();
+            builder.Services.AddTransient<SalesPerformanceSnapshotRebuildJob>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
         {
@@ -388,6 +391,51 @@ namespace FSH.Modules.MarketIntelligence
                 }).RequirePermission(MarketIntelligencePermissions
                                     .CodalOperations
                                     .Execute);
+
+            group.MapPost("/insights/sales-performance/rebuild-missing",
+                       (IJobService jobService) =>
+                       {
+                         string jobId =
+                                  jobService.Enqueue<SalesPerformanceSnapshotRebuildJob>(
+                                  job => job.RunMissingAsync(0, CancellationToken.None));
+
+                return Results.Accepted(
+                        value: new
+                            {
+                               jobId,
+                               message = "Sales performance missing snapshots rebuild queued.",
+                            });
+             }).WithName("RebuildMissingSalesPerformanceSnapshots")
+               .WithSummary("Rebuilds missing sales performance snapshots")
+               .RequirePermission(MarketIntelligencePermissions
+                                  .CodalOperations
+                                  .Execute);
+
+            group.MapPost(
+    "/insights/sales-performance/rebuild-missing-batch",
+    (IJobService jobService) =>
+    {
+        string jobId =
+            jobService.Enqueue<SalesPerformanceSnapshotRebuildJob>(
+                job => job.RunMissingBatchAsync(
+                    0,
+                    CancellationToken.None));
+
+        return Results.Accepted(
+            value: new
+            {
+                jobId,
+                message =
+                    "Single sales performance rebuild batch queued.",
+            });
+    })
+    .WithName("RebuildMissingSalesPerformanceSnapshotBatch")
+    .WithSummary(
+        "Rebuilds one batch of missing sales performance snapshots")
+    .RequirePermission(
+        MarketIntelligencePermissions
+            .CodalOperations
+            .Execute);
             group.MapGet("/codal/data-quality", async (
                                               int? coverageYears,
                                               CodalDataQualityAuditService auditService,

@@ -332,9 +332,9 @@ public sealed class SalesPerformanceAnalyzer(
         }
 
         return Math.Round(
-            ((current.Value - previous.Value) /
-             previous.Value) * 100m,
-            2);
+       ((current.Value - previous.Value) /
+        Math.Abs(previous.Value)) * 100m,
+      2);
     }
 
     private static decimal? DifferencePercent(
