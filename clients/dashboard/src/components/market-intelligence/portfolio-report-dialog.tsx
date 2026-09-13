@@ -17,6 +17,7 @@ import type {
 
 type PortfolioReportDialogProps = {
     open: boolean;
+    parentCompanyName: string;
     report: PortfolioReport | null;
     onClose: () => void;
     onPrevious?: () => void;
@@ -28,6 +29,7 @@ export function PortfolioReportDialog({
     open,
     report,
     onClose,
+    parentCompanyName,
     onPrevious,
     onNext,
     onNavigate,
@@ -308,6 +310,9 @@ export function PortfolioReportDialog({
                 <div className="max-w-[420px] text-center">
                     <div className="font-semibold">
                         {tMarket("portfolioViewer.title")}
+                        {parentCompanyName
+                            ? ` - ${parentCompanyName}`
+                            : ""}
                     </div>
 
                     <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
@@ -481,22 +486,38 @@ export function PortfolioReportDialog({
                     />
                 </div>
                 {report.isLatestPortfolio && (
-                    <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                    <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         <SummaryCard
-                            label="ارزش روز پرتفوی (میلیون ریال)"
+                            label={tMarket("portfolioViewer.summary.currentPortfolioValue", )}
                             value={report.currentPortfolioValue}
                             locale={numberLocale}
                         />
 
                         <SummaryCard
-                            label="سرمایه ثبت‌شده (میلیون ریال)"
+                            label={tMarket("portfolioViewer.summary.registeredCapital", )}
                             value={report.registeredCapital}
                             locale={numberLocale}
                         />
 
                         <SummaryCard
-                            label="ارزش روز پرتفوی به ازای هر سهم (ریال)"
+                            label={tMarket("portfolioViewer.summary.currentPortfolioValuePerShare", )}
                             value={report.currentPortfolioValuePerShare}
+                            locale={numberLocale}
+                        />
+                        <SummaryCard
+                            label={
+                                report.currentSharePriceTradeDate
+                                    ? tMarket(
+                                        "portfolioViewer.summary.currentSharePriceWithDate",
+                                        {
+                                            date: formatTradeDate(report.currentSharePriceTradeDate,),
+                                        },
+                                    )
+                                    : tMarket(
+                                        "portfolioViewer.summary.currentSharePrice",
+                                    )
+                            }
+                            value={report.currentSharePrice}
                             locale={numberLocale}
                         />
                     </div>
@@ -771,4 +792,13 @@ function formatNumber(
     locale: string,
 ) {
     return value?.toLocaleString(locale) ?? "—";
+}
+function formatTradeDate(
+    value: string | null | undefined,
+): string | null {
+    if (!value || value.length !== 8) {
+        return value ?? null;
+    }
+
+    return `${value.slice(0, 4)}/${value.slice(4, 6)}/${value.slice(6, 8)}`;
 }

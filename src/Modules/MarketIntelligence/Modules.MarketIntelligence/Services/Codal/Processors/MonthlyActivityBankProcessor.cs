@@ -385,6 +385,7 @@ public sealed class MonthlyActivityBankProcessor(
                 var summary =
                     new MonthlyActivitySummary(
                         symbol: disclosure.Symbol,
+                        companyId: disclosure.CompanyId,
                         periodEndDate: periodEndToDate,
                         yearEndDate: yearEndToDate,
                         rt: 3,
@@ -428,6 +429,7 @@ public sealed class MonthlyActivityBankProcessor(
                   existingSummary.PublishDateTime.Value)))
             {
                 existingSummary.Update(
+                    companyId:disclosure.CompanyId,
                     yearEndDate: yearEndToDate,
                     rt: 3,
                     periodAmount: periodAmount,

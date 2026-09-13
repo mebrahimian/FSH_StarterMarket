@@ -7,6 +7,8 @@ using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.Companies;
+using FSH.Modules.MarketIntelligence.Services.Insights;
 using FSH.Modules.MarketIntelligence.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,18 +25,24 @@ public sealed class CodalCollectorService : ICodalCollectorService
     private readonly MarketIntelligenceDbContext _dbContext;
     private readonly IEnumerable<ICodalDisclosureProcessor> _processors;
     private readonly ILogger<CodalCollectorService> _logger;
+    private readonly ICompanyRegistry _companyRegistry;
+    private readonly DisclosureInsightPipeline _insightPipeline;
     public CodalCollectorService(
     ICodalClient codalClient,
     MarketIntelligenceDbContext dbContext,
     HttpClient httpClient,
     ILogger<CodalCollectorService> logger,
     IConfiguration configuration,
-    IEnumerable<ICodalDisclosureProcessor> processors)
+    IEnumerable<ICodalDisclosureProcessor> processors,
+    ICompanyRegistry companyRegistry,
+    DisclosureInsightPipeline insightPipeline)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
         _processors = processors;
         _logger = logger;
+        _companyRegistry = companyRegistry;
+        _insightPipeline = insightPipeline;
     }
 
 #pragma warning disable S4144 // Temporary copy; will use ascending persistence order
@@ -177,6 +185,13 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     ct,
                     ft,
                     RepTypCode);
+                CompanyIdentity? company = 
+                    await _companyRegistry.FindBySymbolAsync(symbol, cancellationToken);
+
+                if (company is not null)
+                {
+                    disclosure.AssignCompanyId(company.CompanyId);
+                }
 
                 collectedDisclosures.Add((disclosure, pub.Value));
             }
@@ -220,11 +235,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                 .Select(x => x.Disclosure)
                                 .ToList();
 
-        Console.WriteLine(
-            $"Saving {orderedDisclosures.Count} disclosures in ascending order.");
-
-
-
+        Console.WriteLine($"Saving {orderedDisclosures.Count} disclosures in ascending order.");
 
         foreach (Disclosure disclosure in orderedDisclosures)
         {
@@ -242,6 +253,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     disclosure,
                     cancellationToken);
             }
+           
+            await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
+            
         }
         _logger.LogInformation("Disclosure Reading is completed.");
     }
@@ -485,27 +499,28 @@ public sealed class CodalCollectorService : ICodalCollectorService
                         ft,
                         reportingTypeCode);
 
+                CompanyIdentity? company = await _companyRegistry.FindBySymbolAsync(letter.Symbol, cancellationToken);
+                if (company is not null)
+                {
+                    disclosure.AssignCompanyId(company.CompanyId);
+                }
                 _dbContext.Disclosures.Add(disclosure);
 
-                await _dbContext.SaveChangesAsync(
-                    cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
 
                 createdCount++;
             }
-            else if (
-                disclosure.Let is null ||
-                disclosure.Rt is null ||
-                disclosure.ReportingTypeCode is null)
+            else if (disclosure.Let is null ||
+                     disclosure.Rt is null ||
+                     disclosure.ReportingTypeCode is null)
             {
                 disclosure.Let = let;
                 disclosure.Rt = rt;
                 disclosure.Ct = ct;
                 disclosure.Ft = ft;
-                disclosure.ReportingTypeCode =
-                    reportingTypeCode;
+                disclosure.ReportingTypeCode = reportingTypeCode;
 
-                await _dbContext.SaveChangesAsync(
-                    cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
             List<ICodalDisclosureProcessor> processors = _processors.Where(x => x.CanProcess(disclosure)).ToList();
@@ -547,6 +562,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
                 processedCount++;
             }
+            await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
         }
 
         if (_logger.IsEnabled(LogLevel.Information))
@@ -648,12 +664,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
             {
                 break;
             }
-
-            IQueryable<Disclosure> query =
-    _dbContext.Disclosures
-        .Where(x =>
-            x.SalesParseStatus == DisclosureParseStatus.Pending &&
-            x.TracingNo == 1590394);
+                        
+            IQueryable<Disclosure> query = _dbContext.Disclosures
+                 .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending);
             if (!firstBatch)
             {
                 DateTime cursorDate = lastPublishDate;
@@ -691,14 +704,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
                 if (processors.Count == 0)
                 {
-                    disclosure.SalesParseStatus =
-                        DisclosureParseStatus.Skipped;
+                    disclosure.SalesParseStatus = DisclosureParseStatus.Skipped;
 
-                    disclosure.SalesParsedAt =
-                        DateTime.UtcNow;
+                    disclosure.SalesParsedAt = DateTime.UtcNow;
 
-                    await _dbContext.SaveChangesAsync(
-                        cancellationToken);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
 
                     continue;
                 }
@@ -774,6 +784,10 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     disclosure.SalesParseStatus = DisclosureParseStatus.Success;
                     disclosure.SalesParsedAt = DateTime.UtcNow;
                     await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+                if (!processorFailed)
+                {
+                    await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
                 }
             }
             processedCount += disclosures.Count;
@@ -931,6 +945,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                         cancellationToken);
                 }
 
+                await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
             }
             // ذخیره یکجای صفحه
 

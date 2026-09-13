@@ -2,11 +2,12 @@ using Finbuckle.MultiTenant.Abstractions;
 using FSH.Framework.Persistence.Context;
 using FSH.Framework.Shared.Multitenancy;
 using FSH.Framework.Shared.Persistence;
+using FSH.Modules.MarketIntelligence.Data.Views;
 using FSH.Modules.MarketIntelligence.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using FSH.Modules.MarketIntelligence.Data.Views;
+using FSH.Modules.MarketIntelligence.Domain.Insights;
 
 namespace FSH.Modules.MarketIntelligence.Data;
 
@@ -26,6 +27,8 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<InvestmentPortfolioPosition> InvestmentPortfolioPositions => Set<InvestmentPortfolioPosition>();
     public DbSet<InvestmentPortfolioReportMetadata> InvestmentPortfolioReportMetadata => Set<InvestmentPortfolioReportMetadata>();
     public DbSet<CodalIncrementalScheduleSetting> CodalIncrementalScheduleSettings => Set<CodalIncrementalScheduleSetting>();
+    public DbSet<Insight> Insights => Set<Insight>();
+    public DbSet<SalesPerformanceSnapshot> SalesPerformanceSnapshots => Set<SalesPerformanceSnapshot>();
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

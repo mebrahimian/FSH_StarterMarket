@@ -34,6 +34,12 @@ public sealed class MonthlyActivitySummaryConfiguration :
 
         builder.HasIndex(x => new
         {
+            x.CompanyId,
+            x.PeriodEndDate
+        });
+
+        builder.HasIndex(x => new
+        {
             x.Symbol,
             x.PeriodEndDate
         })

@@ -102,6 +102,7 @@
     "open": "Codal Schedule Settings",
     "close": "Close Schedule"
   },
+  
   "portfolioMatching": "Portfolio Company Matching",
   "missingPortfolio": "Portfolio not recorded {{period}}",
   "codalDisclosureIssue": "Codal disclosure issue {{period}}",
@@ -125,7 +126,13 @@
       "unlistedReportedValue": "Unlisted Cost",
       "totalCompanies": "Total Companies",
       "listedCompanies": "Listed Companies",
-      "totalReportedPortfolioValue": "total Reported PortfolioValue"
+      "unlistedCompanies": "UnListed Companies",
+      "totalReportedPortfolioValue": "total Reported PortfolioValue",
+      "currentPortfolioValue": "Current Portfolio Value (million IRR)",
+      "registeredCapital": "Registered Capital (million IRR)",
+      "currentPortfolioValuePerShare": "Portfolio Value per Share (IRR)",
+      "currentSharePrice": "Last Share Price (IRR)",
+      "currentSharePriceWithDate": "Last Share Price (IRR) - {{date}}"
     },
 
     "table": {

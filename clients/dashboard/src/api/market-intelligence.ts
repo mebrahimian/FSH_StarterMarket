@@ -204,6 +204,8 @@ export type PortfolioReport = {
     parentCompanyId: number;
     periodEndDate: string;
     publishDateTime: string | null;
+    currentSharePrice: number | null;
+    currentSharePriceTradeDate: string | null;
 
     sourceType: PortfolioSourceType;
     auditStatus: PortfolioAuditStatus;

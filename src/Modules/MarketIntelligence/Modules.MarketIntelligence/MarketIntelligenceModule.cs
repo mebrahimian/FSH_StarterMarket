@@ -21,6 +21,8 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.Companies;
+using FSH.Modules.MarketIntelligence.Services.Insights;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
 using Hangfire;
 using Hangfire.Common;
@@ -64,15 +66,22 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityBankProcessor>();
             builder.Services.AddScoped<InvestmentPortfolioReader>();
-            builder.Services.AddScoped<ICodalDisclosureProcessor,InvestmentPortfolioProcessor>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor, InvestmentPortfolioProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
             builder.Services.AddScoped<IMarketPriceProvider, BorsMarketPriceProvider>();
-            //    builder.Services.AddScoped<IMonthlySalesParser, MonthlySalesParser>();
+            builder.Services.AddScoped<ICompanyRegistry, BorsCompanyRegistry>();
+            builder.Services.AddScoped<CompanyIdBackfillService>();
+            builder.Services.AddScoped<SalesPerformanceAnalyzer>();
+            builder.Services.AddScoped<SalesPerformanceSnapshotService>();
+            builder.Services.AddScoped<DisclosureInsightPipeline>();
+            builder.Services.AddScoped<IDisclosureInsightProcessor, SalesPerformanceInsightProcessor>();
+            
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
+            builder.Services.AddScoped<SalesRecordBrokenDetector>();
             builder.Services.AddTransient<CodalBackgroundJob>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
@@ -108,7 +117,7 @@ namespace FSH.Modules.MarketIntelligence
             group.MapGetPortfolioCompanyUsageEndpoint();
             group.MapSearchPortfolioCompaniesEndpoint();
             group.MapCreateUnlistedPortfolioCompanyEndpoint();
-            
+
             group.MapMatchPortfolioCompanyEndpoint();
             group.MapUnmatchPortfolioCompanyEndpoint();
 
@@ -130,22 +139,22 @@ namespace FSH.Modules.MarketIntelligence
                     IResult (IJobService jobService,
                              IConfiguration configuration) =>
                {
-                 int startPage = 
-                   configuration.GetValue<int?>("MarketIntelligence:Codal:BackfillStartPage") ?? 4000;
+                   int startPage =
+                     configuration.GetValue<int?>("MarketIntelligence:Codal:BackfillStartPage") ?? 4000;
 
-                 int endPage = Math.Max(1, startPage - 199);
+                   int endPage = Math.Max(1, startPage - 199);
 
-                 string jobId = jobService.Enqueue<CodalBackgroundJob>(
-                    job => job.RunBackfillChunkAsync(startPage, endPage,
-                               CancellationToken.None));
+                   string jobId = jobService.Enqueue<CodalBackgroundJob>(
+                      job => job.RunBackfillChunkAsync(startPage, endPage,
+                                 CancellationToken.None));
 
-                 return Results.Accepted(value: new
-                    {
-                      jobId,
-                      startPage,
-                      endPage,
-                      message = "Codal backfill queued.",
-                    });
+                   return Results.Accepted(value: new
+                   {
+                       jobId,
+                       startPage,
+                       endPage,
+                       message = "Codal backfill queued.",
+                   });
                }).RequirePermission(MarketIntelligencePermissions.CodalOperations.Execute);
             ////////////////////////////
             group.MapPost("/codal/symbol-backfill", IResult
@@ -210,70 +219,56 @@ namespace FSH.Modules.MarketIntelligence
                   .RequirePermission(MarketIntelligencePermissions
                           .CodalOperations
                           .Execute);
-            group.MapPost(
-    "/codal/symbol-backfill/direct",
-    async Task<IResult> (
-        CodalSymbolBackfillRequest request,
-        [FromServices] ICodalCollectorService codalCollectorService,
-        CancellationToken cancellationToken) =>
-    {
-        if (
-            string.IsNullOrWhiteSpace(request.Symbol) ||
-            string.IsNullOrWhiteSpace(request.FromDate) ||
-            string.IsNullOrWhiteSpace(request.ToDate))
-        {
-            return Results.BadRequest(
-                new
-                {
-                    message =
-                        "Symbol, fromDate and toDate are required.",
-                });
-        }
+            ////////
+            group.MapPost("/codal/symbol-backfill/direct", async Task<IResult> (
+                  CodalSymbolBackfillRequest request,
+                  [FromServices] ICodalCollectorService codalCollectorService,
+                  CancellationToken cancellationToken) =>
+                    {
+                      if (
+                           string.IsNullOrWhiteSpace(request.Symbol) ||
+                           string.IsNullOrWhiteSpace(request.FromDate) ||
+                           string.IsNullOrWhiteSpace(request.ToDate))
+                      {
+                        return Results.BadRequest(
+                            new
+                                 {
+                                    message = "Symbol, fromDate and toDate are required.",
+                                 });
+                      }
 
-        string symbol =
-            request.Symbol.Trim();
+                      string symbol = request.Symbol.Trim();
 
-        string fromDate =
-            request.FromDate.Trim();
+                      string fromDate = request.FromDate.Trim();
 
-        string toDate =
-            request.ToDate.Trim();
+                      string toDate = request.ToDate.Trim();
 
-        if (
-            string.Compare(
-                fromDate,
-                toDate,
-                StringComparison.Ordinal) > 0)
-        {
-            return Results.BadRequest(
-                new
-                {
-                    message =
-                        "fromDate cannot be after toDate.",
-                });
-        }
+                      if (string.Compare(fromDate, toDate, StringComparison.Ordinal) > 0)
+                           {
+                              return Results.BadRequest(
+                                 new
+                                    {
+                                       message = "fromDate cannot be after toDate.",
+                                    });
+                           }
 
-        await codalCollectorService
-            .CollectSymbolBackfillAsync(
-                symbol,
-                fromDate,
-                toDate,
-                cancellationToken);
+                  await codalCollectorService.CollectSymbolBackfillAsync(
+                               symbol,
+                               fromDate,
+                               toDate,
+                               cancellationToken);
 
-        return Results.Ok(
-            new
-            {
-                message =
-                    "Targeted Codal backfill completed.",
-            });
-    })
-    .WithName("RunCodalSymbolBackfill")
-    .WithSummary(
-        "Runs targeted Codal backfill directly for one symbol and date range")
-    .RequirePermission(
-        MarketIntelligencePermissions
-            .CodalOperations
-            .Execute);
+                   return Results.Ok(new
+                                          {
+                                             message = "Targeted Codal backfill completed.",
+                                          });
+            }).WithName("RunCodalSymbolBackfill")
+              .WithSummary("Runs targeted Codal backfill directly for one symbol and date range")
+              .RequirePermission(
+                   MarketIntelligencePermissions
+                   .CodalOperations
+                   .Execute);
+            ////////////////////
             group.MapPost("/codal/parse-pending", (IJobService jobService) =>
                 {
                     string jobId =
@@ -292,7 +287,78 @@ namespace FSH.Modules.MarketIntelligence
                 .RequirePermission(MarketIntelligencePermissions
                                   .CodalOperations
                                   .Execute);
+            ////////////////////
+            ///// TO DO: Remove after CompanyId + Insight pipeline is fully integrated.
+            ///////////////////////////////////
+            group.MapGet("/insights/test-sales-record", async (
+                  string symbol,
+                  string periodEndDate,
+                  SalesRecordBrokenDetector detector,
+                  CancellationToken cancellationToken) =>
+                  {
+                     SalesRecordBrokenResult? result =
+                         await detector.DetectAsync(
+                            symbol,
+                            periodEndDate,
+                            cancellationToken);
 
+                     return result is null
+                       ? Results.NotFound(
+                              new
+                                  {
+                                     symbol,
+                                     periodEndDate,
+                                     message = "No 12-month sales record was detected."
+                                  })
+                       : Results.Ok(result);
+                  })
+                  .WithName("TestSalesRecordBroken")
+                  .WithSummary("Tests the SalesRecordBroken insight detector")
+                  .RequirePermission(MarketIntelligencePermissions
+                                     .CodalOperations
+                                     .Execute);
+            group.MapGet("/companies/test-resolve", async (
+                  string symbol,
+                  ICompanyRegistry companyRegistry,
+                  CancellationToken cancellationToken) =>
+                    {
+                       CompanyIdentity? company = await companyRegistry.FindBySymbolAsync(
+                          symbol, cancellationToken);
+
+                       return company is null
+                           ? Results.NotFound(new
+                                  {
+                                     symbol,
+                                     message = "Company was not found."
+                                  })
+                           : Results.Ok(company);
+                    }).WithName("TestCompanyResolve")
+                      .WithSummary("Tests company resolution by symbol")
+                      .RequirePermission(MarketIntelligencePermissions
+                                         .CodalOperations
+                                         .Execute);
+            // TO DO: Remove after CompanyId historical backfill is completed.
+            group.MapPost("/companies/backfill-company-id",
+                async (
+                    CompanyIdBackfillService backfillService,
+                    CancellationToken cancellationToken) =>
+                {
+                    CompanyIdBackfillResult result =
+                        await backfillService.RunAsync(
+                            cancellationToken);
+
+                    return Results.Ok(result);
+                })
+                .WithName("BackfillDisclosureCompanyIds")
+                .WithSummary(
+                    "Backfills CompanyId for historical disclosures")
+                .RequirePermission(
+                    MarketIntelligencePermissions
+                        .CodalOperations
+                        .Execute);
+            //////////////////////////////
+            // End of To do Remove
+            ///////////////////////
             group.MapGet("/codal/jobs/{jobId}/status", (string jobId) =>
                 {
                     using var connection = JobStorage.Current.GetConnection();
@@ -327,16 +393,16 @@ namespace FSH.Modules.MarketIntelligence
                                               CodalDataQualityAuditService auditService,
                                               CancellationToken cancellationToken) =>
             {
-                    int requestedYears = coverageYears ?? 5;
+                int requestedYears = coverageYears ?? 5;
 
-                    if (requestedYears is < 1 or > 20)
+                if (requestedYears is < 1 or > 20)
+                {
+                    return Results.BadRequest(
+                       new
                        {
-                         return Results.BadRequest(
-                            new
-                                {
-                                    message = "Coverage years must be between 1 and 20.",
-                                });
-                       }
+                           message = "Coverage years must be between 1 and 20.",
+                       });
+                }
 
                 CodalDataQualityReport report = await auditService.RunAsync(
                          coverageYears: requestedYears,
@@ -345,7 +411,7 @@ namespace FSH.Modules.MarketIntelligence
                 return Results.Ok(report);
             }).WithName("GetCodalDataQuality")
               .WithSummary("Audits Codal disclosure and monthly summary data quality")
-              .RequirePermission( MarketIntelligencePermissions
+              .RequirePermission(MarketIntelligencePermissions
               .CodalOperations
               .Execute);
 

@@ -135,29 +135,44 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                 .ToArray();
 
         int[] listedChildCompanyIds = positions
-                .Where(position => position.IsListed &&
-                                   position.ChildCompanyId.HasValue)
-                .Select(position => position.ChildCompanyId!.Value)
-                .Distinct()
-                .ToArray();
+             .Where(position => position.IsListed &&
+                                position.ChildCompanyId.HasValue)
+             .Select(position => position.ChildCompanyId!.Value)
+             .Distinct()
+             .ToArray();
+
+        int[] priceCompanyIds = listedChildCompanyIds
+                                 .Append(parentCompanyId)
+                                 .Distinct()
+                                 .ToArray();
 
         IReadOnlyDictionary<int, MarketPriceSnapshot> currentPrices =
             new Dictionary<int, MarketPriceSnapshot>();
 
-        if (
-            isLatestPortfolio &&
-            listedChildCompanyIds.Length > 0)
+        if (isLatestPortfolio)
         {
             currentPrices =
                 await marketPriceProvider
                     .GetLatestPricesAsync(
-                        listedChildCompanyIds,
+                        priceCompanyIds,
                         cancellationToken)
                     .ConfigureAwait(false);
         }
 
-        var companyIdSet =
-            childCompanyIds.ToHashSet();
+        decimal? currentSharePrice = null;
+        string? currentSharePriceTradeDate = null;
+
+        if (
+            isLatestPortfolio &&
+            currentPrices.TryGetValue(
+                parentCompanyId,
+                out MarketPriceSnapshot? parentPrice))
+        {
+            currentSharePrice = parentPrice.LastPrice ?? parentPrice.ClosingPrice;
+
+            currentSharePriceTradeDate = parentPrice.TradeDate;
+        }
+        var companyIdSet = childCompanyIds.ToHashSet();
 
         var companyRows =
             await dbContext.CompanyMaster
@@ -303,8 +318,8 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
             currentPortfolioValue.HasValue &&
             registeredCapital.HasValue &&
             registeredCapital.Value > 0m
-                ? (currentPortfolioValue.Value / registeredCapital.Value)
-                    * parentNominalValue
+                ? Math.Round((currentPortfolioValue.Value / registeredCapital.Value)
+                                       * parentNominalValue, 0)
                 : null;
 
         logger.LogInformation("Portfolio handler returning response");
@@ -328,6 +343,8 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
             CurrentPortfolioValue = currentPortfolioValue,
             RegisteredCapital = registeredCapital,
             CurrentPortfolioValuePerShare = currentPortfolioValuePerShare,
+            CurrentSharePrice = currentSharePrice,
+            CurrentSharePriceTradeDate = currentSharePriceTradeDate,
         };
     }
 }

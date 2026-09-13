@@ -31,6 +31,9 @@ public sealed record PortfolioReportDto(
     public decimal? RegisteredCapital { get; init; }
 
     public decimal? CurrentPortfolioValuePerShare { get; init; }
+    public decimal? CurrentSharePrice { get; init; }
+
+    public string? CurrentSharePriceTradeDate { get; init; }
 }
 public sealed record PortfolioPositionDto(
     Guid Id,

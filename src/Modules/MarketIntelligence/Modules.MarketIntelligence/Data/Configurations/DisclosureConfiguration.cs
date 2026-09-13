@@ -12,7 +12,9 @@ public sealed class DisclosureConfiguration : IEntityTypeConfiguration<Disclosur
         builder.ToTable("Disclosures");
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.CompanyId);
 
+        builder.HasIndex(x => x.CompanyId);
         builder.Property(x => x.TracingNo)
             .IsRequired();
 

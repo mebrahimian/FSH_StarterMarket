@@ -3,6 +3,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+using FSH.Modules.MarketIntelligence.Services.Companies;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -11,6 +12,7 @@ namespace FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 
 public sealed class CodalBackgroundJob(
     ICodalCollectorService collectorService,
+    CompanyIdBackfillService companyIdBackfillService,
     MarketIntelligenceDbContext dbContext,
     IJobService jobService)
 {
@@ -34,10 +36,13 @@ public sealed class CodalBackgroundJob(
 
         return setting;
     }
-    public Task RunIncrementalAsync(
+    public async Task RunIncrementalAsync(
     CancellationToken cancellationToken)
     {
-        return collectorService
+        await companyIdBackfillService
+            .RunAsync(cancellationToken);
+
+        await collectorService
             .CollectIncrementalAsync(
                 cancellationToken);
     }
@@ -46,18 +51,21 @@ public sealed class CodalBackgroundJob(
     CancellationToken cancellationToken)
     {
         CodalIncrementalScheduleSetting setting =
-    await GetScheduleSettingAsync(cancellationToken);
+            await GetScheduleSettingAsync(cancellationToken);
 
         if (!ShouldRunIncremental(setting))
         {
             return;
         }
 
+        await companyIdBackfillService
+            .RunAsync(cancellationToken);
+
         await collectorService
             .CollectIncrementalAsync(
                 cancellationToken);
     }
-    
+
     [AutomaticRetry(Attempts = 0)]
     public Task RunSymbolBackfillAsync(string symbol, string fromDate, string toDate)
     {

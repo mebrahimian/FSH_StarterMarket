@@ -103,6 +103,7 @@
     "close": "بستن زمان‌بندی"
 
   },
+  
   "portfolioMatching": "تطبیق شرکت‌های پرتفوی",
   "missingPortfolio": "پرتفوی ثبت نشده {{period}}",
   "codalDisclosureIssue": "اشکال در اعلامیه کدال {{period}}",
@@ -129,7 +130,11 @@
       "unlistedCompanies": "تعداد غیربورسی",
       "totalReportedPortfolioValue": "مجموع ارزش پرتفوی گزارش‌شده",
       "currentListedValue": "ارزش روز بورسی",
-      "currentPortfolioValue": "ارزش روز کل پرتفوی"
+      "currentPortfolioValue": "ارزش روز پرتفوی (میلیون ریال)",
+      "registeredCapital": "سرمایه ثبت‌شده (میلیون ریال)",
+      "currentPortfolioValuePerShare": "ارزش روز پرتفوی به ازای هر سهم (ریال)",
+      "currentSharePrice": "آخرین قیمت سهم (ریال)",
+      "currentSharePriceWithDate": "آخرین قیمت سهم (ریال) - {{date}}"
     },
 
     "table": {

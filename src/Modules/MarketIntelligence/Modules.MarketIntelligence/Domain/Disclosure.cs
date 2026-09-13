@@ -91,6 +91,7 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     "S1144:Unused private types or members should be removed",
     Justification = "Private setter is used by EF Core materialization.")]
     public DateTime? CollectedAt { get; private set; }
+    public int? CompanyId { get; private set; }
     private Disclosure()
     {
     }
@@ -151,5 +152,18 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
         Ft = ft;
         ReportingTypeCode = reportingTypeCode;
         CollectedAt = DateTime.UtcNow;
+    }
+    public void AssignCompanyId(int companyId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(companyId);
+
+        if (CompanyId.HasValue &&
+            CompanyId.Value != companyId)
+        {
+            throw new InvalidOperationException(
+                $"Disclosure {TracingNo} already belongs to CompanyId {CompanyId.Value}.");
+        }
+
+        CompanyId = companyId;
     }
 }

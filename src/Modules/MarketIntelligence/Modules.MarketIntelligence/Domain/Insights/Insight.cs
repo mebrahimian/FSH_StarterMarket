@@ -1,29 +1,19 @@
-﻿namespace FSH.Modules.MarketIntelligence.Domain.Insights;
+﻿using FSH.Framework.Core.Domain;
 
-public sealed class Insight
+namespace FSH.Modules.MarketIntelligence.Domain.Insights;
+
+public sealed class Insight : BaseEntity<Guid>, IGlobalEntity
 {
-    public Guid Id { get; private set; }
-
     public string Code { get; private set; } = default!;
-
     public int? CompanyId { get; private set; }
-
     public string? Symbol { get; private set; }
-
     public string? PeriodEndDate { get; private set; }
-
     public InsightDirection Direction { get; private set; }
-
     public decimal ConfidenceScore { get; private set; }
-
     public decimal ImpactScore { get; private set; }
-
     public string PayloadJson { get; private set; } = "{}";
-
     public DateTimeOffset DetectedAt { get; private set; }
-
     public DateTimeOffset CreatedAt { get; private set; }
-
     private Insight()
     {
     }
@@ -39,7 +29,6 @@ public sealed class Insight
         string payloadJson,
         DateTimeOffset detectedAt)
     {
-        Id = Guid.NewGuid();
         Code = code;
         CompanyId = companyId;
         Symbol = symbol;

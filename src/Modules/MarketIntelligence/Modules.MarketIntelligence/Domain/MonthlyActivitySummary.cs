@@ -11,6 +11,7 @@ public sealed class MonthlyActivitySummary :
 
     public MonthlyActivitySummary(
         string symbol,
+        int? companyId,
         string periodEndDate,
         string? yearEndDate,
         byte? rt,
@@ -31,6 +32,7 @@ public sealed class MonthlyActivitySummary :
         ArgumentException.ThrowIfNullOrWhiteSpace(periodEndDate);
 
         Symbol = symbol;
+        CompanyId = companyId;
         PeriodEndDate = periodEndDate;
         YearEndDate = yearEndDate;
         Rt = rt;
@@ -53,7 +55,7 @@ public sealed class MonthlyActivitySummary :
     }
 
     public string Symbol { get; private set; } = string.Empty;
-
+    public int? CompanyId { get; private set; }
     public string PeriodEndDate { get; private set; } = string.Empty;
 
     public string? YearEndDate { get; private set; }
@@ -85,6 +87,7 @@ public sealed class MonthlyActivitySummary :
     public DateTime? ParsedAt { get; private set; }
     
     public void Update(
+        int? companyId,
         string? yearEndDate,
         byte? rt,
         decimal? periodAmount,
@@ -102,7 +105,7 @@ public sealed class MonthlyActivitySummary :
     {
         YearEndDate = yearEndDate;
         Rt = rt;
-
+        CompanyId = companyId;
         PeriodAmount = periodAmount;
         PeriodFormula = periodFormula;
         PeriodAddress = periodAddress;

@@ -216,6 +216,7 @@ public sealed class MonthlyActivityType3Processor(
                 var summary =
                     new MonthlyActivitySummary(
                         symbol: disclosure.Symbol,
+                        companyId: disclosure.CompanyId,
                         periodEndDate: periodEndToDate,
                         yearEndDate: yearEndToDate,
                         rt: rt,
@@ -246,7 +247,7 @@ public sealed class MonthlyActivityType3Processor(
                 existingSummary.Update(
                     yearEndDate: yearEndToDate,
                     rt: rt,
-
+                    companyId: disclosure.CompanyId,
                     periodAmount: periodAmount,
                     yearToDateAmount: yearToDateAmount,
                     previousYearToDateAmount: previousYearToDateAmount,

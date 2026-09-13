@@ -89,6 +89,7 @@ export function DisclosuresPage() {
     };
     const handlePortfolioClick = async (
         disclosureId: string,
+        companyName: string,
     ) => {
         const result =
             await getPortfolioByDisclosureId(
@@ -100,6 +101,7 @@ export function DisclosuresPage() {
             return;
         }
 
+        setPortfolioParentCompanyName(companyName);
         setPortfolioReport(result);
         setIsPortfolioDialogOpen(true);
     };
@@ -230,6 +232,10 @@ export function DisclosuresPage() {
 
     const [isPortfolioDialogOpen, setIsPortfolioDialogOpen] =
         useState(false);
+
+    const [portfolioParentCompanyName, setPortfolioParentCompanyName] =
+        useState("");
+
     return (
         <div className="space-y-4 sm:space-y-6">
             <EntityPageHeader
@@ -331,6 +337,7 @@ export function DisclosuresPage() {
             />
             <PortfolioReportDialog
                 open={isPortfolioDialogOpen}
+                parentCompanyName={portfolioParentCompanyName}
                 report={portfolioReport}
                 onClose={() =>
                     setIsPortfolioDialogOpen(false)
@@ -552,9 +559,10 @@ function DisclosureResults({
         symbol: string,
         title: string,
     ) => Promise<void>;
-    onPortfolioClick: (
-        disclosureId: string,
-    ) => Promise<void>;
+        onPortfolioClick: (
+            disclosureId: string,
+            companyName: string,
+        ) => Promise<void>;
     })
 {
     const { t, i18n } = useTranslation("disclosures");
@@ -621,9 +629,10 @@ function DesktopRow({
         symbol: string,
         title: string,
     ) => Promise<void>;
-    onPortfolioClick: (
-        disclosureId: string,
-    ) => Promise<void>;
+        onPortfolioClick: (
+            disclosureId: string,
+            companyName: string,
+        ) => Promise<void>;
 }) 
 {
     const codalUrl = toCodalUrl(disclosure.url);
@@ -716,6 +725,7 @@ function DesktopRow({
                             onClick={() =>
                                 void onPortfolioClick(
                                     disclosure.id,
+                                    disclosure.companyName + "(" + disclosure.symbol + ")",
                                 )
                             }
                             title="مشاهده پرتفوی"
@@ -754,9 +764,10 @@ function MobileCard({
         symbol: string,
         title: string,
     ) => Promise<void>;
-    onPortfolioClick: (
-        disclosureId: string,
-    ) => Promise<void>;
+        onPortfolioClick: (
+            disclosureId: string,
+            companyName: string,
+        ) => Promise<void>;
 }) {
     const codalUrl = toCodalUrl(disclosure.url);
 
@@ -820,6 +831,7 @@ function MobileCard({
                         onClick={() =>
                             void onPortfolioClick(
                                 disclosure.id,
+                                disclosure.companyName+"("+disclosure.symbol+")",
                             )
                         }
                         title="مشاهده پرتفوی"
