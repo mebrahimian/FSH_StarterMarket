@@ -31,6 +31,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -86,6 +87,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<SalesRecordBrokenDetector>();
             builder.Services.AddTransient<CodalBackgroundJob>();
             builder.Services.AddTransient<SalesPerformanceSnapshotRebuildJob>();
+            builder.Services.AddScoped<CodalCompanyReferenceSyncService>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
         {
@@ -410,32 +412,62 @@ namespace FSH.Modules.MarketIntelligence
                .RequirePermission(MarketIntelligencePermissions
                                   .CodalOperations
                                   .Execute);
+            group.MapPost("/codal/companies/sync", async Task<IResult> (
+                       CodalCompanyReferenceSyncService syncService,
+                       CancellationToken cancellationToken) =>
+                { await syncService
+                           .SyncAsync(cancellationToken)
+                           .ConfigureAwait(false);
 
-            group.MapPost(
-    "/insights/sales-performance/rebuild-missing-batch",
-    (IJobService jobService) =>
-    {
-        string jobId =
-            jobService.Enqueue<SalesPerformanceSnapshotRebuildJob>(
-                job => job.RunMissingBatchAsync(
-                    0,
-                    CancellationToken.None));
+                  return Results.Ok( new
+                                        {
+                                           message = "Codal companies synchronized successfully."
+                                        });
+                });
 
-        return Results.Accepted(
-            value: new
-            {
-                jobId,
-                message =
-                    "Single sales performance rebuild batch queued.",
-            });
-    })
-    .WithName("RebuildMissingSalesPerformanceSnapshotBatch")
-    .WithSummary(
-        "Rebuilds one batch of missing sales performance snapshots")
-    .RequirePermission(
-        MarketIntelligencePermissions
-            .CodalOperations
-            .Execute);
+            group.MapGet("/insights/sales-performance/rebuild-status",  async (
+                  MarketIntelligenceDbContext dbContext,
+                  CancellationToken cancellationToken) =>
+                {
+                  int total = await dbContext
+                         .MonthlyActivitySummaries
+                         .AsNoTracking()
+                         .Where(x =>
+                                     x.CompanyId.HasValue &&
+                                     x.PeriodAmount.HasValue &&
+                                     x.PeriodEndDate.Length >= 7)
+                         .Select(x => new
+                                        {
+                                           CompanyId = x.CompanyId!.Value,
+                                           x.PeriodEndDate,
+                                        })
+                         .Distinct()
+                         .CountAsync(cancellationToken);
+
+                int completed = await dbContext.SalesPerformanceSnapshots
+                         .AsNoTracking()
+                         .CountAsync(cancellationToken);
+
+                int remaining = Math.Max(total - completed, 0);
+
+                decimal progressPercent = total == 0
+                      ? 100m
+                      : Math.Round(completed * 100m / total, 2);
+
+            return Results.Ok(new
+                 {
+                    total,
+                    completed,
+                    remaining,
+                    progressPercent,
+                    isComplete = remaining == 0,
+                 });
+             }).WithName("GetSalesPerformanceRebuildStatus")
+               .WithSummary("Gets sales performance snapshot rebuild progress")
+               .RequirePermission(MarketIntelligencePermissions
+                                  .CodalOperations
+                                  .Execute);
+
             group.MapGet("/codal/data-quality", async (
                                               int? coverageYears,
                                               CodalDataQualityAuditService auditService,

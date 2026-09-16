@@ -28,6 +28,7 @@ import {
     queueCodalSymbolBackfill,
     getCodalIncrementalSchedule,
     rebuildMissingSalesPerformanceSnapshots,
+    getSalesPerformanceRebuildStatus,
     updateCodalIncrementalSchedule,
     type CodalIncrementalSchedule,
     type DataQualityIssue,
@@ -114,7 +115,25 @@ export function MarketHealthCenterPage() {
     const [backfillMessage, setBackfillMessage] = useState("");
     const [backfillJobId, setBackfillJobId] = useState<string | null>(null);
     const [codalSchedule, setCodalSchedule] = useState<CodalIncrementalSchedule | null>(null);
-    const salesInsightRebuildMutation = useMutation({ mutationFn: rebuildMissingSalesPerformanceSnapshots, });
+    const salesInsightRebuildMutation = useMutation({mutationFn: rebuildMissingSalesPerformanceSnapshots, });
+
+    const salesPerformanceRebuildStatusQuery = useQuery({
+        queryKey: [
+            "market-intelligence",
+            "sales-performance-rebuild-status",
+        ],
+        queryFn: getSalesPerformanceRebuildStatus,
+
+        enabled: salesInsightRebuildMutation.isSuccess,
+
+        refetchInterval: (query) => {
+            if (query.state.data?.isComplete) {
+                return false;
+            }
+
+            return 5_000;
+        },
+    });
 
     const {
         data: dataQualityIssues = [],
@@ -708,6 +727,45 @@ export function MarketHealthCenterPage() {
                                 )}
                             </p>
                         )}
+                        {salesPerformanceRebuildStatusQuery.data && (
+                            <div className="w-full min-w-0 sm:w-80">
+                                <div className="mb-1.5 flex items-center justify-between text-xs">
+                                    <span className="text-[var(--color-muted-foreground)]">
+                                        {salesPerformanceRebuildStatusQuery.data.completed.toLocaleString()}
+                                        {" / "}
+                                        {salesPerformanceRebuildStatusQuery.data.total.toLocaleString()}
+                                    </span>
+
+                                    <span className="font-mono tabular-nums">
+                                        {salesPerformanceRebuildStatusQuery.data.progressPercent.toFixed(2)}%
+                                    </span>
+                                </div>
+
+                                <div className="h-2 overflow-hidden rounded-full bg-[var(--color-muted)]">
+                                    <div
+                                        className="h-full rounded-full bg-[var(--color-foreground)] transition-all duration-500"
+                                        style={{
+                                            width: `${Math.min(
+                                                salesPerformanceRebuildStatusQuery.data.progressPercent,
+                                                100,
+                                            )}%`,
+                                        }}
+                                    />
+                                </div>
+
+                                <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
+                                    {tMarket(
+                                        "healthCenter.analyticsMaintenance.remaining",
+                                        {
+                                            count:
+                                                salesPerformanceRebuildStatusQuery.data
+                                                    .remaining
+                                                    .toLocaleString(),
+                                        },
+                                    )}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -977,9 +1035,9 @@ export function MarketHealthCenterPage() {
                                                 ? tMarket("incompletePortfolioMetadata", {
                                                     period: issue.periodEndDate ?? "—",
                                                 })
-                                                : tMarket("codalDisclosureIssue", {
-                                                    period: issue.periodEndDate ?? "—",
-                                                });
+                                                : issue.issueCode === "SalesHistoryGap"
+                                                    ? `گپ سابقه فروش ماهانه از ${issue.periodEndDate ?? "—"} تا ${issue.publishDate ?? "—"}`
+                                                    : `شرح تعریف نشده برای نوع اشکال: ${issue.issueCode}`;
                                     return (
                                         <div
                                             key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}

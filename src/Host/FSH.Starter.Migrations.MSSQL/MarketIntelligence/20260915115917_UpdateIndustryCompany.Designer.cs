@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    partial class MarketIntelligenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260915115917_UpdateIndustryCompany")]
+    partial class UpdateIndustryCompany
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -773,6 +776,10 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 
                     b.Property<Guid>("DisclosureId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Isic")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
 
                     b.Property<int>("MetaTableCode")
                         .HasColumnType("int");

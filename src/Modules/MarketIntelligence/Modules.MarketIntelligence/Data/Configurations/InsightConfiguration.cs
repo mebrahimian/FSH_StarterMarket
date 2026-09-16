@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using FSH.Modules.MarketIntelligence.Domain.Insights;
 
-namespace FSH.Modules.MarketIntelligence.Persistence.Configurations;
+namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 
 public sealed class InsightConfiguration : IEntityTypeConfiguration<Insight>
 {

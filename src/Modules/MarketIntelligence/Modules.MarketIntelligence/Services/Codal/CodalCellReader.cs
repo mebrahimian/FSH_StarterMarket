@@ -905,3 +905,4 @@ internal sealed record CodalReportHeaderData(
     string? ReportCompanyName,
     decimal? RegisteredCapital,
     decimal? UnauthorizedCapital);
+    

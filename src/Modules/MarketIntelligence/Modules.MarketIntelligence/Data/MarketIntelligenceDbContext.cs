@@ -30,6 +30,8 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<Insight> Insights => Set<Insight>();
     public DbSet<SalesPerformanceSnapshot> SalesPerformanceSnapshots => Set<SalesPerformanceSnapshot>();
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
+    public DbSet<CodalCompanyImport> CodalCompanyImports => Set<CodalCompanyImport>();
+    public DbSet<Industry> Industries => Set<Industry>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

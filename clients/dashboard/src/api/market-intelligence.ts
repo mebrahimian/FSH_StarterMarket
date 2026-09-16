@@ -593,3 +593,17 @@ export function rebuildMissingSalesPerformanceSnapshots():
         },
     );
 }
+export type SalesPerformanceRebuildStatus = {
+    total: number;
+    completed: number;
+    remaining: number;
+    progressPercent: number;
+    isComplete: boolean;
+};
+
+export function getSalesPerformanceRebuildStatus():
+    Promise<SalesPerformanceRebuildStatus> {
+    return apiFetch<SalesPerformanceRebuildStatus>(
+        "/api/v1/marketintelligence/insights/sales-performance/rebuild-status",
+    );
+}

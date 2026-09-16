@@ -11,8 +11,7 @@ public sealed class InvestmentPortfolioReportMetadataConfiguration :
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.ToTable(
-            "InvestmentPortfolioReportMetadata");
+        builder.ToTable("InvestmentPortfolioReportMetadata");
 
         builder.Property(x => x.PeriodEndToDate)
             .HasMaxLength(10);
@@ -53,7 +52,7 @@ public sealed class InvestmentPortfolioReportMetadataConfiguration :
             .HasConversion<byte>()
             .HasColumnType("tinyint")
             .IsRequired();
-
+        
         builder.HasIndex(x => new
         {
             x.TracingNo,

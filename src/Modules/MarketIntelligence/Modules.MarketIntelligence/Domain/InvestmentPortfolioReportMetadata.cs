@@ -28,7 +28,8 @@ public sealed class InvestmentPortfolioReportMetadata :
     string? reportSymbol = null,
     string? reportCompanyName = null,
     decimal? registeredCapital = null,
-    decimal? unauthorizedCapital = null)
+    decimal? unauthorizedCapital = null,
+    string? isic = null)
     {
         DisclosureId = disclosureId;
         TracingNo = tracingNo;
@@ -109,4 +110,5 @@ public sealed class InvestmentPortfolioReportMetadata :
 
     public decimal? UnauthorizedCapital { get; private set; }
     public DateTime ParsedAt { get; private set; }
+    
 }

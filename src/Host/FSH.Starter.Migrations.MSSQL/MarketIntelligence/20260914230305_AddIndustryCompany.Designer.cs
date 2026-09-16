@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    partial class MarketIntelligenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914230305_AddIndustryCompany")]
+    partial class AddIndustryCompany
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -127,57 +130,6 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable((string)null);
 
                     b.ToView("vw_CompanyMaster", "marketintelligence");
-                });
-
-            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CodalCompanyImport", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CompanyName")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<int?>("CompanyType")
-                        .HasColumnType("int");
-
-                    b.Property<string>("IndustryGroupId")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(3)");
-
-                    b.Property<string>("IndustryId")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(2)");
-
-                    b.Property<string>("Isic")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(10)");
-
-                    b.Property<int?>("ReportingType")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("State")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Symbol")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Symbol");
-
-                    b.ToTable("CodalCompanyImport", "dbo");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CodalIncrementalScheduleSetting", b =>
@@ -394,7 +346,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 
                     b.HasKey("IndustryId");
 
-                    b.ToTable("Industries", "dbo");
+                    b.ToTable("Industries", "marketintelligence");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.Insights.Insight", b =>
@@ -773,6 +725,10 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 
                     b.Property<Guid>("DisclosureId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Isic")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
 
                     b.Property<int>("MetaTableCode")
                         .HasColumnType("int");

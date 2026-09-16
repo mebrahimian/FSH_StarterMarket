@@ -215,19 +215,21 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                     }
                     if (isLatestPortfolio)
                     {
-                        if (
-                            position.IsListed &&
-                            position.ChildCompanyId.HasValue &&
-                            currentPrices.TryGetValue(
-                                position.ChildCompanyId.Value,
-                                out var marketPrice))
+                        if (position.IsListed)
                         {
-                            currentPrice =
-                                marketPrice.LastPrice ??
-                                marketPrice.ClosingPrice;
+                            if (
+                                position.ChildCompanyId.HasValue &&
+                                currentPrices.TryGetValue(
+                                    position.ChildCompanyId.Value,
+                                    out var marketPrice))
+                            {
+                                currentPrice =
+                                    marketPrice.LastPrice ??
+                                    marketPrice.ClosingPrice;
 
-                            currentPriceTradeDate =
-                                marketPrice.TradeDate;
+                                currentPriceTradeDate =
+                                    marketPrice.TradeDate;
+                            }
 
                             if (
                                 currentPrice.HasValue &&
@@ -242,14 +244,12 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                             }
                             else
                             {
-                                currentValue =
-                                    position.EndingCost;
+                                currentValue = position.EndingMarketValue;
                             }
                         }
                         else
                         {
-                            currentValue =
-                                position.EndingCost;
+                            currentValue = position.EndingCost;
                         }
                     }
                     return new PortfolioPositionDto(

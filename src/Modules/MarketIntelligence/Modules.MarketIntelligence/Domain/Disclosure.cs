@@ -1,5 +1,4 @@
 ﻿using FSH.Framework.Core.Domain;
-using FSH.Framework.Shared.Persistence;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 
 namespace FSH.Modules.MarketIntelligence.Domain;

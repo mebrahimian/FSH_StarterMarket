@@ -233,6 +233,125 @@ public sealed class GetDataQualityIssuesQueryHandler(
                     null,
                     null));
         }
+        
+        var salesHistoryGapIssues =
+    new List<(DataQualityIssueDto Issue, int MissingMonths)>();
+
+        var salesSnapshots = await dbContext.SalesPerformanceSnapshots
+            .AsNoTracking()
+            .Where(snapshot =>
+                snapshot.Symbol != null &&
+                snapshot.PeriodEndDate != null &&
+                snapshot.PeriodEndDate.Length >= 7)
+            .Select(snapshot => new
+            {
+                snapshot.CompanyId,
+                snapshot.Symbol,
+                snapshot.PeriodEndDate,
+            })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var salesHistoryGroups = salesSnapshots
+            .GroupBy(snapshot => new
+            {
+                snapshot.CompanyId,
+                Symbol = snapshot.Symbol.Trim(),
+            });
+
+        foreach (var group in salesHistoryGroups)
+        {
+            var existingMonths = group
+                .Select(snapshot =>
+                {
+                    if (!int.TryParse(
+                            snapshot.PeriodEndDate.AsSpan(0, 4),
+                            out int year) ||
+                        !int.TryParse(
+                            snapshot.PeriodEndDate.AsSpan(5, 2),
+                            out int month))
+                    {
+                        return (int?)null;
+                    }
+
+                    return year * 12 + month;
+                })
+                .Where(monthNo => monthNo.HasValue)
+                .Select(monthNo => monthNo!.Value)
+                .Distinct()
+                .OrderBy(monthNo => monthNo)
+                .ToList();
+
+            if (existingMonths.Count < 2)
+            {
+                continue;
+            }
+
+            int firstMonthNo = existingMonths[0];
+            int lastMonthNo = existingMonths[^1];
+
+            var existingMonthSet = existingMonths.ToHashSet();
+
+            var missingMonths = new List<int>();
+
+            for (int monthNo = firstMonthNo;
+                 monthNo <= lastMonthNo;
+                 monthNo++)
+            {
+                if (!existingMonthSet.Contains(monthNo))
+                {
+                    missingMonths.Add(monthNo);
+                }
+            }
+
+            if (missingMonths.Count == 0)
+            {
+                continue;
+            }
+
+            int firstMissingMonthNo = missingMonths[0];
+            int lastMissingMonthNo = missingMonths[^1];
+
+            string firstMissingPeriod =
+                ToPersianYearMonth(firstMissingMonthNo);
+
+            string lastMissingPeriod =
+                ToPersianYearMonth(lastMissingMonthNo);
+
+            var issue = new DataQualityIssueDto(
+                group.Key.Symbol,
+                null,
+                firstMissingPeriod,
+                lastMissingPeriod,
+                "SalesHistoryGap",
+                missingMonths.Count,
+                null);
+
+            salesHistoryGapIssues.Add(
+                (issue, missingMonths.Count));
+        }
+
+        issues.AddRange(
+            salesHistoryGapIssues
+                .OrderByDescending(x => x.MissingMonths)
+                .ThenBy(x => x.Issue.Symbol)
+                .Select(x => x.Issue));
+        
         return issues;
+    }
+    
+    private static string ToPersianYearMonth(
+    int monthNo)
+    {
+        int year = (monthNo - 1) / 12;
+        int month = ((monthNo - 1) % 12) + 1;
+
+        return year.ToString(
+                   "0000",
+                   System.Globalization.CultureInfo.InvariantCulture)
+               + "/"
+               + month.ToString(
+                   "00",
+                   System.Globalization.CultureInfo.InvariantCulture);
     }
 }
