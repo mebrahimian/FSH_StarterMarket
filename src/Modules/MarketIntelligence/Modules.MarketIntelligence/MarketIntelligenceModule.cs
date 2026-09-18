@@ -25,6 +25,8 @@ using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Insights;
 using FSH.Modules.MarketIntelligence.Services.Insights.Jobs;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
+using FSH.Modules.MarketIntelligence.Services.Portfolio;
+using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -78,7 +80,10 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<SalesPerformanceSnapshotRebuildService>();
             builder.Services.AddScoped<DisclosureInsightPipeline>();          
             builder.Services.AddScoped<IDisclosureInsightProcessor, SalesPerformanceInsightProcessor>();
-            
+            builder.Services.AddScoped<PortfolioHoldingAssetBootstrapService>();
+            builder.Services.AddOptions<TsetmcOptions>().BindConfiguration(TsetmcOptions.SectionName);
+            builder.Services.AddScoped<IPortfolioChildCompanyResolver, PortfolioChildCompanyResolver>();
+
             builder.Services.AddHealthChecks()
                 .AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",
@@ -424,7 +429,23 @@ namespace FSH.Modules.MarketIntelligence
                                            message = "Codal companies synchronized successfully."
                                         });
                 });
+            /////////
+            group.MapPost("/portfolio/holding-assets/bootstrap",
+                  async (
+                          PortfolioHoldingAssetBootstrapService bootstrapService,
+                          CancellationToken cancellationToken) =>
+                    {
+                       PortfolioHoldingAssetBootstrapResult result =
+                           await bootstrapService.RunAsync(cancellationToken);
 
+                  return Results.Ok(result);
+                }).WithName("BootstrapPortfolioHoldingAssets")
+                  .WithSummary("Creates portfolio holding assets from existing company aliases")
+                  .RequirePermission(MarketIntelligencePermissions
+                                     .CodalOperations
+                                     .Execute);
+            //////////////
+            /////////////
             group.MapGet("/insights/sales-performance/rebuild-status",  async (
                   MarketIntelligenceDbContext dbContext,
                   CancellationToken cancellationToken) =>

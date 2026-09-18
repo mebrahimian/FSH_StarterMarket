@@ -16,7 +16,8 @@ public sealed class PortfolioCompanyAlias :
         string? fSortSymbol,
         string aliasName,
         string fSortName,
-        bool   isListed)
+        bool   isListed,
+        int? holdingAssetId = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(companyId);
         ArgumentException.ThrowIfNullOrWhiteSpace(aliasName);
@@ -29,6 +30,7 @@ public sealed class PortfolioCompanyAlias :
         FSortName = fSortName;
         IsActive = true;
         IsListed = isListed;
+        HoldingAssetId = holdingAssetId;
     }
 
     public int CompanyId { get; private set; }
@@ -41,5 +43,21 @@ public sealed class PortfolioCompanyAlias :
     public string FSortName { get; private set; } = string.Empty;
 
     public bool IsActive { get; private set; }
-    public bool IsListed { get; private init; }
+    public bool IsListed { get; private set; }
+    public int? HoldingAssetId { get; private set; }
+    public void AssignHoldingAsset(int holdingAssetId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
+            holdingAssetId);
+
+        if (HoldingAssetId.HasValue &&
+            HoldingAssetId.Value != holdingAssetId)
+        {
+            throw new InvalidOperationException(
+                "Portfolio company alias is already assigned " +
+                "to another holding asset.");
+        }
+
+        HoldingAssetId = holdingAssetId;
+    }
 }

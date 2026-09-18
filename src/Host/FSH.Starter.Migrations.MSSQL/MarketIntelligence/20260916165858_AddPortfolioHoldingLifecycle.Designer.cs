@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    partial class MarketIntelligenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916165858_AddPortfolioHoldingLifecycle")]
+    partial class AddPortfolioHoldingLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -379,40 +382,6 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .IsUnique();
 
                     b.ToTable("Disclosures", "marketintelligence");
-                });
-
-            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.ExternalSourceSetting", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Key")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Value")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Source", "Key")
-                        .IsUnique();
-
-                    b.ToTable("ExternalSourceSettings", "marketintelligence");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.Industry", b =>
@@ -1025,54 +994,6 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         {
                             t.HasCheckConstraint("CK_PortfolioHoldingAssets_CompanyId", "[UnlistedCompanyId] IS NOT NULL OR [ListedCompanyId] IS NOT NULL");
                         });
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.TsetmcInstrument", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("InsCode")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("Isin")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<DateTimeOffset>("LastSeenAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("Symbol")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("YVal")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InsCode")
-                        .IsUnique();
-
-                    b.HasIndex("Isin");
-
-                    b.HasIndex("Symbol");
-
-                    b.ToTable("TsetmcInstruments", "dbo");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CompanyIndustry", b =>

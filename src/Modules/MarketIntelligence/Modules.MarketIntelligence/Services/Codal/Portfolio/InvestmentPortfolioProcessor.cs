@@ -13,7 +13,8 @@ namespace FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 public sealed class InvestmentPortfolioProcessor(
     InvestmentPortfolioReader reader,
     MarketIntelligenceDbContext dbContext,
-    ILogger<InvestmentPortfolioProcessor> logger)
+    ILogger<InvestmentPortfolioProcessor> logger,
+    IPortfolioChildCompanyResolver childCompanyResolver)
     : ICodalDisclosureProcessor
 {
     public bool CanProcess(Disclosure disclosure)
@@ -41,26 +42,7 @@ public sealed class InvestmentPortfolioProcessor(
             throw new InvalidOperationException(
                 $"Disclosure {disclosure.TracingNo} has no symbol.");
         }
-        var aliasLookup = await dbContext.PortfolioCompanyAliases
-    .Where(x => x.IsActive)
-    .GroupBy(x => new
-    {
-        x.FSortName,
-        x.IsListed
-    })
-    .Select(x => new
-    {
-        x.Key.FSortName,
-        x.Key.IsListed,
-        CompanyIds = x
-            .Select(y => y.CompanyId)
-            .Distinct()
-            .ToList()
-    })
-    .ToDictionaryAsync(
-        x => (x.FSortName, x.IsListed),
-        x => x.CompanyIds,
-        cancellationToken);
+        
 
         string parentFSortSymbol = FSort.Normalize(disclosure.Symbol);
 
@@ -243,59 +225,17 @@ public sealed class InvestmentPortfolioProcessor(
 
             foreach (InvestmentPortfolioPositionData position in positions)
             {
-                string fSortName = FSort.Normalize(position.CompanyName);
+                PortfolioChildCompanyResolution resolution =
+    await childCompanyResolver
+        .ResolveAsync(
+            position.CompanyName,
+            position.IsListed,
+            cancellationToken)
+        .ConfigureAwait(false);
 
-                int? childCompanyId = null;
-                bool isListed = position.IsListed;
-
-                bool hasListedMatch = aliasLookup.ContainsKey((fSortName, true));
-
-                bool hasUnlistedMatch = aliasLookup.ContainsKey((fSortName, false));
-
-                if (hasListedMatch != hasUnlistedMatch)
-                {
-                    bool resolvedIsListed = hasListedMatch;
-
-                    if (aliasLookup.TryGetValue(
-                            (fSortName, resolvedIsListed),
-                            out List<int>? companyIds) &&
-                        companyIds.Count == 1)
-                    {
-                        childCompanyId = companyIds[0];
-
-                        isListed = resolvedIsListed;
-                    }
-                }
-                entities.Add(
-                    new InvestmentPortfolioPosition(
-                        parentCompanyId: parentCompanyId.Value,
-                        childCompanyId: childCompanyId,
-                        rawCompanyName: position.CompanyName,
-                        fSortName: fSortName,
-                        periodEndDate: periodEndDate,
-                        sourceType: sourceType,
-                        auditStatus: auditStatus,
-                        isListed: isListed,
-                        rowSequence: position.RowSequence,
-                        capital: ParseNullableDecimal(position.Capital),
-                        nominalValue: ParseNullableDecimal(position.NominalValue),
-                        beginningQuantity: ParseNullableDecimal(position.BeginningQuantity),
-                        beginningCost: ParseNullableDecimal(position.BeginningCost),
-                        beginningMarketValue: ParseNullableDecimal(position.BeginningMarketValue),
-                        changeQuantity: ParseNullableDecimal(position.ChangeQuantity),
-                        changeCost: ParseNullableDecimal(position.ChangeCost),
-                        changeMarketValue: ParseNullableDecimal(position.ChangeMarketValue),
-                        ownershipPercent: ParseNullableDecimal(position.OwnershipPercent),
-                        endingQuantity: ParseNullableDecimal(position.EndingQuantity),
-                        endingCost: ParseNullableDecimal(position.EndingCost),
-                        endingMarketValue: ParseNullableDecimal(position.EndingMarketValue),
-                        endingCostPerShare: ParseNullableDecimal(position.EndingCostPerShare),
-                        endingMarketPrice: ParseNullableDecimal(position.EndingMarketPrice),
-                        increaseDecrease: ParseNullableDecimal(position.IncreaseDecrease),
-                        notes: position.Notes,
-                        disclosureId: disclosure.Id,
-                        tracingNo: disclosure.TracingNo,
-                        publishDateTime: disclosure.PublishDateTime));
+                string fSortName = resolution.FSortName;
+                int? childCompanyId = resolution.CompanyId;
+                bool isListed = resolution.IsListed;
             }
         }
 
@@ -547,31 +487,7 @@ public sealed class InvestmentPortfolioProcessor(
         return result;
     }
 
-    private static decimal? ParseNullableDecimal(
-        string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        string normalized =
-            NormalizeNumeric(value);
-
-        if (!decimal.TryParse(
-                normalized,
-                NumberStyles.Number |
-                NumberStyles.AllowLeadingSign |
-                NumberStyles.AllowDecimalPoint,
-                CultureInfo.InvariantCulture,
-                out decimal result))
-        {
-            throw new FormatException(
-                $"Invalid portfolio numeric value '{value}'.");
-        }
-
-        return result;
-    }
+    
 
     private static string NormalizeNumeric(
         string value)

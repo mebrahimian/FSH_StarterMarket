@@ -1,27 +1,36 @@
-﻿using System.Globalization;
-using System.Net.Http.Headers;
-using System.Text.Json;
-using FSH.Modules.MarketIntelligence.Data;
+﻿using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Codal.Contracts;
+using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Modules.MarketIntelligence.Domain;
+using SendGrid.Helpers.Mail;
+using System.Globalization;
+using System.IO.Compression;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class CodalCompanyReferenceSyncService(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
-    ILogger<CodalCompanyReferenceSyncService> logger)
+    ILogger<CodalCompanyReferenceSyncService> logger,
+    IOptions<TsetmcOptions> tsetmcOptions)
 {
-  //  private static readonly Uri IndustriesUrl = new("https://search.codal.ir/api/search/v1/IndustryGroup");
+    private readonly TsetmcOptions _tsetmcOptions = tsetmcOptions.Value;
+    //  private static readonly Uri IndustriesUrl = new("https://search.codal.ir/api/search/v1/IndustryGroup");
     private static readonly Uri CompaniesUrl = new("https://search.codal.ir/api/search/v1/companies");
 
     public async Task SyncAsync(
         CancellationToken cancellationToken)
     {
         await RefreshIndustriesAsync(cancellationToken).ConfigureAwait(false); // Update Industrie                                                                   
-       
+        await RefreshInstrumentTypesAsync(cancellationToken).ConfigureAwait(false); // Update YVal                                                                   
         using var request =
             new HttpRequestMessage(
                 HttpMethod.Get,
@@ -426,4 +435,134 @@ public sealed class CodalCompanyReferenceSyncService(
                 updated);
         }
     }
+    private async Task RefreshInstrumentTypesAsync(
+    CancellationToken cancellationToken)
+    {
+        var marketWatchUri =
+            new Uri(
+                _tsetmcOptions.MarketWatchUrl,
+                UriKind.Absolute);
+
+        byte[] bytes = await httpClient
+    .GetByteArrayAsync(
+        marketWatchUri,
+        cancellationToken)
+    .ConfigureAwait(false);
+
+        await using var compressedStream =
+            new MemoryStream(bytes);
+
+        await using var gzipStream =
+            new GZipStream(
+                compressedStream,
+                CompressionMode.Decompress);
+
+        using var reader =
+            new StreamReader(
+                gzipStream,
+                Encoding.UTF8);
+
+        string content =
+            await reader
+                .ReadToEndAsync(cancellationToken)
+                .ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            throw new InvalidOperationException(
+                "TSETMC MarketWatch returned no data.");
+        }
+
+        var instruments = ParseMarketWatch(content);
+        await UpsertTsetmcInstrumentsAsync(instruments, cancellationToken).ConfigureAwait(false);
+
+
+        if (logger.IsEnabled(LogLevel.Information))
+        {
+            logger.LogInformation(
+                "TSETMC instruments parsed: {Count}",
+                instruments.Count);
+        }
+    }
+    private async Task UpsertTsetmcInstrumentsAsync(
+    IReadOnlyCollection<TsetmcInstrumentDto> instruments,
+    CancellationToken cancellationToken)
+    {
+        var existing = await dbContext.TsetmcInstruments
+            .ToDictionaryAsync(
+                x => x.InsCode,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+
+        foreach (TsetmcInstrumentDto item in instruments)
+        {
+            if (existing.TryGetValue(
+                item.InsCode,
+                out TsetmcInstrument? entity))
+            {
+                entity.Isin = item.Isin;
+                entity.Symbol = item.Symbol;
+                entity.Name = item.Name;
+                entity.YVal = item.YVal;
+                entity.LastSeenAt = now;
+
+                continue;
+            }
+
+            entity = new TsetmcInstrument
+            {
+                InsCode = item.InsCode,
+                Isin = item.Isin,
+                Symbol = item.Symbol,
+                Name = item.Name,
+                YVal = item.YVal,
+                LastSeenAt = now
+            };
+
+            dbContext.TsetmcInstruments.Add(entity);
+
+            existing.Add(
+                entity.InsCode,
+                entity);
+        }
+
+        await dbContext
+            .SaveChangesAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+    private static List<TsetmcInstrumentDto> ParseMarketWatch(string content)
+    {
+        var result = new List<TsetmcInstrumentDto>();
+
+        string[] rows = content.Split(
+            ';',
+            StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (string row in rows)
+        {
+            string[] parts = row.Split(',');
+
+            if (parts.Length < 23)
+            {
+                continue;
+            }
+
+            result.Add(
+                new TsetmcInstrumentDto(
+                    InsCode: parts[0].Trim(),
+                    Isin: parts[1].Trim(),
+                    Symbol: parts[2].Trim(),
+                    Name: parts[3].Trim(),
+                    YVal: parts[22].Trim()));
+        }
+
+        return result;
+    }
+    private sealed record TsetmcInstrumentDto(
+    string InsCode,
+    string Isin,
+    string Symbol,
+    string Name,
+    string YVal);
 }

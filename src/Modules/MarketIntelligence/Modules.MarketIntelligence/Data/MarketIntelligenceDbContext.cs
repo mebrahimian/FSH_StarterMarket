@@ -4,10 +4,11 @@ using FSH.Framework.Shared.Multitenancy;
 using FSH.Framework.Shared.Persistence;
 using FSH.Modules.MarketIntelligence.Data.Views;
 using FSH.Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain.Insights;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using FSH.Modules.MarketIntelligence.Domain.Insights;
+using Modules.MarketIntelligence.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Data;
 
@@ -32,6 +33,11 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
     public DbSet<CodalCompanyImport> CodalCompanyImports => Set<CodalCompanyImport>();
     public DbSet<Industry> Industries => Set<Industry>();
+    public DbSet<PortfolioHoldingAsset> PortfolioHoldingAssets => Set<PortfolioHoldingAsset>();
+    public DbSet<InvestmentPortfolioHoldingPeriod> InvestmentPortfolioHoldingPeriods => Set<InvestmentPortfolioHoldingPeriod>();
+    public DbSet<ExternalSourceSetting> ExternalSourceSettings => Set<ExternalSourceSetting>();
+    public DbSet<TsetmcInstrument> TsetmcInstruments
+       => Set<TsetmcInstrument>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

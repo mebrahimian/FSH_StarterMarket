@@ -19,10 +19,11 @@ public sealed class GetUnmatchedPortfolioCompaniesQueryHandler(
     "مشارکتهایمدنی)خارجازبورس(",
     "اوراقمشارکتپذیرفتهشدهدربورس",
     "اوراقمشارکت(پذیرفتهشدهدربورس)",
+    "مشارکتهایمدنی)پذیرفتهشدهدربورس(",
     "(حقتقدم)",
+    "اوراقمشارکت)پذیرفتهشدهدربورس(",
     "دراوراقبهاداربادرآمدثابتکاریزما",
     "سایرسهامدرجشدهدربازارهایپایهفرابورس"];
-
     public async ValueTask<IReadOnlyList<UnmatchedPortfolioCompanyDto>> Handle(
         GetUnmatchedPortfolioCompaniesQuery query,
         CancellationToken cancellationToken)

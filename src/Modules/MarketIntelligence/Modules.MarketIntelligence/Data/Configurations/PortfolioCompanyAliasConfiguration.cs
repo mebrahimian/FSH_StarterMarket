@@ -28,6 +28,12 @@ public sealed class PortfolioCompanyAliasConfiguration :
 
         builder.Property(x => x.IsActive).IsRequired();
         builder.Property(x => x.IsListed).HasDefaultValue(true).IsRequired();
+        builder.HasIndex(x => x.HoldingAssetId);
+
+        builder.HasOne<PortfolioHoldingAsset>()
+            .WithMany()
+            .HasForeignKey(x => x.HoldingAssetId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(x => x.CompanyId);
         builder.HasIndex(x => x.FSortSymbol);
