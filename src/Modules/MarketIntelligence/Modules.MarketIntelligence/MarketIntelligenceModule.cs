@@ -523,15 +523,16 @@ namespace FSH.Modules.MarketIntelligence
             {
                 jobManager.RemoveIfExists("market-intelligence-codal-incremental-morning");
                 jobManager.RemoveIfExists("market-intelligence-codal-incremental-afternoon");
-
-                jobManager.AddOrUpdate(
-                    "market-intelligence-codal-incremental",
-                    Job.FromExpression<CodalBackgroundJob>(job => job.RunScheduledIncrementalAsync(CancellationToken.None)),
-                    "*/5 * * * *",
-                    new RecurringJobOptions
-                    {
-                        TimeZone = TimeZoneInfo.Utc,
-                    });
+                
+               // jobManager.AddOrUpdate(
+               //     "market-intelligence-codal-incremental",
+               //     Job.FromExpression<CodalBackgroundJob>(job => job.RunScheduledIncrementalAsync(CancellationToken.None)),
+               //     "*/5 * * * *",
+               //     new RecurringJobOptions
+               //     {
+               //         TimeZone = TimeZoneInfo.Utc,
+               //     });
+                
             }
 
         }

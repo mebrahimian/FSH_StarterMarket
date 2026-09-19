@@ -131,6 +131,7 @@
     <File Path="../docs/logo/sadaf-mark-primary.svg" />
   </Folder>
   <Folder Name="/_SystemDocument/features/">
+    <File Path="../docs/features/CheckListRefreshCache.png" />
     <File Path="../docs/features/portfolio.md" />
     <File Path="../docs/features/PortfolioStructureCodal.md" />
   </Folder>

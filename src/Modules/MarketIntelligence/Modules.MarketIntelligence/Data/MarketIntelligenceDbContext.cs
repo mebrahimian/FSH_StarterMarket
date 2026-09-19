@@ -36,8 +36,10 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<PortfolioHoldingAsset> PortfolioHoldingAssets => Set<PortfolioHoldingAsset>();
     public DbSet<InvestmentPortfolioHoldingPeriod> InvestmentPortfolioHoldingPeriods => Set<InvestmentPortfolioHoldingPeriod>();
     public DbSet<ExternalSourceSetting> ExternalSourceSettings => Set<ExternalSourceSetting>();
-    public DbSet<TsetmcInstrument> TsetmcInstruments
-       => Set<TsetmcInstrument>();
+    public DbSet<TsetmcInstrument> TsetmcInstruments => Set<TsetmcInstrument>();
+    public DbSet<DailyPrice> DailyPrices => Set<DailyPrice>();
+    public DbSet<BenchmarkAsset> BenchmarkAssets => Set<BenchmarkAsset>();
+    public DbSet<BenchmarkDailyPrice> BenchmarkDailyPrices => Set<BenchmarkDailyPrice>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

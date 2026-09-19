@@ -7,7 +7,7 @@ using System.Data.Common;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 
-internal sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext dbContext) : IPortfolioChildCompanyResolver
+public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext dbContext) : IPortfolioChildCompanyResolver
 {
     private Dictionary<string, List<CodalCompanyImport>>? _codalByName;
     private static readonly HashSet<string> ExcludedPortfolioNames =

@@ -221,21 +221,59 @@ public sealed class InvestmentPortfolioProcessor(
                 sheet.IsListed
                     ? MapListedRows(sheet.Rows)
                     : MapUnlistedRows(sheet.Rows);
-           
+
 
             foreach (InvestmentPortfolioPositionData position in positions)
             {
-                PortfolioChildCompanyResolution resolution =
-    await childCompanyResolver
-        .ResolveAsync(
-            position.CompanyName,
-            position.IsListed,
-            cancellationToken)
-        .ConfigureAwait(false);
+                try
+                {
+                    PortfolioChildCompanyResolution resolution =
+                        await childCompanyResolver
+                            .ResolveAsync(
+                                position.CompanyName,
+                                position.IsListed,
+                                cancellationToken)
+                            .ConfigureAwait(false);
 
-                string fSortName = resolution.FSortName;
-                int? childCompanyId = resolution.CompanyId;
-                bool isListed = resolution.IsListed;
+                    entities.Add(
+                        new InvestmentPortfolioPosition(
+                            parentCompanyId: parentCompanyId.Value,
+                            childCompanyId: resolution.CompanyId,
+                            rawCompanyName: position.CompanyName,
+                            fSortName: resolution.FSortName,
+                            periodEndDate: periodEndDate,
+                            sourceType: sourceType,
+                            auditStatus: auditStatus,
+                            isListed: resolution.IsListed,
+                            rowSequence: position.RowSequence,
+                            capital: ParseDecimal(position.Capital),
+                            nominalValue: ParseDecimal(position.NominalValue),
+                            beginningQuantity: ParseDecimal(position.BeginningQuantity),
+                            beginningCost: ParseDecimal(position.BeginningCost),
+                            beginningMarketValue: ParseDecimal(position.BeginningMarketValue),
+                            changeQuantity: ParseDecimal(position.ChangeQuantity),
+                            changeCost: ParseDecimal(position.ChangeCost),
+                            changeMarketValue: ParseDecimal(position.ChangeMarketValue),
+                            ownershipPercent: ParseDecimal(position.OwnershipPercent),
+                            endingQuantity: ParseDecimal(position.EndingQuantity),
+                            endingCost: ParseDecimal(position.EndingCost),
+                            endingMarketValue: ParseDecimal(position.EndingMarketValue),
+                            endingCostPerShare: ParseDecimal(position.EndingCostPerShare),
+                            endingMarketPrice: ParseDecimal(position.EndingMarketPrice),
+                            increaseDecrease: ParseDecimal(position.IncreaseDecrease),
+                            notes: position.Notes,
+                            disclosureId: disclosure.Id,
+                            tracingNo: disclosure.TracingNo,
+                            publishDateTime: disclosure.PublishDateTime));
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"ResolveAsync failed. " +
+                        $"CompanyName='{position.CompanyName}', " +
+                        $"IsListed={position.IsListed}",
+                        ex);
+                }
             }
         }
 
@@ -263,9 +301,18 @@ public sealed class InvestmentPortfolioProcessor(
             .AddRangeAsync(
                 entities,
                 cancellationToken);
+        IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio =
+            await GetPreviousPortfolioAsync(parentCompanyId.Value,
+                                            periodEndDate, cancellationToken);
 
-        await dbContext.SaveChangesAsync(
+        await ApplyHoldingEntryExitAsync(
+            disclosure.Symbol,
+            previousPortfolio,
+            entities,
+            periodEndDate,
             cancellationToken);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         if (logger.IsEnabled(LogLevel.Information))
         {
@@ -536,6 +583,259 @@ public sealed class InvestmentPortfolioProcessor(
             ParseDecimal(position.EndingMarketPrice) == 0m &&
             ParseDecimal(position.IncreaseDecrease) == 0m;
     }
+    private async Task<IReadOnlyList<InvestmentPortfolioPosition>>
+        GetPreviousPortfolioAsync(
+        int parentCompanyId,
+        string currentPeriodEndDate,
+        CancellationToken cancellationToken)
+    {
+        List<string> periods =
+            await dbContext.InvestmentPortfolioPositions
+                .AsNoTracking()
+                .Where(x =>
+                    x.ParentCompanyId == parentCompanyId &&
+                    x.SourceType ==
+                        PortfolioSourceType.MonthlyActivity)
+                .Select(x => x.PeriodEndDate)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+        string? previousPeriodEndDate =
+            periods
+                .Where(x =>
+                    string.CompareOrdinal(
+                        x,
+                        currentPeriodEndDate) < 0)
+                .OrderByDescending(
+                    x => x,
+                    StringComparer.Ordinal)
+                .FirstOrDefault();
+
+        if (previousPeriodEndDate is null)
+        {
+            return [];
+        }
+
+        return await dbContext.InvestmentPortfolioPositions
+            .AsNoTracking()
+            .Where(x =>
+                x.ParentCompanyId == parentCompanyId &&
+                x.SourceType ==
+                    PortfolioSourceType.MonthlyActivity &&
+                x.PeriodEndDate ==
+                    previousPeriodEndDate)
+            .ToListAsync(cancellationToken);
+    }
+    private async Task ApplyHoldingEntryExitAsync(
+    string parentSymbol,
+    IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio,
+    IReadOnlyList<InvestmentPortfolioPosition> currentPortfolio,
+    string currentPeriodEndDate,
+    CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(parentSymbol);
+        ArgumentException.ThrowIfNullOrWhiteSpace(currentPeriodEndDate);
+
+        int[] listedCompanyIds =
+            previousPortfolio
+                .Concat(currentPortfolio)
+                .Where(x =>
+                    x.IsListed &&
+                    x.ChildCompanyId.HasValue)
+                .Select(x => x.ChildCompanyId!.Value)
+                .Distinct()
+                .ToArray();
+
+        int[] unlistedCompanyIds =
+            previousPortfolio
+                .Concat(currentPortfolio)
+                .Where(x =>
+                    !x.IsListed &&
+                    x.ChildCompanyId.HasValue)
+                .Select(x => x.ChildCompanyId!.Value)
+                .Distinct()
+                .ToArray();
+
+        List<PortfolioHoldingAsset> holdingAssets =
+            await dbContext.PortfolioHoldingAssets
+                .AsNoTracking()
+                .Where(x =>
+                    (x.ListedCompanyId.HasValue &&
+                     listedCompanyIds.Contains(x.ListedCompanyId.Value)) ||
+                    (x.UnlistedCompanyId.HasValue &&
+                     unlistedCompanyIds.Contains(x.UnlistedCompanyId.Value)))
+                .ToListAsync(cancellationToken);
+
+        Dictionary<int, int> listedAssetLookup = [];
+        Dictionary<int, int> unlistedAssetLookup = [];
+
+        foreach (PortfolioHoldingAsset asset in holdingAssets)
+        {
+            if (asset.ListedCompanyId.HasValue)
+            {
+                listedAssetLookup.Add(
+                    asset.ListedCompanyId.Value,
+                    asset.Id);
+            }
+
+            if (asset.UnlistedCompanyId.HasValue)
+            {
+                unlistedAssetLookup.Add(
+                    asset.UnlistedCompanyId.Value,
+                    asset.Id);
+            }
+        }
+
+        int GetHoldingAssetId(
+            InvestmentPortfolioPosition position)
+        {
+            if (!position.ChildCompanyId.HasValue)
+            {
+                return 0;
+            }
+
+            int childCompanyId =
+                position.ChildCompanyId.Value;
+
+            bool found;
+
+            int holdingAssetId;
+
+            if (position.IsListed)
+            {
+                found = listedAssetLookup.TryGetValue(
+                    childCompanyId,
+                    out holdingAssetId);
+            }
+            else
+            {
+                found = unlistedAssetLookup.TryGetValue(
+                    childCompanyId,
+                    out holdingAssetId);
+            }
+
+            if (!found)
+            {
+                throw new InvalidOperationException(
+                    $"HoldingAsset not found. " +
+                    $"ChildCompanyId={childCompanyId}, " +
+                    $"IsListed={position.IsListed}");
+            }
+
+            return holdingAssetId;
+        }
+
+        Dictionary<int, bool> previousHoldings =
+            previousPortfolio
+                .Where(x => x.ChildCompanyId.HasValue)
+                .Select(GetHoldingAssetId)
+                .Where(x => x > 0)
+                .Distinct()
+                .ToDictionary(
+                    x => x,
+                    _ => true);
+
+        HashSet<int> enteredHoldingAssetIds = [];
+
+        foreach (InvestmentPortfolioPosition current
+                 in currentPortfolio)
+        {
+            if (!current.ChildCompanyId.HasValue)
+            {
+                continue;
+            }
+
+            int holdingAssetId =
+                GetHoldingAssetId(current);
+
+            if (previousHoldings.ContainsKey(
+                    holdingAssetId))
+            {
+                previousHoldings[holdingAssetId] =
+                    false;
+
+                continue;
+            }
+
+            enteredHoldingAssetIds.Add(
+                holdingAssetId);
+        }
+
+        string normalizedParentSymbol =
+            parentSymbol.Trim();
+
+        List<InvestmentPortfolioHoldingPeriod>
+            activeHoldingPeriods =
+                await dbContext
+                    .InvestmentPortfolioHoldingPeriods
+                    .Where(x =>
+                        x.ParentSymbol ==
+                            normalizedParentSymbol &&
+                        x.IsActive)
+                    .ToListAsync(cancellationToken);
+
+        // Entry
+        foreach (int holdingAssetId
+                 in enteredHoldingAssetIds)
+        {
+            bool alreadyActive =
+                activeHoldingPeriods.Any(x =>
+                    x.HoldingAssetId ==
+                        holdingAssetId);
+
+            if (alreadyActive)
+            {
+                continue;
+            }
+
+            var holdingPeriod =
+                new InvestmentPortfolioHoldingPeriod(
+                    normalizedParentSymbol,
+                    holdingAssetId,
+                    currentPeriodEndDate);
+
+            dbContext
+                .InvestmentPortfolioHoldingPeriods
+                .Add(holdingPeriod);
+
+            activeHoldingPeriods.Add(
+                holdingPeriod);
+        }
+
+        // Exit
+        foreach (KeyValuePair<int, bool> previous
+                 in previousHoldings)
+        {
+            if (!previous.Value)
+            {
+                continue;
+            }
+
+            InvestmentPortfolioHoldingPeriod?
+                activePeriod =
+                    activeHoldingPeriods
+                        .FirstOrDefault(x =>
+                            x.HoldingAssetId ==
+                                previous.Key);
+
+            if (activePeriod is null)
+            {
+                logger.LogWarning(
+                    "Active HoldingPeriod not found for Exit. " +
+                    "ParentSymbol: {ParentSymbol}, " +
+                    "HoldingAssetId: {HoldingAssetId}, " +
+                    "PeriodEndDate: {PeriodEndDate}",
+                    normalizedParentSymbol,
+                    previous.Key,
+                    currentPeriodEndDate);
+
+                continue;
+            }
+
+            activePeriod.Close(
+                currentPeriodEndDate);
+        }
+    }
 }
 
 internal sealed record InvestmentPortfolioPositionData(
@@ -558,3 +858,4 @@ internal sealed record InvestmentPortfolioPositionData(
     string? EndingMarketPrice,
     string? IncreaseDecrease,
     string? Notes);
+

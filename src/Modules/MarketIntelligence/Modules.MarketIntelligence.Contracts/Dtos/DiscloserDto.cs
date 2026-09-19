@@ -30,4 +30,5 @@ public sealed record DisclosureDto(
     int? ReportingTypeCode,
     string SalesParseStatus,
     DateTime? SalesParsedAt,
-    bool HasPortfolio);
+    bool HasPortfolio,
+    bool HasSales);

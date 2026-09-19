@@ -666,7 +666,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             }
                         
             IQueryable<Disclosure> query = _dbContext.Disclosures
-                 .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending);
+                 .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending && x.TracingNo == 1575452);
             if (!firstBatch)
             {
                 DateTime cursorDate = lastPublishDate;
@@ -814,13 +814,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .FirstOrDefaultAsync(cancellationToken);
 
         // فعلاً برای BackFill یک سال قبل
-        lastPublishDateStr = PersianDateHelper.ToPersian(DateTime.Now.AddYears(-5));
-
-        var lastPublishDate = PersianDateHelper.ToGregorian(lastPublishDateStr);
+        
 
         var definitions = CodalDefinitionsProvider.Load();
 
         int pageNumber = startPage;
+        int totalPagesInChunk = startPage - endPage + 1;
         var stop = false;
 
         while (!stop)
@@ -838,13 +837,29 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 },                           // 1000008:کشاورزی          
                 cancellationToken);          // 1000009:تامین سرمایه         
 
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                int processedPages =
+                    startPage - pageNumber + 1;
 
+                double progressPercent = processedPages * 100d / totalPagesInChunk;
+
+                _logger.LogInformation(
+                    "Backfill progress: {Progress:F1}% | Page {CurrentPage}/{TotalPages} | Letters: {LettersCount} | Chunk: {StartPage}->{EndPage}",
+                    progressPercent,
+                    pageNumber,
+                    result.TotalPages,
+                    result.Letters.Count,
+                    startPage,
+                    endPage);
+            }
+            /*
             Console.WriteLine(
                 $"Reading page {pageNumber}/{result.TotalPages}");
 
             Console.WriteLine(
                 $"Letters count: {result.Letters.Count}");
-
+            */
 
             // TracingNo های این صفحه
             var tracingNos = result.Letters
@@ -887,13 +902,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
                 currentPubDate = pub;
-
-
-                // هنوز به اطلاعات قدیمی نرسیدیم
-                if (pub <= lastPublishDate)
-                {
-                    continue;
-                }
+                                            
                 var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
                 if (rt is null)
                 {
@@ -940,12 +949,45 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
                 foreach (ICodalDisclosureProcessor processor in processors)
                 {
-                    await processor.ProcessAsync(
+                    try
+                    {
+                        await processor.ProcessAsync(
+                            disclosure,
+                            cancellationToken);
+                    }
+                    
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Processor HTTP error. TracingNo: {TracingNo}, Processor: {Processor}",
+                            disclosure.TracingNo,
+                            processor.GetType().Name);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Processor error. TracingNo: {TracingNo}, Processor: {Processor}",
+                            disclosure.TracingNo,
+                            processor.GetType().Name);
+                    }
+                }
+
+                try
+                {
+                    await _insightPipeline.ProcessAsync(
                         disclosure,
                         cancellationToken);
                 }
-
-                await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
+                
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Insight pipeline failed. TracingNo: {TracingNo}",
+                        disclosure.TracingNo);
+                }
             }
             // ذخیره یکجای صفحه
 

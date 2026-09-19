@@ -1,4 +1,5 @@
 using FSH.Framework.Shared.Persistence;
+using FSH.Framework.Shared.Utilities;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Contracts.v1.Disclosures;
 using FSH.Modules.MarketIntelligence.Data;
@@ -87,11 +88,6 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
                 disclosure.SalesParseStatus == parseStatus);
         }
 
-        q = ApplySort(
-            q,
-            query.SortBy,
-            query.SortDir);
-
         q = ApplySort(q, query.SortBy, query.SortDir);
 
         long total = await q.LongCountAsync(cancellationToken).ConfigureAwait(false);
@@ -111,6 +107,53 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
                 .Distinct()
                 .ToHashSetAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+        string[] symbols =  disclosures
+               .Select(x => x.Symbol)
+               .Distinct()
+               .ToArray();
+
+        string[] dates = disclosures
+               .Select(x => PersianDateTextParser.TryExtract(x.Title))
+               .Where(x =>  !string.IsNullOrWhiteSpace(x))
+               .Select(x => x!)
+               .Distinct()
+               .ToArray();
+
+        var salesSummaries =
+            await dbContext.MonthlyActivitySummaries
+                .AsNoTracking()
+                .Where(x =>
+                    symbols.Contains(x.Symbol) &&
+                    (
+                        dates.Contains(x.PeriodEndDate) ||
+                        (x.YearEndDate != null &&
+                         dates.Contains(x.YearEndDate))
+                    ))
+                .Select(x => new
+                {
+                    x.Symbol,
+                    x.PeriodEndDate,
+                    x.YearEndDate
+                })
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+        bool HasSales(Disclosure disclosure)
+        {
+            string? date =
+                PersianDateTextParser.TryExtract(
+                    disclosure.Title);
+
+            return
+                !string.IsNullOrWhiteSpace(date) &&
+                salesSummaries.Any(x =>
+                    x.Symbol == disclosure.Symbol &&
+                    (
+                        x.PeriodEndDate == date ||
+                        x.YearEndDate == date
+                    ));
+        }
 
         return new PagedResponse<DisclosureDto>
         {
@@ -144,7 +187,8 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
                 ReportingTypeCode: disclosure.ReportingTypeCode,
                 SalesParseStatus: disclosure.SalesParseStatus.ToString(),
                 SalesParsedAt: disclosure.SalesParsedAt,
-                HasPortfolio: portfolioDisclosureIds.Contains(disclosure.Id)))
+                HasPortfolio: portfolioDisclosureIds.Contains(disclosure.Id),
+                HasSales: HasSales(disclosure)))
             .ToList(),
             PageNumber = page,
             PageSize = size,

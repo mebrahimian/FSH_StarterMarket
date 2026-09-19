@@ -119,6 +119,7 @@ export type DisclosureDto = {
   salesParseStatus: DisclosureParseStatus;
   salesParsedAt?: string | null;
   hasPortfolio: boolean;
+  hasSales: boolean;
 };
 export type CodalIncrementalSchedule = {
     startHour: number;

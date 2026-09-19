@@ -702,7 +702,7 @@ function DesktopRow({
             
             <div className="flex items-center justify-end gap-1">
                 <div className="grid size-8 place-items-center">
-                    {hasFiscalDate(disclosure.title) && (
+                    {disclosure.hasSales && (
                         <button
                             type="button"
                             onClick={() =>
@@ -809,7 +809,7 @@ function MobileCard({
                 <span>LET {disclosure.let ?? "—"}</span>
 
                 <FormatBadges disclosure={disclosure} />
-                {hasFiscalDate(disclosure.title) && (
+                {disclosure.hasSales && (
                     <button
                         type="button"
                         onClick={() =>
@@ -962,28 +962,29 @@ function LoadingList() {
         </div>
     );
 }
-
-function hasFiscalDate(
-    title: string | null | undefined,
-): boolean {
-    return /[0-9۰-۹]{4}\/[0-9۰-۹]{2}\/[0-9۰-۹]{2}/
-        .test(title ?? "");
-}
 function toOptionalNumber(
     value: string,
 ): number | null {
     const trimmed = value.trim();
-
+    
     if (!trimmed) {
         return null;
     }
-
+    
     const parsed = Number(trimmed);
 
     return Number.isFinite(parsed)
         ? parsed
         : null;
 }
+
+
+
+
+
+
+
+
 
 function toCodalUrl(
     url: string,
