@@ -27,6 +27,7 @@ using FSH.Modules.MarketIntelligence.Services.Insights.Jobs;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
 using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
+
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -93,6 +94,8 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddTransient<CodalBackgroundJob>();
             builder.Services.AddTransient<SalesPerformanceSnapshotRebuildJob>();
             builder.Services.AddScoped<CodalCompanyReferenceSyncService>();
+            builder.Services.AddScoped<TsetmcPriceReader>();
+            builder.Services.AddScoped<PriceHistoryCollectorService>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
         {
@@ -297,6 +300,18 @@ namespace FSH.Modules.MarketIntelligence
                 .RequirePermission(MarketIntelligencePermissions
                                   .CodalOperations
                                   .Execute);
+            group.MapPost("/tsetmc/prices/backfill/{instrumentId:int}",
+                  async Task<IResult> (int instrumentId,
+                        PriceHistoryCollectorService collectorService,
+                        CancellationToken cancellationToken) =>
+            {
+                    int inserted = await collectorService
+                       .BackfillInstrumentAsync(instrumentId, cancellationToken)
+                       .ConfigureAwait(false);
+
+                    return Results.Ok(new
+                         { instrumentId, inserted });
+            });
             ////////////////////
             ///// TO DO: Remove after CompanyId + Insight pipeline is fully integrated.
             ///////////////////////////////////

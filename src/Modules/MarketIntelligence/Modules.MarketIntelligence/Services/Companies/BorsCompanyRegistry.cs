@@ -45,8 +45,15 @@ public sealed class BorsCompanyRegistry(
 
         if (matches.Count > 1)
         {
+            string duplicateDetails =
+                string.Join(
+                    " | ",
+                    matches.Select(x =>
+                        $"CompanyId={x.CompanyId}, Symbol='{x.Symbol}', Name='{x.CompanyName}'"));
+
             throw new InvalidOperationException(
-                $"More than one company was found for symbol '{symbol}'.");
+                $"More than one company was found for symbol '{symbol}'. " +
+                $"Normalized='{normalizedSymbol}'. Matches: {duplicateDetails}");
         }
 
         var company =

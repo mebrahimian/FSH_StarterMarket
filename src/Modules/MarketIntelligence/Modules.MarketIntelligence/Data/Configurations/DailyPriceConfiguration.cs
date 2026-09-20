@@ -45,6 +45,51 @@ public sealed class DailyPriceConfiguration
 
         builder.Property(x => x.Value)
             .IsRequired();
+        builder.Property(x => x.BuyIndividualVolume)
+            .IsRequired(false);
+
+        builder.Property(x => x.BuyIndividualValue)
+            .IsRequired(false);
+
+        builder.Property(x => x.BuyIndividualCount)
+            .IsRequired(false);
+
+        builder.Property(x => x.SellIndividualVolume)
+            .IsRequired(false);
+
+        builder.Property(x => x.SellIndividualValue)
+            .IsRequired(false);
+
+        builder.Property(x => x.SellIndividualCount)
+            .IsRequired(false);
+
+        builder.Property(x => x.BuyInstitutionalVolume)
+            .IsRequired(false);
+
+        builder.Property(x => x.BuyInstitutionalValue)
+            .IsRequired(false);
+
+        builder.Property(x => x.BuyInstitutionalCount)
+            .IsRequired(false);
+
+        builder.Property(x => x.SellInstitutionalVolume)
+            .IsRequired(false);
+
+        builder.Property(x => x.SellInstitutionalValue)
+            .IsRequired(false);
+
+        builder.Property(x => x.SellInstitutionalCount)
+            .IsRequired(false);
+
+        builder.Property(x => x.RealMoneyFlow)
+            .IsRequired(false);
+
+        builder.Property(x => x.IndividualBuyerPower)
+            .HasPrecision(18, 6)
+            .IsRequired(false);
+
+        builder.Property(x => x.InstitutionalNetFlow)
+            .IsRequired(false);
 
         builder.HasIndex(x => new
         {

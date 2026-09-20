@@ -40,6 +40,8 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<DailyPrice> DailyPrices => Set<DailyPrice>();
     public DbSet<BenchmarkAsset> BenchmarkAssets => Set<BenchmarkAsset>();
     public DbSet<BenchmarkDailyPrice> BenchmarkDailyPrices => Set<BenchmarkDailyPrice>();
+    public DbSet<InstrumentShareChange> InstrumentShareChanges => Set<InstrumentShareChange>();
+    public DbSet<InstrumentValuationHistory> InstrumentValuationHistory => Set<InstrumentValuationHistory>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
