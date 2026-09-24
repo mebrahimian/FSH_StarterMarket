@@ -27,7 +27,7 @@ using FSH.Modules.MarketIntelligence.Services.Insights.Jobs;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
 using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
-
+using FSH.Modules.MarketIntelligence.Services.Tsetmc.Jobs;
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -92,6 +92,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
             builder.Services.AddScoped<SalesRecordBrokenDetector>();
             builder.Services.AddTransient<CodalBackgroundJob>();
+            builder.Services.AddTransient<TsetmcBackgroundJob>();
             builder.Services.AddTransient<SalesPerformanceSnapshotRebuildJob>();
             builder.Services.AddScoped<CodalCompanyReferenceSyncService>();
             builder.Services.AddScoped<TsetmcPriceReader>();
@@ -305,16 +306,35 @@ namespace FSH.Modules.MarketIntelligence
                         PriceHistoryCollectorService collectorService,
                         CancellationToken cancellationToken) =>
             {
-                    int inserted = await collectorService
-                       .BackfillInstrumentAsync(instrumentId, cancellationToken)
-                       .ConfigureAwait(false);
+                var result = await collectorService
+                      .BackfillInstrumentAsync(instrumentId, cancellationToken)
+                      .ConfigureAwait(false);
 
-                    return Results.Ok(new
+                int inserted = result.Inserted;
+
+                return Results.Ok(new
                          { instrumentId, inserted });
             });
+            group.MapPost(
+    "/tsetmc/incremental/test______________",
+    async (
+        PriceHistoryCollectorService collectorService,
+        CancellationToken cancellationToken) =>
+    {
+        int processed =
+            await collectorService
+                .RunIncrementalAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+        return Results.Ok(new
+        {
+            processed
+        });
+    });
             ////////////////////
             ///// TO DO: Remove after CompanyId + Insight pipeline is fully integrated.
             ///////////////////////////////////
+            
             group.MapGet("/insights/test-sales-record", async (
                   string symbol,
                   string periodEndDate,
@@ -536,18 +556,56 @@ namespace FSH.Modules.MarketIntelligence
 
             if (jobManager is not null)
             {
-                jobManager.RemoveIfExists("market-intelligence-codal-incremental-morning");
-                jobManager.RemoveIfExists("market-intelligence-codal-incremental-afternoon");
-                
-               // jobManager.AddOrUpdate(
-               //     "market-intelligence-codal-incremental",
-               //     Job.FromExpression<CodalBackgroundJob>(job => job.RunScheduledIncrementalAsync(CancellationToken.None)),
-               //     "*/5 * * * *",
-               //     new RecurringJobOptions
-               //     {
-               //         TimeZone = TimeZoneInfo.Utc,
-               //     });
-                
+                jobManager.AddOrUpdate(
+                    "market-intelligence-codal-incremental",
+                    Job.FromExpression<CodalBackgroundJob>(
+                        job => job.RunScheduledIncrementalAsync(
+                            CancellationToken.None)),
+                    "*/5 * * * *",
+                    new RecurringJobOptions
+                    {
+                        TimeZone = TimeZoneInfo.Utc,
+                    });
+
+                jobManager.AddOrUpdate(
+                    "market-intelligence-tsetmc-incremental-morning",
+                    Job.FromExpression<TsetmcBackgroundJob>(
+                        job => job.RunIncrementalAsync(
+                            CancellationToken.None)),
+                    "3,13,23,33,43,53 9-11 * * 0-3,6",
+                    new RecurringJobOptions
+                    {
+                        TimeZone =
+                            TimeZoneInfo.FindSystemTimeZoneById(
+                                "Iran Standard Time"),
+                    });
+
+                jobManager.AddOrUpdate(
+                    "market-intelligence-tsetmc-incremental-noon",
+                    Job.FromExpression<TsetmcBackgroundJob>(
+                        job => job.RunIncrementalAsync(
+                            CancellationToken.None)),
+                    "3,13,23 12 * * 0-3,6",
+                    new RecurringJobOptions
+                    {
+                        TimeZone =
+                            TimeZoneInfo.FindSystemTimeZoneById(
+                                "Iran Standard Time"),
+                    });
+
+                jobManager.AddOrUpdate(
+                    "market-intelligence-tsetmc-incremental-with-share-changes",
+                    Job.FromExpression<TsetmcBackgroundJob>(
+                        job => job.RunPriceIncrementalWithShareChangesAsync(
+                            CancellationToken.None)),
+                    "33 12 * * 0-3,6",
+                    new RecurringJobOptions
+                    {
+                        TimeZone =
+                            TimeZoneInfo.FindSystemTimeZoneById(
+                                "Iran Standard Time"),
+                    });
+                         
             }
 
         }

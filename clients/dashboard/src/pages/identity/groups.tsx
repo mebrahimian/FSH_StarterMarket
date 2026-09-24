@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   useMutation,
@@ -321,7 +321,7 @@ function CreateGroupDialog({ open, onClose }: { open: boolean; onClose: () => vo
     onError: (err) => toast.error("Create failed", { description: describe(err) }),
   });
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!name.trim()) return;
     mutation.mutate();

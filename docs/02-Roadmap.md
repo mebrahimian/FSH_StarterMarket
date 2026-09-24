@@ -452,3 +452,18 @@ The immediate priority is:
 
 6\. Persist processed data.
 
+تکمیل DailyPrices
+پاکسازی Duplicateهای InstrumentShareChanges و برگرداندن Unique Index
+افزودن incremental روزانه افزایش سرمایه
+BenchmarkAssets شامل دلار/طلا/کالاها + شاخص‌های TSETMC
+Aggregation ده‌ساله قیمت
+Performance benchmark دیتابیس
+Sales Coverage Audit و ترمیم ماه‌های گمشده
+اصلاح Portfolio Dialog که همیشه آخرین پرتفوی را باز کند
+Ownership Graph، مالکیت تودرتو و حلقه‌ها
+Look-through / اثر دارایی‌ها روی هلدینگ
+انتقال‌های احتمالی مالکیت
+NAV اولیه بر اساس داده‌های فعلی
+بعداً NAV کامل‌تر با صورت‌های مالی کدال
+و بعد حمله اصلی به Insight Engine و Backtest
+

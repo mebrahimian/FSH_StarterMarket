@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   keepPreviousData,
@@ -243,7 +243,7 @@ function TopupRequestForm({ currency }: { currency: string }) {
   const amountNum = Number(amount);
   const valid = amount.trim().length > 0 && !Number.isNaN(amountNum) && amountNum > 0;
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
     // Pass per-call data through mutate(arg) — never via state the mutationFn

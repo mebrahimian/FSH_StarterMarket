@@ -129,6 +129,102 @@ public sealed class DailyPrice :
     public long? RealMoneyFlow { get; private set; }
     public decimal? IndividualBuyerPower { get; private set; }
     public long? InstitutionalNetFlow { get; private set; }
+    public void UpdateMarketSnapshot(
+    long firstPrice,
+    long lowPrice,
+    long highPrice,
+    long closingPrice,
+    long lastPrice,
+    long tradeCount,
+    long volume,
+    long value)
+    {
+        FirstPrice = firstPrice;
+        LowPrice = lowPrice;
+        HighPrice = highPrice;
+        ClosingPrice = closingPrice;
+        LastPrice = lastPrice;
+
+        TradeCount = tradeCount;
+        Volume = volume;
+        Value = value;
+    }
+    public void UpdateClientType(
+    long? buyIndividualVolume,
+    long? buyIndividualValue,
+    long? buyIndividualCount,
+    long? sellIndividualVolume,
+    long? sellIndividualValue,
+    long? sellIndividualCount,
+    long? buyInstitutionalVolume,
+    long? buyInstitutionalValue,
+    long? buyInstitutionalCount,
+    long? sellInstitutionalVolume,
+    long? sellInstitutionalValue,
+    long? sellInstitutionalCount)
+    {
+        BuyIndividualVolume = buyIndividualVolume;
+        BuyIndividualValue = buyIndividualValue;
+        BuyIndividualCount = buyIndividualCount;
+
+        SellIndividualVolume = sellIndividualVolume;
+        SellIndividualValue = sellIndividualValue;
+        SellIndividualCount = sellIndividualCount;
+
+        BuyInstitutionalVolume = buyInstitutionalVolume;
+        BuyInstitutionalValue = buyInstitutionalValue;
+        BuyInstitutionalCount = buyInstitutionalCount;
+
+        SellInstitutionalVolume = sellInstitutionalVolume;
+        SellInstitutionalValue = sellInstitutionalValue;
+        SellInstitutionalCount = sellInstitutionalCount;
+
+        RealMoneyFlow =
+            CalculateNetFlow(
+                buyIndividualValue,
+                sellIndividualValue);
+
+        InstitutionalNetFlow =
+            CalculateNetFlow(
+                buyInstitutionalValue,
+                sellInstitutionalValue);
+
+        IndividualBuyerPower =
+            CalculateIndividualBuyerPower(
+                buyIndividualValue,
+                buyIndividualCount,
+                sellIndividualValue,
+                sellIndividualCount);
+    }
+    public void UpdateClientTypeSnapshot(
+    long? buyIndividualVolume,
+    long? buyIndividualCount,
+    long? sellIndividualVolume,
+    long? sellIndividualCount,
+    long? buyInstitutionalVolume,
+    long? buyInstitutionalCount,
+    long? sellInstitutionalVolume,
+    long? sellInstitutionalCount)
+    {
+        BuyIndividualVolume = buyIndividualVolume;
+        BuyIndividualCount = buyIndividualCount;
+
+        SellIndividualVolume = sellIndividualVolume;
+        SellIndividualCount = sellIndividualCount;
+
+        BuyInstitutionalVolume = buyInstitutionalVolume;
+        BuyInstitutionalCount = buyInstitutionalCount;
+
+        SellInstitutionalVolume = sellInstitutionalVolume;
+        SellInstitutionalCount = sellInstitutionalCount;
+
+        IndividualBuyerPower =
+            CalculateIndividualBuyerPower(
+                BuyIndividualValue,
+                BuyIndividualCount,
+                SellIndividualValue,
+                SellIndividualCount);
+    }
     private static long? CalculateNetFlow(
     long? buyValue,
     long? sellValue)

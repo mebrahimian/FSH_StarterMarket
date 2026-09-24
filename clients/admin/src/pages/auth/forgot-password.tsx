@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, SyntheticEvent } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -48,7 +48,7 @@ export function ForgotPasswordPage() {
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     mutation.mutate();

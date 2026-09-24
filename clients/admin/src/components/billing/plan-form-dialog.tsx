@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { CreditCard, Gauge } from "lucide-react";
@@ -199,7 +199,7 @@ export function PlanFormDialog({
 
   const pending = createMutation.isPending || updateMutation.isPending;
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (pricingInvalid) return;
     const overageRates = toOverageNumbers(overage);

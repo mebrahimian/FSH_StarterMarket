@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Fingerprint, UserCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -66,7 +66,7 @@ export function ProfileSettings() {
     },
   });
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     saveMutation.mutate();
   };

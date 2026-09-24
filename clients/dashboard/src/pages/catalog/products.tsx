@@ -2,7 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
+  type SyntheticEvent,
 } from "react";
 import {
   keepPreviousData,
@@ -899,7 +899,7 @@ function ProductEditorDialog({
     !Number.isNaN(stockNum) &&
     stockNum >= 0;
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
     if (state.mode === "edit" && product) {

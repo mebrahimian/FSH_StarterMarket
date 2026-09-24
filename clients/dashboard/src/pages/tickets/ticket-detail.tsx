@@ -1,7 +1,7 @@
 import {
   useEffect,
   useState,
-  type FormEvent,
+  type SyntheticEvent,
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -735,7 +735,7 @@ function AssignDialog({
     onError: (e) => toast.error(describe(e)),
   });
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setTouched(true);
     mutation.mutate();

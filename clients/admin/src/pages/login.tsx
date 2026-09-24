@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type SyntheticEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -78,7 +78,7 @@ export function LoginPage() {
     }
   };
 
-  const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     await performLogin({ email, password, tenant });
   };

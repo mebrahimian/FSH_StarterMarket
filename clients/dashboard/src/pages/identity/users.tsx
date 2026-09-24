@@ -2,7 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
+  type SyntheticEvent,
 } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -429,7 +429,7 @@ function RegisterUserDialog({
       toast.error("Registration failed", { description: describe(err) }),
   });
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (passwordMismatch) return;
     mutation.mutate({

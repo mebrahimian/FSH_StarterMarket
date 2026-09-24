@@ -1,7 +1,7 @@
 import {
   useEffect,
   useState,
-  type FormEvent,
+  type SyntheticEvent,
 } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
@@ -722,7 +722,7 @@ function ProductEditorDialog({
   const trimmedName = name.trim();
   const valid = trimmedName.length > 0 && brandId && categoryId;
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!valid) return;
     updateMutation.mutate({

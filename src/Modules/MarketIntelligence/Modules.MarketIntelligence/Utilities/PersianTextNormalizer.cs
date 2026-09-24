@@ -1,7 +1,7 @@
 namespace FSH.Modules.MarketIntelligence.Utilities;
 
 internal static class PersianTextNormalizer
-{
+{                    
     public static string NormalizeDigits(
         string value)
     {

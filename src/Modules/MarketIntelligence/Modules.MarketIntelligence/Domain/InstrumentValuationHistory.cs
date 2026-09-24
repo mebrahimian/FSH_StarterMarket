@@ -44,4 +44,22 @@ public sealed class InstrumentValuationHistory :
     public decimal? SectorPE { get; private set; }
 
     public decimal? SalesPerShare { get; private set; }
+    public void Update(
+    decimal? eps,
+    decimal? pe,
+    decimal? sectorPe,
+    decimal? salesPerShare)
+    {
+        Eps = eps;
+        PE = pe;
+        SectorPE = sectorPe;
+        SalesPerShare = salesPerShare;
+    }
+    public void UpdateMarketWatch(
+    decimal? eps,
+    decimal? pe)
+    {
+        Eps = eps;
+        PE = pe;
+    }
 }

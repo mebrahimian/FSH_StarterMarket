@@ -2,7 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
+  type SyntheticEvent,
 } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -437,7 +437,7 @@ function CreateTicketDialog({
     },
   });
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!title.trim()) return;
     mutation.mutate({

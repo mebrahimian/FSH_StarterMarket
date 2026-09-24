@@ -2,7 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
+  type SyntheticEvent,
 } from "react";
 import {
   keepPreviousData,
@@ -463,7 +463,7 @@ function BrandEditorDialog({
   const isPending = createMutation.isPending || updateMutation.isPending;
   const trimmedName = name.trim();
 
-  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const onSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!trimmedName) return;
     const payload = {

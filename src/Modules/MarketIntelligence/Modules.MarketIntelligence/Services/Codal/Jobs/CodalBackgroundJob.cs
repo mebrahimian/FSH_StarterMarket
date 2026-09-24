@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Companies;
+using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -179,4 +180,5 @@ public sealed class CodalBackgroundJob(
                 nextEndPage,
                 CancellationToken.None));
     }
+   
 }
