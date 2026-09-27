@@ -407,6 +407,20 @@ export type FiscalYearSalesRow = {
     previousYearToDateAmount: number | null;
     isMissing: boolean;
 };
+
+
+export type AssetIdentity = {
+    companyId: number;
+    portfolioHoldingAssetId: number | null;
+    tsetmcInstrumentId: number | null;
+    symbol: string;
+    name: string | null;
+    insCode: string | null;
+    isin: string | null;
+    isic: string | null;
+    yVal: string | null;
+};
+
 export type DataQualityIssue = {
     symbol: string;
     yearEndDate: string | null;
@@ -415,6 +429,7 @@ export type DataQualityIssue = {
     issueCode: string;
     previousValue: number | null;
     currentValue: number | null;
+    asset?: AssetIdentity | null;
 };
 
 export type FiscalYearSales = {
@@ -448,6 +463,24 @@ export function getDataQualityIssues(): Promise<DataQualityIssue[]> {
         "/api/v1/marketintelligence/data-quality/issues",
     );
 }
+
+export type TsetmcPriceBackfillResponse = {
+    instrumentId: number;
+    inserted: number;
+};
+
+export function backfillTsetmcPrices(
+    instrumentId: number,
+): Promise<TsetmcPriceBackfillResponse> {
+    return apiFetch<TsetmcPriceBackfillResponse>(
+        `/api/v1/marketintelligence/tsetmc/prices/backfill/${instrumentId}`,
+        {
+            method: "POST",
+        },
+    );
+}
+
+
 export function getFiscalYearSales(
     symbol: string,
     title: string,

@@ -2,16 +2,17 @@
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Codal.Contracts;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Modules.MarketIntelligence.Domain;
-using SendGrid.Helpers.Mail;
 using System.Globalization;
 using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
@@ -503,6 +504,7 @@ public sealed class CodalCompanyReferenceSyncService(
             {
                 entity.Isin = item.Isin;
                 entity.Symbol = item.Symbol;
+                entity.NormalizedSymbol = NormalizeForMatch(item.Symbol);
                 entity.Name = item.Name;
                 entity.YVal = item.YVal;
                 entity.LastSeenAt = now;
@@ -515,6 +517,7 @@ public sealed class CodalCompanyReferenceSyncService(
                 InsCode = item.InsCode,
                 Isin = item.Isin,
                 Symbol = item.Symbol,
+                NormalizedSymbol = NormalizeForMatch(item.Symbol),
                 Name = item.Name,
                 YVal = item.YVal,
                 LastSeenAt = now
@@ -530,6 +533,11 @@ public sealed class CodalCompanyReferenceSyncService(
         await dbContext
             .SaveChangesAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        // NEW
+        await EnsureEligibleInstrumentsInMasterInfoAsync(cancellationToken)
+              .ConfigureAwait(false);
+
     }
     private static List<TsetmcInstrumentDto> ParseMarketWatch(string content)
     {
@@ -559,10 +567,99 @@ public sealed class CodalCompanyReferenceSyncService(
 
         return result;
     }
+    private async Task<int> EnsureEligibleInstrumentsInMasterInfoAsync(
+    CancellationToken cancellationToken)
+    {
+        int[] allowedYVals = tsetmcOptions.Value.AllowedYVals;
+
+        if (allowedYVals.Length == 0)
+        {
+            return 0;
+        }
+        string[] parameterNames =
+        allowedYVals
+            .Select((_, index) => $"@yVal{index}")
+            .ToArray();
+
+        SqlParameter[] parameters =
+            allowedYVals
+                .Select((value, index) =>
+                    new SqlParameter(
+                        parameterNames[index],
+                        value))
+                .ToArray();
+
+        string allowedYValsSql =
+            string.Join(
+                ", ",
+                parameterNames);
+
+        const string sql =
+            """
+        ;WITH Eligible AS
+        (
+            SELECT
+                ti.Symbol,
+                ti.Name,
+                ti.NormalizedSymbol,
+                ROW_NUMBER() OVER
+                (
+                    PARTITION BY ti.NormalizedSymbol
+                    ORDER BY
+                        ti.LastSeenAt DESC,
+                        ti.Id DESC
+                ) AS RowNo
+            FROM dbo.TsetmcInstruments AS ti
+            WHERE
+                ti.YVal IN ({allowedYValsSql})
+                AND ti.Symbol IS NOT NULL
+                AND LTRIM(RTRIM(ti.Symbol)) <> N''
+                AND ti.NormalizedSymbol IS NOT NULL
+                AND LTRIM(RTRIM(ti.NormalizedSymbol)) <> N''
+        ),
+        Missing AS
+        (
+            SELECT
+                e.Symbol,
+                e.Name,
+                e.NormalizedSymbol
+            FROM Eligible AS e
+            LEFT JOIN marketintelligence.MasterInfo AS m
+                ON m.NormalizedSymbol = e.NormalizedSymbol
+            WHERE
+                e.RowNo = 1
+                AND m.CompanyId IS NULL
+        )
+        INSERT INTO marketintelligence.MasterInfo
+        (
+            Symbol,
+            CompanyName,
+            NormalizedName,
+            NormalizedSymbol
+        )
+        SELECT
+            m.Symbol,
+            COALESCE(NULLIF(LTRIM(RTRIM(m.Name)), N''), m.Symbol),
+            dbo.NormalizeForMatch(
+                COALESCE(NULLIF(LTRIM(RTRIM(m.Name)), N''), m.Symbol)),
+            m.NormalizedSymbol
+        FROM Missing AS m;
+        """;
+
+        int inserted =
+            await dbContext.Database
+                .ExecuteSqlRawAsync(
+                    sql,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+        return inserted;
+    }
     private sealed record TsetmcInstrumentDto(
     string InsCode,
     string Isin,
     string Symbol,
     string Name,
     string YVal);
+
 }

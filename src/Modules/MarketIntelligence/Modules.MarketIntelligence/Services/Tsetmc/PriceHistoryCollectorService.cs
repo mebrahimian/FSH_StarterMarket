@@ -4,11 +4,7 @@ using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
 using Modules.MarketIntelligence.Domain;
 using Modules.MarketIntelligence.Services.Tsetmc;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Metrics;
 using System.Globalization;
-using System.Text.RegularExpressions;
-using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTxtNormalizer;
 
 namespace FSH.Modules.MarketIntelligence.Services.Tsetmc;
 
@@ -245,8 +241,8 @@ public sealed class PriceHistoryCollectorService(
                 FROM marketintelligence.CompanyIndustries ci
                 INNER JOIN marketintelligence.vw_CompanyMaster cm
                     ON ci.CompanyId = cm.CompanyId
-                LEFT JOIN TsetmcInstruments ti
-                    ON cm.Symbol = ti.Symbol
+                LEFT JOIN dbo.TsetmcInstruments ti
+                ON cm.FSortSymbol = ti.NormalizedSymbol
                 
                 """)
                 .ToListAsync(cancellationToken)
@@ -278,8 +274,7 @@ public sealed class PriceHistoryCollectorService(
                 .GetMarketWatchAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-        DateOnly tradeDate =
-            ToDate(marketOverview.MarketActivityDEven);
+        DateOnly tradeDate = ToDate(marketOverview.MarketActivityDEven);
 
         Dictionary<int, DailyPrice> existingDailyPrices =
             await dbContext.DailyPrices
@@ -618,16 +613,40 @@ public sealed class PriceHistoryCollectorService(
                 }
             }
 
-            decimal? pe =
-                ToNullableDecimal(item.PE);
+            decimal? pe = ToNullableDecimal(item.PE);
+
+            InstrumentInfoDto? instrumentInfo =
+                await priceReader
+                    .GetInstrumentInfoAsync(
+                        item.InsCode,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+             decimal? sectorPe = instrumentInfo?.Eps?.SectorPE;
+
+            decimal? salesPerShare =
+                instrumentInfo?.Eps?.SalesPerShare;
+
+            decimal? psr = null;
+
+            if (salesPerShare is > 0 &&
+                item.PClosing is > 0)
+            {
+                psr =
+                    item.PClosing.Value /
+                    salesPerShare.Value;
+            }
 
             if (existingValuations.TryGetValue(
                     instrumentId,
                     out InstrumentValuationHistory? existingValuation))
             {
-                existingValuation.UpdateMarketWatch(
+                existingValuation.Update(
                     item.Eps,
-                    pe);
+                    pe,
+                    sectorPe,
+                    psr,
+                    salesPerShare);
             }
             else
             {
@@ -636,8 +655,9 @@ public sealed class PriceHistoryCollectorService(
                     tradeDate,
                     item.Eps,
                     pe,
-                    null,
-                    null);
+                    sectorPe,
+                    psr,
+                    salesPerShare);
 
                 newValuations.Add(newValuation);
             }

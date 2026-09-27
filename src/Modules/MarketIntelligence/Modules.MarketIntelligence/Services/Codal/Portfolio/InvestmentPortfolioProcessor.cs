@@ -1,4 +1,5 @@
-﻿using FSH.Framework.Shared.Utilities;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
+using FSH.Framework.Shared.Utilities;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
@@ -42,9 +43,9 @@ public sealed class InvestmentPortfolioProcessor(
             throw new InvalidOperationException(
                 $"Disclosure {disclosure.TracingNo} has no symbol.");
         }
-        
 
-        string parentFSortSymbol = FSort.Normalize(disclosure.Symbol);
+
+        string parentFSortSymbol = NormalizeForMatch(disclosure.Symbol);
 
         int? parentCompanyId =
             await dbContext.CompanyMaster
@@ -90,7 +91,9 @@ public sealed class InvestmentPortfolioProcessor(
                     !string.IsNullOrWhiteSpace(x));
 
         if (!string.IsNullOrWhiteSpace(reportSymbol) &&
-            !string.Equals(FSort.Normalize(reportSymbol), FSort.Normalize(disclosure.Symbol), StringComparison.Ordinal))
+            !string.Equals(NormalizeForMatch(reportSymbol),
+                           NormalizeForMatch(disclosure.Symbol),
+                           StringComparison.Ordinal))
         {
             int deletedPositions =
                 await dbContext.InvestmentPortfolioPositions

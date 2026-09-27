@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using FSH.Framework.Shared.Utilities;
 using FSH.Modules.MarketIntelligence.Contracts.v1.PortfolioMatching;
 using FSH.Modules.MarketIntelligence.Data;
 using Mediator;
@@ -21,8 +20,7 @@ public sealed class CreateUnlistedPortfolioCompanyCommandHandler(
         ArgumentException.ThrowIfNullOrWhiteSpace(command.RawCompanyName);
 
         string companyName = command.RawCompanyName.Trim();
-        string fSortName = FSort.Normalize(companyName);
-
+       
         await dbContext.Database
             .OpenConnectionAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -34,16 +32,16 @@ public sealed class CreateUnlistedPortfolioCompanyCommandHandler(
 
             dbCommand.CommandText =
                 """
-                INSERT INTO bors.dbo.MasterInfo_NoBors
+                INSERT INTO marketintelligence.MasterInfo_NoBors
                 (
-                    Name_NoBors,
-                    FSortName_NoBors
+                    CompanyName,
+                    NormalizedName
                 )
-                OUTPUT INSERTED.CompanyId_NoBors
+                OUTPUT INSERTED.CompanyId
                 VALUES
                 (
                     @Name,
-                    @FSortName
+                    dbo.NormalizeForMatch(@Name)
                 );
                 """;
 
@@ -51,13 +49,8 @@ public sealed class CreateUnlistedPortfolioCompanyCommandHandler(
             nameParameter.ParameterName = "@Name";
             nameParameter.DbType = DbType.String;
             nameParameter.Value = companyName;
-            dbCommand.Parameters.Add(nameParameter);
 
-            var fSortParameter = dbCommand.CreateParameter();
-            fSortParameter.ParameterName = "@FSortName";
-            fSortParameter.DbType = DbType.String;
-            fSortParameter.Value = fSortName;
-            dbCommand.Parameters.Add(fSortParameter);
+            dbCommand.Parameters.Add(nameParameter);
 
             object? result = await dbCommand
                     .ExecuteScalarAsync(cancellationToken)

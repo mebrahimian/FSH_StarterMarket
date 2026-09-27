@@ -1,4 +1,4 @@
-﻿using FSH.Framework.Shared.Utilities;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,8 +14,7 @@ public sealed class BorsCompanyRegistry(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
-        string normalizedSymbol =
-            FSort.Normalize(symbol);
+        string normalizedSymbol = NormalizeForMatch(symbol);
 
         var companies =
             await dbContext.CompanyMaster
@@ -31,12 +30,11 @@ public sealed class BorsCompanyRegistry(
                 })
                 .ToListAsync(cancellationToken);
 
-        var matches =
-            companies
-                .Where(x =>
-                    FSort.Normalize(x.Symbol!) ==
-                    normalizedSymbol)
-                .ToList();
+        var matches = companies
+              .Where(x =>
+                  NormalizeForMatch(x.Symbol!) ==
+                  normalizedSymbol)
+              .ToList();
 
         if (matches.Count == 0)
         {

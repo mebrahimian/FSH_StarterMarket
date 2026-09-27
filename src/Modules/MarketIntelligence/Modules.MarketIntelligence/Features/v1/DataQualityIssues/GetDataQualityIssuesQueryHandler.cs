@@ -1,4 +1,5 @@
 ﻿using FSH.Framework.Shared.Utilities;
+using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Contracts.v1.DataQualityIssues;
 using FSH.Modules.MarketIntelligence.Data;
@@ -143,7 +144,7 @@ public sealed class GetDataQualityIssuesQueryHandler(
                                               })
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false))
-                    .Where(disclosure => listedCompanySymbols.Contains(FSort.Normalize(disclosure.Symbol)))
+                    .Where(disclosure =>listedCompanySymbols.Contains(NormalizeForMatch(disclosure.Symbol)))
                     .ToList();
 
         foreach (var disclosure in missingPortfolioDisclosures)

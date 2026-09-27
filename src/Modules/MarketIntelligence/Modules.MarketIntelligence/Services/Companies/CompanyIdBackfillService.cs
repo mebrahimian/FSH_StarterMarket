@@ -1,4 +1,4 @@
-﻿using FSH.Framework.Shared.Utilities;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,9 +27,8 @@ public sealed class CompanyIdBackfillService(
             companies
                 .Where(x =>
                     !string.IsNullOrWhiteSpace(x.Symbol))
-                .GroupBy(
-                    x => FSort.Normalize(x.Symbol!),
-                    StringComparer.Ordinal)
+                .GroupBy(x => NormalizeForMatch(x.Symbol!),
+                              StringComparer.Ordinal)
                 .ToDictionary(
                     x => x.Key,
                     x => x
@@ -60,8 +59,7 @@ public sealed class CompanyIdBackfillService(
                 continue;
             }
 
-            string normalizedSymbol =
-                FSort.Normalize(symbol);
+            string normalizedSymbol = NormalizeForMatch(symbol);
 
             if (!companyLookup.TryGetValue(
                     normalizedSymbol,
@@ -123,11 +121,11 @@ public sealed class CompanyIdBackfillService(
                 .Select(x => x.CompanyName)
                 .SingleOrDefaultAsync(cancellationToken);
 
-        string fSortSymbol = FSort.Normalize(symbol);
+        string fSortSymbol = NormalizeForMatch(symbol);
 
         string? fSortName = string.IsNullOrWhiteSpace(companyName)
-                ? null
-                : FSort.Normalize(companyName);
+                 ? null
+                 : NormalizeForMatch(companyName);
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""

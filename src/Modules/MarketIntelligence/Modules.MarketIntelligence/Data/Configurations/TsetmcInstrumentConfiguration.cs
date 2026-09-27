@@ -25,6 +25,10 @@ public sealed class TsetmcInstrumentConfiguration
             .HasMaxLength(128)
             .IsRequired();
 
+        builder.Property(x => x.NormalizedSymbol)
+            .HasMaxLength(128)
+            .IsRequired();           
+
         builder.Property(x => x.Name)
             .HasMaxLength(256)
             .IsRequired();
@@ -39,5 +43,6 @@ public sealed class TsetmcInstrumentConfiguration
         builder.HasIndex(x => x.Isin);
 
         builder.HasIndex(x => x.Symbol);
+        builder.HasIndex(x => x.NormalizedSymbol);
     }
 }

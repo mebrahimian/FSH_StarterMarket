@@ -30,6 +30,7 @@ import {
     rebuildMissingSalesPerformanceSnapshots,
     getSalesPerformanceRebuildStatus,
     updateCodalIncrementalSchedule,
+    backfillTsetmcPrices,
     type CodalIncrementalSchedule,
     type DataQualityIssue,
     type FiscalYearSales,
@@ -105,10 +106,10 @@ export function MarketHealthCenterPage() {
     const [letFilter, ] = useState("");
     const [sortBy, ] = useState<DisclosureSortBy>("publishDateTime");
     const [sortDir, ] = useState<"asc" | "desc">("desc");
-    const [fiscalYearSales, setFiscalYearSales] =
-        useState<FiscalYearSales | null>(null);
+    const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
     const [backfillSymbol, setBackfillSymbol] = useState("");
+    const [backfillInstrumentId, setBackfillInstrumentId] = useState<number | null>(null);
     const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const [backfillFromDate, setBackfillFromDate] = useState<DateObject | null>(null);
     const [backfillToDate, setBackfillToDate] = useState<DateObject | null>(null);
@@ -191,6 +192,21 @@ export function MarketHealthCenterPage() {
             );
         },
     });
+    const tsetmcBackfillMutation = useMutation({
+        mutationFn: backfillTsetmcPrices,
+
+        onSuccess: (result) => {
+            setBackfillMessage(
+                `تاریخچه قیمت TSETMC بازخوانی شد — ${result.inserted.toLocaleString()} رکورد درج شد.`,
+            );
+        },
+
+        onError: () => {
+            setBackfillMessage(
+                "خطا در بازخوانی تاریخچه قیمت TSETMC.",
+            );
+        },
+    });
     const backfillStatusQuery = useQuery({
         queryKey: [
             "market-intelligence",
@@ -254,7 +270,17 @@ export function MarketHealthCenterPage() {
             .replace(/[٠-٩]/g, (digit) =>
                 String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)),
             );
+    const handleRunTsetmcBackfill = () => {
+        if (backfillInstrumentId === null) {
+            return;
+        }
 
+        setBackfillMessage("");
+
+        tsetmcBackfillMutation.mutate(
+            backfillInstrumentId,
+        );
+    };
     const handleRunBackfill = () => {
         const symbol = backfillSymbol.trim();
 
@@ -1043,6 +1069,7 @@ export function MarketHealthCenterPage() {
                                             key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}
                                             onClick={() => {
                                                 setBackfillSymbol(issue.symbol);
+                                                setBackfillInstrumentId(issue.asset?.tsetmcInstrumentId ?? null);
                                                 setBulkStartIndex(index);
                                             }}
                                             className={cn(
@@ -1117,11 +1144,19 @@ export function MarketHealthCenterPage() {
                         <input
                             type="text"
                             value={backfillSymbol}
-                            onChange={(event) =>
-                                setBackfillSymbol(
-                                    event.target.value,
-                                )
-                            }
+                            onChange={(e) => {
+                                const symbol = e.target.value;
+
+                                setBackfillSymbol(symbol);
+
+                                const matchedIssue = dataQualityIssues.find(
+                                    (issue) => issue.symbol === symbol.trim(),
+                                );
+
+                                setBackfillInstrumentId(
+                                    matchedIssue?.asset?.tsetmcInstrumentId ?? null,
+                                );
+                            }}
                             placeholder={tMarket(
                                 "healthCenter.backfill.symbolPlaceholder",
                             )}
@@ -1166,16 +1201,38 @@ export function MarketHealthCenterPage() {
                             placeholder={tMarket("healthCenter.backfill.toDate")}
                         />
                     </label>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                        <Button
+                            type="button"
+                            onClick={handleRunBackfill}
+                            disabled={
+                                !backfillSymbol.trim() ||
+                                backfillFromDate === null ||
+                                backfillToDate === null ||
+                                backfillMutation.isPending
+                            }
+                            className="whitespace-nowrap"
+                        >
+                            {backfillMutation.isPending
+                                ? tMarket("healthCenter.backfill.send")
+                                : tMarket("healthCenter.backfill.runcodal")}
+                        </Button>
 
-                    <Button
-                        type="button"
-                        onClick={handleRunBackfill}
-                        disabled={backfillMutation.isPending}
-                    >
-                        {backfillMutation.isPending
-                            ? tMarket("healthCenter.backfill.send")
-                            : tMarket("healthCenter.backfill.run")}
-                    </Button>
+                        <Button
+                            type="button"
+                            onClick={handleRunTsetmcBackfill}
+                            disabled={
+                                !backfillSymbol.trim() ||
+                                tsetmcBackfillMutation.isPending
+                            }
+                            className="whitespace-nowrap"
+                        >
+                            {tsetmcBackfillMutation.isPending
+                                ? tMarket("healthCenter.backfill.send")
+                                : tMarket("healthCenter.backfill.runtsetmc")}
+                        </Button>
+                    </div>
+                                        
                     <Button
                         type="button"
                         variant="outline"

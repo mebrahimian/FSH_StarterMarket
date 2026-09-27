@@ -1,4 +1,5 @@
-﻿using FSH.Framework.Shared.Utilities;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
+using FSH.Framework.Shared.Utilities;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -71,41 +72,37 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
                 connection.CreateCommand();
 
             command.CommandText =
-                """
-            INSERT INTO Bors.dbo.MasterInfo
-            (
-                [نماد],
-                [نام],
-                Grp,
-                GrpId,
-                Nav,
-                ShareCount,
-                Zarar,
-                DateAdvise,
-                Status,
-                FSortName,
-                FSortNamad,
-                EPS1,
-                FiscalDate
-            )
-            OUTPUT INSERTED.CompanyId
-            SELECT
-                [نماد] + N'ح',
-                [نام] + N' (حق تقدم)',
-                Grp,
-                GrpId,
-                0,
-                0,
-                0,
-                DateAdvise,
-                Status,
-                FSortName + N'(حقتقدم)',
-                FSortNamad + N'ح',
-                0,
-                FiscalDate
-            FROM Bors.dbo.MasterInfo
-            WHERE CompanyId = @ParentCompanyId;
-            """;
+                   """
+                   INSERT INTO marketintelligence.MasterInfo
+                   (
+                       Symbol,
+                       CompanyName,
+                       Grp,
+                       GrpId,
+                       Nav,
+                       ShareCount,
+                       Zarar,
+                       Status,
+                       NormalizedName,
+                       NormalizedSymbol,
+                       EPS1
+                   )
+                   OUTPUT INSERTED.CompanyId
+                   VALUES
+                   (
+                       @Symbol,
+                       @CompanyName,
+                       N'',
+                       @GrpId,
+                       0,
+                       0,
+                       0,
+                       1,
+                       dbo.NormalizeForMatch(@CompanyName),
+                       dbo.NormalizeForMatch(@Symbol),
+                       0
+                   );
+                   """;
 
             DbParameter parentParameter =
                 command.CreateParameter();
@@ -142,7 +139,7 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
     bool reportedIsListed,
     CancellationToken cancellationToken)
     {
-        string fSortName = FSort.Normalize(rawCompanyName);
+        string fSortName = NormalizeForMatch(rawCompanyName);
 
         if (ExcludedPortfolioNames.Contains(fSortName))
         {
@@ -310,8 +307,7 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
             {
                 var parent = parentMatches[0];
 
-                string rightsFSortSymbol =
-                    FSort.Normalize(parent.Symbol + "ح");
+                string rightsFSortSymbol = NormalizeForMatch(parent.Symbol + "ح");
 
                 var rightsMatches =
                     await dbContext.CompanyMaster
@@ -413,19 +409,15 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
             CodalCompanyImport codal = codalMatches[0];
 
             int? companyId =
-                await EnsureMasterInfoAsync(
-                    codal,
-                    fSortName,
-                    cancellationToken)
-                .ConfigureAwait(false);
+                await EnsureMasterInfoAsync(codal, cancellationToken)
+                    .ConfigureAwait(false);
 
             if (companyId.HasValue)
             {
                 string companyName =
                     codal.CompanyName ?? codal.Symbol;
 
-                string fSortSymbol =
-                    FSort.Normalize(codal.Symbol);
+                string fSortSymbol = NormalizeForMatch(codal.Symbol);
 
                 PortfolioHoldingAsset asset =
                     await ResolveHoldingAssetAsync(
@@ -547,7 +539,7 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
                     .ConfigureAwait(false);
 
             _codalByName = companies
-                .GroupBy(x => FSort.Normalize(x.CompanyName!))
+                .GroupBy(x => NormalizeForMatch(x.CompanyName!))
                 .ToDictionary(
                     x => x.Key,
                     x => x.ToList(),
@@ -560,13 +552,9 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
             ? matches
             : [];
     }
-    private async Task<int?> EnsureMasterInfoAsync(
-    CodalCompanyImport codal,
-    string fSortName,
-    CancellationToken cancellationToken)
+    private async Task<int?> EnsureMasterInfoAsync(CodalCompanyImport codal, CancellationToken cancellationToken)
     {
-        string fSortSymbol =
-            FSort.Normalize(codal.Symbol);
+        string fSortSymbol = NormalizeForMatch(codal.Symbol);
 
         int[] existingIds =
             await dbContext.CompanyMaster
@@ -616,37 +604,36 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
 
             command.CommandText =
                 """
-            INSERT INTO Bors.dbo.MasterInfo
-            (
-                [نماد],
-                [نام],
-                Grp,
-                GrpId,
-                Nav,
-                ShareCount,
-                Zarar,
-                Status,
-                FSortName,
-                FSortNamad,
-                EPS1
-            )
-            OUTPUT INSERTED.CompanyId
-            VALUES
-            (
-                @Symbol,
-                @CompanyName,
-                N'',
-                @GrpId,
-                0,
-                0,
-                0,
-                1,
-                @FSortName,
-                @FSortSymbol,
-                0
-            );
-            """;
-
+                INSERT INTO marketintelligence.MasterInfo
+                (
+                    Symbol,
+                    CompanyName,
+                    Grp,
+                    GrpId,
+                    Nav,
+                    ShareCount,
+                    Zarar,
+                    Status,
+                    NormalizedName,
+                    NormalizedSymbol,
+                    EPS1
+                )
+                OUTPUT INSERTED.CompanyId
+                VALUES
+                (
+                    @Symbol,
+                    @CompanyName,
+                    N'',
+                    @GrpId,
+                    0,
+                    0,
+                    0,
+                    1,
+                    dbo.NormalizeForMatch(@CompanyName),
+                    dbo.NormalizeForMatch(@Symbol),
+                    0
+                );
+                """;
             DbParameter symbolParameter =
                 command.CreateParameter();
 
@@ -669,23 +656,7 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
             grpIdParameter.ParameterName = "@GrpId";
             grpIdParameter.Value = grpId;
             command.Parameters.Add(grpIdParameter);
-
-            DbParameter fSortNameParameter =
-                command.CreateParameter();
-
-            fSortNameParameter.ParameterName = "@FSortName";
-            fSortNameParameter.Value = fSortName;
-            command.Parameters.Add(fSortNameParameter);
-
-            DbParameter fSortSymbolParameter =
-                command.CreateParameter();
-
-            fSortSymbolParameter.ParameterName =
-                "@FSortSymbol";
-
-            fSortSymbolParameter.Value = fSortSymbol;
-            command.Parameters.Add(fSortSymbolParameter);
-
+                        
             object? result =
                 await command
                     .ExecuteScalarAsync(cancellationToken)

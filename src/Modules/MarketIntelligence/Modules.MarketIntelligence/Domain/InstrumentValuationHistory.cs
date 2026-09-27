@@ -16,12 +16,13 @@ public sealed class InstrumentValuationHistory :
     }
 
     public InstrumentValuationHistory(
-        int instrumentId,
-        DateOnly observedDate,
-        decimal? eps,
-        decimal? pe,
-        decimal? sectorPE,
-        decimal? salesPerShare)
+    int instrumentId,
+    DateOnly observedDate,
+    decimal? eps,
+    decimal? pe,
+    decimal? sectorPE,
+    decimal? psr,
+    decimal? salesPerShare)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(instrumentId);
 
@@ -30,6 +31,22 @@ public sealed class InstrumentValuationHistory :
         Eps = eps;
         PE = pe;
         SectorPE = sectorPE;
+        PSR = psr;
+        SalesPerShare = salesPerShare;
+    }
+    
+
+    public void Update(
+        decimal? eps,
+        decimal? pe,
+        decimal? sectorPe,
+        decimal? psr,
+        decimal? salesPerShare)
+    {
+        Eps = eps;
+        PE = pe;
+        SectorPE = sectorPe;
+        PSR = psr;
         SalesPerShare = salesPerShare;
     }
 
@@ -42,19 +59,8 @@ public sealed class InstrumentValuationHistory :
     public decimal? PE { get; private set; }
 
     public decimal? SectorPE { get; private set; }
-
+    public decimal? PSR { get; private set; }
     public decimal? SalesPerShare { get; private set; }
-    public void Update(
-    decimal? eps,
-    decimal? pe,
-    decimal? sectorPe,
-    decimal? salesPerShare)
-    {
-        Eps = eps;
-        PE = pe;
-        SectorPE = sectorPe;
-        SalesPerShare = salesPerShare;
-    }
     public void UpdateMarketWatch(
     decimal? eps,
     decimal? pe)

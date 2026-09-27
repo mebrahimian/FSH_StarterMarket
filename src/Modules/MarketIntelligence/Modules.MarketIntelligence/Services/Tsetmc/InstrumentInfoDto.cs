@@ -13,7 +13,7 @@ internal sealed class InstrumentInfoDto
     public string InsCode { get; set; } = string.Empty;
 
     [JsonPropertyName("eps")]
-    internal InstrumentInfoEpsDto? Eps { get; set; }
+    public InstrumentInfoEpsDto? Eps { get; set; }
 }
 public sealed class InstrumentSearchResponseDto
 {

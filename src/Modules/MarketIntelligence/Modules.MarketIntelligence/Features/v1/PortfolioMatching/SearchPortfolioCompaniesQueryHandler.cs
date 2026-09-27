@@ -1,4 +1,4 @@
-﻿using FSH.Framework.Shared.Utilities;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 using FSH.Modules.MarketIntelligence.Contracts.v1.PortfolioMatching;
 using FSH.Modules.MarketIntelligence.Data;
 using Mediator;
@@ -25,8 +25,7 @@ public sealed class SearchPortfolioCompaniesQueryHandler(
             return [];
         }
 
-        string normalizedSearchText =
-            FSort.Normalize(searchText);
+        string normalizedSearchText = NormalizeForMatch(searchText);
 
         var companies =
             await dbContext.CompanyMaster

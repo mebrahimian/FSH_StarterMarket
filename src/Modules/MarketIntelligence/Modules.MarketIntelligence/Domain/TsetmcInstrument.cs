@@ -11,7 +11,7 @@ public sealed class TsetmcInstrument
     public string Isin { get; set; } = default!;
 
     public string Symbol { get; set; } = default!;
-
+    public string NormalizedSymbol { get; set; } = default!;
     public string Name { get; set; } = default!;
 
     public string YVal { get; set; } = default!;

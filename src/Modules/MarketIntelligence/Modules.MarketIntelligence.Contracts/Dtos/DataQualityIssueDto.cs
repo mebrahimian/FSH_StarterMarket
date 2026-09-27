@@ -7,4 +7,7 @@ public sealed record DataQualityIssueDto(
     string? PublishDate,
     string IssueCode,
     decimal? PreviousValue,
-    decimal? CurrentValue);
+    decimal? CurrentValue)
+{
+    public AssetIdentityDto? Asset { get; init; }
+}

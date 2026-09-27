@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    partial class MarketIntelligenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926155557_MakeTsetmcNormalizedSymbolRequired")]
+    partial class MakeTsetmcNormalizedSymbolRequired
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1249,12 +1252,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .HasPrecision(20, 6)
                         .HasColumnType("decimal(20,6)");
 
-                    b.Property<decimal?>("PSR")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<decimal?>("SalesPerShare")
-                        .HasColumnType("decimal(18,2)");
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
 
                     b.Property<decimal?>("SectorPE")
                         .HasPrecision(20, 6)

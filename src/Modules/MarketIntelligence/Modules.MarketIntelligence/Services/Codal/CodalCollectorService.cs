@@ -1,4 +1,4 @@
-﻿
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 using FSH.Framework.Shared.Dates;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
@@ -9,7 +9,6 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Insights;
-using FSH.Modules.MarketIntelligence.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -271,9 +270,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         string normalizedSymbol = symbol.Trim();
 
-        string normalizedFromDate = PersianTextNormalizer.NormalizeDigits(fromDate.Trim());
+        string normalizedFromDate = NormalizeDigits(fromDate.Trim());
 
-        string normalizedToDate = PersianTextNormalizer.NormalizeDigits(toDate.Trim());
+        string normalizedToDate = NormalizeDigits(toDate.Trim());
 
         if (!IsValidPersianDate(normalizedFromDate))
         {
@@ -305,8 +304,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 normalizedToDate,
                 2);
 
-        string todayPersianDateWithTime = 
-              PersianTextNormalizer.NormalizeDigits(PersianDateHelper.ToPersian(DateTime.Today));
+        string todayPersianDateWithTime = NormalizeDigits(PersianDateHelper.ToPersian(DateTime.Today));
 
         string todayPersianDate =
             todayPersianDateWithTime.Length >= 10

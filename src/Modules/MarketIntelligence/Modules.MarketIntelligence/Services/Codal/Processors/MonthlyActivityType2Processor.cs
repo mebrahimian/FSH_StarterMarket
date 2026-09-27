@@ -1,16 +1,16 @@
-﻿using FSH.Modules.MarketIntelligence.Data;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
+using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
-using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
-using Google.Protobuf.WellKnownTypes;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
-using FSH.Modules.MarketIntelligence.Utilities;
+
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 
 public sealed class MonthlyActivityType2Processor(
@@ -473,8 +473,7 @@ public sealed class MonthlyActivityType2Processor(
             return 0;
         }
 
-        string normalizedValue = PersianTextNormalizer.NormalizeNumber(
-                value);
+        string normalizedValue = NormalizeNumber(value);
 
         if (!decimal.TryParse(
                 normalizedValue,

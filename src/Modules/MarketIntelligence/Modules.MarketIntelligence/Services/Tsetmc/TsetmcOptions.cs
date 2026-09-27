@@ -9,7 +9,7 @@ public sealed class TsetmcOptions
 
     public string ClosingPriceHistoryPath { get; set; } = string.Empty;
     public string InstrumentSearchPath { get; set; } = string.Empty;
-
+    public int[] AllowedYVals { get; set; } = [];
     public string InstrumentIdentityPath { get; set; } = string.Empty;
     public string ShareChangePath { get; set; } = default!;
     public string MarketWatchPath { get; set; } = default!;

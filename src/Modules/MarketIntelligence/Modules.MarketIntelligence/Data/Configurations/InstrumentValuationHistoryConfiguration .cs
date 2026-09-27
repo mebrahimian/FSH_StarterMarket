@@ -29,8 +29,8 @@ public sealed class InstrumentValuationHistoryConfiguration :
         builder.Property(x => x.SectorPE)
             .HasPrecision(20, 6);
 
-        builder.Property(x => x.SalesPerShare)
-            .HasPrecision(20, 6);
+        builder.Property(x => x.PSR)
+            .HasPrecision(18, 2);
 
         builder.HasIndex(
                 x => new
