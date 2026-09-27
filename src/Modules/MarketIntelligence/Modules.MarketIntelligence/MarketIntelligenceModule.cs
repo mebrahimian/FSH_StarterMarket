@@ -316,6 +316,21 @@ namespace FSH.Modules.MarketIntelligence
                          { instrumentId, inserted });
             });
             group.MapPost(
+    "/tsetmc/prices/backfill-missing",
+    async Task<IResult> (
+        PriceHistoryCollectorService collectorService,
+        CancellationToken cancellationToken) =>
+    {
+        int completed =
+            await collectorService.BackfillMissingInstrumentsAsync(
+                cancellationToken);
+
+        return Results.Ok(new
+        {
+            completed
+        });
+    });
+            group.MapPost(
     "/tsetmc/incremental/test______________",
     async (
         PriceHistoryCollectorService collectorService,

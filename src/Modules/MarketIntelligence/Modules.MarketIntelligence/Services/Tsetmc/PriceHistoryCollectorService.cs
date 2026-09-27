@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Modules.MarketIntelligence.Domain;
 using Modules.MarketIntelligence.Services.Tsetmc;
 using System.Globalization;
@@ -13,6 +14,7 @@ public sealed class PriceHistoryCollectorService(
     TsetmcPriceReader priceReader,
     ILogger<PriceHistoryCollectorService> logger)
 {
+    //private readonly TsetmcOptions _tsetmcOptions = tsetmcOptions.Value;
     public async Task<(int Inserted, int? LastDEven)> BackfillInstrumentAsync(int instrumentId, CancellationToken cancellationToken, string? insCode = null)
     {
         TsetmcInstrument? instrument =
@@ -698,6 +700,44 @@ public sealed class PriceHistoryCollectorService(
         }
 
         return matchedMarketWatch.Count;
+    }
+    public async Task<int> BackfillMissingInstrumentsAsync(
+    CancellationToken cancellationToken)
+    {
+        List<int> instrumentIds =
+            await dbContext.Database
+                .SqlQueryRaw<int>(
+                    """
+                SELECT DISTINCT
+                    InstrumentId AS Value
+                FROM marketintelligence.CompanyProfileView
+                WHERE
+                    InstrumentId IS NOT NULL
+                    AND TradeDate IS NULL
+                    AND YVal IN
+                    (
+                        300, 303, 305, 309, 313, 315,
+                        319, 380, 400, 401, 403, 404
+                    )
+                """)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+        int completed = 0;
+
+        foreach (int instrumentId in instrumentIds)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await BackfillInstrumentAsync(
+                    instrumentId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            completed++;
+        }
+
+        return completed;
     }
     private static DateOnly ToDate(int dEven)
     {

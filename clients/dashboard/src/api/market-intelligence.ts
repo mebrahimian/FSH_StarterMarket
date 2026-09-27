@@ -337,6 +337,17 @@ export type CodalJobStatusResponse = {
     reason?: string | null;
     createdAt: string;
 };
+export type CompanyProfile = {
+    companyId: number;
+    symbol: string;
+    normalizedSymbol: string | null;
+    companyName: string | null;
+    instrumentId: number;
+    insCode: string | null;
+    isin: string | null;
+    yVal: number | null;
+    tradeDate: string | null;
+};
 
 export function getCodalJobStatus(
     jobId: string,

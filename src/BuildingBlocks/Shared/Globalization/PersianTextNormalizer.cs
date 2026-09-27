@@ -27,6 +27,11 @@ public static class PersianTextNormalizer
             .Replace("\u200C", string.Empty, StringComparison.Ordinal)
             .Replace("\u200D", string.Empty, StringComparison.Ordinal);
     }
+    public static string? NormalizeCompanyNameForMatch(string? value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return NormalizeForMatch(value).Replace('آ', 'ا');
+    }
     public static string NormalizeNumber(
         string value)
     {

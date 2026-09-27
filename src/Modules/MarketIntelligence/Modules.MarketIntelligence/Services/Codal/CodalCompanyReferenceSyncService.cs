@@ -31,7 +31,9 @@ public sealed class CodalCompanyReferenceSyncService(
         CancellationToken cancellationToken)
     {
         await RefreshIndustriesAsync(cancellationToken).ConfigureAwait(false); // Update Industrie                                                                   
-        await RefreshInstrumentTypesAsync(cancellationToken).ConfigureAwait(false); // Update YVal                                                                   
+        await RefreshInstrumentTypesAsync(cancellationToken).ConfigureAwait(false); // Update YVal
+        await EnsureEligibleInstrumentsInMasterInfoAsync(cancellationToken).ConfigureAwait(false);
+
         using var request =
             new HttpRequestMessage(
                 HttpMethod.Get,
@@ -124,8 +126,7 @@ public sealed class CodalCompanyReferenceSyncService(
                 imports.Count);
         }
 
-        var strategy =
-    dbContext.Database.CreateExecutionStrategy();
+        var strategy = dbContext.Database.CreateExecutionStrategy();
 
         await strategy.ExecuteAsync(
             async () =>
@@ -144,11 +145,13 @@ public sealed class CodalCompanyReferenceSyncService(
                             cancellationToken)
                         .ConfigureAwait(false);
 
-                    dbContext.CodalCompanyImports
-                        .AddRange(imports);
+                    dbContext.CodalCompanyImports.AddRange(imports);
 
                     await dbContext
                         .SaveChangesAsync(cancellationToken)
+                        .ConfigureAwait(false);
+
+                    await EnsureCodalCompaniesInMasterInfoAsync(cancellationToken)
                         .ConfigureAwait(false);
 
                     int updatedRows =
@@ -184,70 +187,40 @@ public sealed class CodalCompanyReferenceSyncService(
                 }
             });
     }
-
     private async Task<int> UpdateCompanyIndustriesAsync(
-        CancellationToken cancellationToken)
+    CancellationToken cancellationToken)
     {
         const string sql = """
-            ;WITH Matched AS
-            (
-                SELECT
-                    M.CompanyId,
-                    C.IndustryId,
-                    C.IndustryGroupId,
-                    C.Isic
-                FROM dbo.CodalCompanyImport C
-                INNER JOIN marketintelligence.vw_CompanyMaster M
-                    ON
-                    LTRIM(RTRIM(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    M.Symbol,
-                                    N'ي',
-                                    N'ی'
-                                ),
-                                N'ك',
-                                N'ک'
-                            ),
-                            NCHAR(8204),
-                            N' '
-                        )
-                    ))
-                    =
-                    LTRIM(RTRIM(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    C.Symbol,
-                                    N'ي',
-                                    N'ی'
-                                ),
-                                N'ك',
-                                N'ک'
-                            ),
-                            NCHAR(8204),
-                            N' '
-                        )
-                    ))
-                INNER JOIN dbo.Industries I
-                    ON I.IndustryId = C.IndustryId
-                WHERE   M.IsListed = 1 AND
-                        LTRIM(RTRIM(C.Symbol)) NOT IN ( N'و دانا' )
-            )
-            UPDATE CI
-            SET
-                CI.IndustryId = M.IndustryId,
-                CI.IndustryGroupId = M.IndustryGroupId,
-                CI.Isic = M.Isic
-            FROM marketintelligence.CompanyIndustries CI
-            INNER JOIN Matched M
-                ON M.CompanyId = CI.CompanyId
+        ;WITH Matched AS
+        (
+            SELECT
+                M.CompanyId,
+                C.IndustryId,
+                C.IndustryGroupId,
+                C.Isic
+            FROM dbo.CodalCompanyImport C
+            INNER JOIN marketintelligence.vw_CompanyMaster M
+                ON dbo.NormalizeForMatch(M.Symbol)
+                 = dbo.NormalizeForMatch(C.Symbol)
+            INNER JOIN dbo.Industries I
+                ON I.IndustryId = C.IndustryId
             WHERE
-                   ISNULL(CI.IndustryId, '') <> ISNULL(M.IndustryId, '')
-                OR ISNULL(CI.IndustryGroupId, '') <> ISNULL(M.IndustryGroupId, '')
-                OR ISNULL(CI.Isic, '') <> ISNULL(M.Isic, '');
-            """;
+                M.IsListed = 1
+                AND LTRIM(RTRIM(C.Symbol)) <> N'و دانا'
+        )
+        UPDATE CI
+        SET
+            CI.IndustryId = M.IndustryId,
+            CI.IndustryGroupId = M.IndustryGroupId,
+            CI.Isic = M.Isic
+        FROM marketintelligence.CompanyIndustries CI
+        INNER JOIN Matched M
+            ON M.CompanyId = CI.CompanyId
+        WHERE
+               ISNULL(CI.IndustryId, '') <> ISNULL(M.IndustryId, '')
+            OR ISNULL(CI.IndustryGroupId, '') <> ISNULL(M.IndustryGroupId, '')
+            OR ISNULL(CI.Isic, '') <> ISNULL(M.Isic, '');
+        """;
 
         return await dbContext.Database
             .ExecuteSqlRawAsync(
@@ -270,37 +243,7 @@ public sealed class CodalCompanyReferenceSyncService(
                 FROM dbo.CodalCompanyImport C
                 INNER JOIN marketintelligence.vw_CompanyMaster M
                     ON
-                    LTRIM(RTRIM(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    M.Symbol,
-                                    N'ي',
-                                    N'ی'
-                                ),
-                                N'ك',
-                                N'ک'
-                            ),
-                            NCHAR(8204),
-                            N' '
-                        )
-                    ))
-                    =
-                    LTRIM(RTRIM(
-                        REPLACE(
-                            REPLACE(
-                                REPLACE(
-                                    C.Symbol,
-                                    N'ي',
-                                    N'ی'
-                                ),
-                                N'ك',
-                                N'ک'
-                            ),
-                            NCHAR(8204),
-                            N' '
-                        )
-                    ))
+                    dbo.NormalizeForMatch(M.Symbol) = dbo.NormalizeForMatch(C.Symbol)
                 INNER JOIN dbo.Industries I
                     ON I.IndustryId = C.IndustryId
                 WHERE
@@ -532,12 +475,7 @@ public sealed class CodalCompanyReferenceSyncService(
 
         await dbContext
             .SaveChangesAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        // NEW
-        await EnsureEligibleInstrumentsInMasterInfoAsync(cancellationToken)
-              .ConfigureAwait(false);
-
+            .ConfigureAwait(false);       
     }
     private static List<TsetmcInstrumentDto> ParseMarketWatch(string content)
     {
@@ -570,32 +508,18 @@ public sealed class CodalCompanyReferenceSyncService(
     private async Task<int> EnsureEligibleInstrumentsInMasterInfoAsync(
     CancellationToken cancellationToken)
     {
-        int[] allowedYVals = tsetmcOptions.Value.AllowedYVals;
+        int[] allowedYVals = _tsetmcOptions.AllowedYVals;
 
         if (allowedYVals.Length == 0)
         {
             return 0;
         }
-        string[] parameterNames =
-        allowedYVals
-            .Select((_, index) => $"@yVal{index}")
-            .ToArray();
-
-        SqlParameter[] parameters =
-            allowedYVals
-                .Select((value, index) =>
-                    new SqlParameter(
-                        parameterNames[index],
-                        value))
-                .ToArray();
 
         string allowedYValsSql =
-            string.Join(
-                ", ",
-                parameterNames);
+            string.Join(", ", allowedYVals);
 
-        const string sql =
-            """
+        string sql =
+            $"""
         ;WITH Eligible AS
         (
             SELECT
@@ -614,6 +538,7 @@ public sealed class CodalCompanyReferenceSyncService(
                 ti.YVal IN ({allowedYValsSql})
                 AND ti.Symbol IS NOT NULL
                 AND LTRIM(RTRIM(ti.Symbol)) <> N''
+                AND PATINDEX('%[0-9]%', ti.Symbol) = 0
                 AND ti.NormalizedSymbol IS NOT NULL
                 AND LTRIM(RTRIM(ti.NormalizedSymbol)) <> N''
         ),
@@ -635,25 +560,90 @@ public sealed class CodalCompanyReferenceSyncService(
             Symbol,
             CompanyName,
             NormalizedName,
-            NormalizedSymbol
+            NormalizedSymbol,
+            DateAdvise
         )
         SELECT
             m.Symbol,
             COALESCE(NULLIF(LTRIM(RTRIM(m.Name)), N''), m.Symbol),
             dbo.NormalizeForMatch(
                 COALESCE(NULLIF(LTRIM(RTRIM(m.Name)), N''), m.Symbol)),
-            m.NormalizedSymbol
+            m.NormalizedSymbol,
+            'TSETMC'
         FROM Missing AS m;
         """;
 
-        int inserted =
-            await dbContext.Database
-                .ExecuteSqlRawAsync(
-                    sql,
-                    cancellationToken)
-                .ConfigureAwait(false);
+        return await dbContext.Database
+            .ExecuteSqlRawAsync(
+                sql,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+    private async Task<int> EnsureCodalCompaniesInMasterInfoAsync(
+    CancellationToken cancellationToken)
+    {
+        const string sql =
+            """
+        ;WITH Candidates AS
+        (
+            SELECT
+                C.Symbol,
+                C.CompanyName,
+                dbo.NormalizeForMatch(C.Symbol) AS NormalizedSymbol,
+                ROW_NUMBER() OVER
+                (
+                    PARTITION BY dbo.NormalizeForMatch(C.Symbol)
+                    ORDER BY C.Symbol
+                ) AS RowNo
+            FROM dbo.CodalCompanyImport AS C
+            WHERE
+                C.Symbol IS NOT NULL
+                AND LTRIM(RTRIM(C.Symbol)) <> N''
+                AND LEN(LTRIM(RTRIM(C.Symbol))) <= 25
+                AND LEN(dbo.NormalizeForMatch(C.Symbol)) <= 50
+                AND LEN(dbo.NormalizeForMatch(C.Symbol)) < LEN(dbo.NormalizeForMatch(C.CompanyName))
+                And dbo.NormalizeCompanyNameForMatch(C.Symbol) <> dbo.NormalizeCompanyNameForMatch(C.CompanyName)
+        ),
+        Missing AS
+        (
+            SELECT
+                C.Symbol,
+                C.CompanyName,
+                C.NormalizedSymbol
+            FROM Candidates AS C
+            LEFT JOIN marketintelligence.MasterInfo AS M
+                ON M.NormalizedSymbol = C.NormalizedSymbol
+            WHERE
+                C.RowNo = 1
+                AND M.CompanyId IS NULL
+        )
+        INSERT INTO marketintelligence.MasterInfo
+        (
+            Symbol,
+            CompanyName,
+            NormalizedName,
+            NormalizedSymbol,
+            DateAdvise
+        )
+        SELECT
+            LTRIM(RTRIM(M.Symbol)),
+            COALESCE(
+                NULLIF(LTRIM(RTRIM(M.CompanyName)), N''),
+                LTRIM(RTRIM(M.Symbol))),
+            dbo.NormalizeForMatch(
+                COALESCE(
+                    NULLIF(LTRIM(RTRIM(M.CompanyName)), N''),
+                    LTRIM(RTRIM(M.Symbol)))),
+            M.NormalizedSymbol,
+            'CODAL'
+        FROM Missing AS M;
+        """;
 
-        return inserted;
+        return await dbContext.Database
+            .ExecuteSqlRawAsync(
+                sql,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
     private sealed record TsetmcInstrumentDto(
     string InsCode,
