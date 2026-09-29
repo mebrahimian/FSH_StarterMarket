@@ -79,6 +79,7 @@
       "runcodal": "تکمیل اطلاعات Codal",
       "runtsetmc": "تکمیل اطلاعات Tsetmc",
       "send": "در حال ارسال...",
+      "receive": "در حال دریافت...",
       "queued": "Job با موفقیت در صف قرار گرفت. JobId: {{jobId}}",
       "queueError": "خطا در قرار دادن Backfill در صف.",
       "finishedWithStatus": "Backfill با وضعیت {{status}} پایان یافت.",

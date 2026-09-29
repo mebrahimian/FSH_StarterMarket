@@ -35,7 +35,7 @@ public sealed class BenchmarkDailyPriceConfiguration
         builder.Property(x => x.ClosePrice)
             .HasPrecision(20, 6)
             .IsRequired();
-
+       
         builder.HasIndex(x => new
         {
             x.BenchmarkAssetId,

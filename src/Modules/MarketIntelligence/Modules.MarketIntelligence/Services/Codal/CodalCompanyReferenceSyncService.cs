@@ -151,8 +151,8 @@ public sealed class CodalCompanyReferenceSyncService(
                         .SaveChangesAsync(cancellationToken)
                         .ConfigureAwait(false);
 
-                    await EnsureCodalCompaniesInMasterInfoAsync(cancellationToken)
-                        .ConfigureAwait(false);
+                   // await EnsureCodalCompaniesInMasterInfoAsync(cancellationToken)
+                   //     .ConfigureAwait(false);
 
                     int updatedRows =
                         await UpdateCompanyIndustriesAsync(
@@ -579,6 +579,7 @@ public sealed class CodalCompanyReferenceSyncService(
                 cancellationToken)
             .ConfigureAwait(false);
     }
+    /*
     private async Task<int> EnsureCodalCompaniesInMasterInfoAsync(
     CancellationToken cancellationToken)
     {
@@ -645,6 +646,7 @@ public sealed class CodalCompanyReferenceSyncService(
                 cancellationToken)
             .ConfigureAwait(false);
     }
+    */
     private sealed record TsetmcInstrumentDto(
     string InsCode,
     string Isin,

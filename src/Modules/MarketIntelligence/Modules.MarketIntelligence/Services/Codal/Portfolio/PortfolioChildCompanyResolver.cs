@@ -398,6 +398,7 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
                 }
             }
         }
+        /*
         IReadOnlyList<CodalCompanyImport> codalMatches =
                 await FindCodalMatchesAsync(
                 fSortName,
@@ -470,7 +471,22 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
                     FSortName: fSortName);
             }
         }
+        */
+        IReadOnlyList<CodalCompanyImport> codalMatches =
+    await FindCodalMatchesAsync(
+        fSortName,
+        cancellationToken)
+    .ConfigureAwait(false);
 
+        if (codalMatches.Count == 1)
+        {
+            return new PortfolioChildCompanyResolution(
+                CompanyId: null,
+                HoldingAssetId: null,
+                IsListed: reportedIsListed,
+                IsExcluded: false,
+                FSortName: fSortName);
+        }
         return new PortfolioChildCompanyResolution(
             CompanyId: null,
             HoldingAssetId: null,
@@ -552,6 +568,7 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
             ? matches
             : [];
     }
+    /*
     private async Task<int?> EnsureMasterInfoAsync(CodalCompanyImport codal, CancellationToken cancellationToken)
     {
         string fSortSymbol = NormalizeForMatch(codal.Symbol);
@@ -676,4 +693,5 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
             }
         }
     }
+    */
 }

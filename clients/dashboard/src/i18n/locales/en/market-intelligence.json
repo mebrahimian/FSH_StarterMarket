@@ -79,6 +79,7 @@
       "runcodal": "Complete Codal Info",
       "runtsetmc": "Complete Tsetmc Info",
       "send": "Transfering ...",
+      "receive": "Receiving ...",
       "queued": "Job was successfully queued. JobId: {{jobId}}",
       "queueError": "Failed to queue the Backfill job.",
       "finishedWithStatus": "Backfill finished with status {{status}}.",

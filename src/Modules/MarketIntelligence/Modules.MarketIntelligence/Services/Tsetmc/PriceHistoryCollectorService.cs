@@ -739,6 +739,54 @@ public sealed class PriceHistoryCollectorService(
 
         return completed;
     }
+    public async Task<(int Processed, int Inserted)> RepairMissingTradeDateAsync(
+    DateOnly tradeDate,
+    CancellationToken cancellationToken)
+    {
+        List<int> instrumentIds =
+            await dbContext.Database
+                .SqlQuery<int>(
+                    $"""
+                SELECT DISTINCT
+                    cp.InstrumentId AS Value
+                FROM marketintelligence.CompanyProfileView cp
+                WHERE
+                    cp.InstrumentId IS NOT NULL
+                    AND cp.YVal IN
+                    (
+                        300, 303, 305, 309, 313, 315,
+                        319, 380, 400, 401, 403, 404
+                    )
+                    AND NOT EXISTS
+                    (
+                        SELECT 1
+                        FROM marketintelligence.DailyPrices dp
+                        WHERE dp.InstrumentId = cp.InstrumentId
+                          AND dp.TradeDate = {tradeDate}
+                    )
+                """)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+        int processed = 0;
+        int inserted = 0;
+
+        foreach (int instrumentId in instrumentIds)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var result =
+                await BackfillInstrumentAsync(
+                        instrumentId,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+            processed++;
+            inserted += result.Inserted;
+        }
+
+        return (processed, inserted);
+    }
     private static DateOnly ToDate(int dEven)
     {
         int year = dEven / 10000;

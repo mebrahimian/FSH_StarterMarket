@@ -34,6 +34,20 @@ public sealed class BenchmarkAssetConfiguration
 
         builder.Property(x => x.IsActive)
             .IsRequired();
+        builder.Property(x => x.Source)
+           .HasMaxLength(50)
+           .IsRequired();
+
+        builder.Property(x => x.ExternalCode)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.HasIndex(x => new
+        {
+            x.Source,
+            x.ExternalCode
+        })
+        .IsUnique();
 
         builder.HasIndex(x => x.Code)
             .IsUnique();

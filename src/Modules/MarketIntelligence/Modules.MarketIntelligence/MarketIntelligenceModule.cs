@@ -13,6 +13,7 @@ using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
+using FSH.Modules.MarketIntelligence.Services.Benchmark;
 using FSH.Modules.MarketIntelligence.Services.Codal;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
@@ -84,9 +85,10 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<PortfolioHoldingAssetBootstrapService>();
             builder.Services.AddOptions<TsetmcOptions>().BindConfiguration(TsetmcOptions.SectionName);
             builder.Services.AddScoped<IPortfolioChildCompanyResolver, PortfolioChildCompanyResolver>();
-
-            builder.Services.AddHealthChecks()
-                .AddDbContextCheck<MarketIntelligenceDbContext>(
+            builder.Services.AddOptions<TgjuOptions>().BindConfiguration(TgjuOptions.SectionName)
+                   .Validate(options => !string.IsNullOrWhiteSpace(options.BaseUrl), "TGJU BaseUrl is required.").ValidateOnStart();
+            builder.Services.AddHttpClient<TgjuBenchmarkReader>();
+            builder.Services.AddHealthChecks().AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
@@ -137,13 +139,24 @@ namespace FSH.Modules.MarketIntelligence
 
             group.MapGetMatchedPortfolioCompaniesEndpoint();
 
-            group.MapPost("/codal/newRead", (IJobService jobService) =>
+
+
+            group.MapPost("/tsetmc/incremental/DailyPrice", (IJobService jobService) =>
+              {
+                  string jobId = jobService.Enqueue<TsetmcBackgroundJob>
+                    (job => job.RunIncrementalAsync(CancellationToken.None));
+
+                  return Results.Accepted(value: new{jobId, message = "TSETMC daily price incremental queued." });
+              }).RequirePermission(MarketIntelligencePermissions
+                .CodalOperations
+                .Execute); 
+
+            group.MapPost("/codal/incremental/Disclosures", (IJobService jobService) =>
               {
                   string jobId = jobService.Enqueue<CodalBackgroundJob>
                     (job => job.RunIncrementalAsync(CancellationToken.None));
 
-                  return Results.Accepted(value: new
-                  { jobId, message = "Codal incremental import queued." });
+                  return Results.Accepted(value: new{jobId, message = "Codal incremental import queued." });
               }).RequirePermission(MarketIntelligencePermissions
                 .CodalOperations
                 .Execute);
@@ -282,6 +295,32 @@ namespace FSH.Modules.MarketIntelligence
                    MarketIntelligencePermissions
                    .CodalOperations
                    .Execute);
+
+            group.MapGet("/company-profiles", async Task<IResult> (
+                 MarketIntelligenceDbContext dbContext,
+                 CancellationToken cancellationToken) =>
+            {
+               List<CompanyProfileLookupItem> profiles =
+                  await dbContext.Database
+                     .SqlQueryRaw<CompanyProfileLookupItem>(
+                          """
+                          SELECT
+                              CompanyId,
+                              Symbol,
+                              NormalizedSymbol,
+                              CompanyName,
+                              NormalizedName,
+                              InstrumentId,
+                              InsCode,
+                              Isin,
+                              YVal,
+                              TradeDate
+                          FROM marketintelligence.CompanyProfileView
+                          """)
+                     .ToListAsync(cancellationToken);
+
+               return Results.Ok(profiles);
+            });
             ////////////////////
             group.MapPost("/codal/parse-pending", (IJobService jobService) =>
                 {
@@ -315,41 +354,63 @@ namespace FSH.Modules.MarketIntelligence
                 return Results.Ok(new
                          { instrumentId, inserted });
             });
-            group.MapPost(
-    "/tsetmc/prices/backfill-missing",
-    async Task<IResult> (
-        PriceHistoryCollectorService collectorService,
-        CancellationToken cancellationToken) =>
-    {
-        int completed =
-            await collectorService.BackfillMissingInstrumentsAsync(
-                cancellationToken);
+            group.MapPost("/tsetmc/prices/backfill-missing",
+                async Task<IResult> (
+                    PriceHistoryCollectorService collectorService,
+                    CancellationToken cancellationToken) =>
+            {
+                int completed =
+                    await collectorService.BackfillMissingInstrumentsAsync(
+                    cancellationToken);
 
-        return Results.Ok(new
-        {
-            completed
-        });
-    });
-            group.MapPost(
-    "/tsetmc/incremental/test______________",
-    async (
-        PriceHistoryCollectorService collectorService,
-        CancellationToken cancellationToken) =>
-    {
-        int processed =
-            await collectorService
-                .RunIncrementalAsync(cancellationToken)
+                return Results.Ok(new
+                 {
+                   completed
+                 });
+            });
+            group.MapPost("/tsetmc/prices/repair-missing-date",
+                async Task<IResult> (
+                    DateOnly tradeDate,
+                    PriceHistoryCollectorService collectorService,
+                    CancellationToken cancellationToken) =>
+            {
+                var result =
+                    await collectorService.RepairMissingTradeDateAsync(
+                    tradeDate,
+                    cancellationToken).ConfigureAwait(false);
+
+                return Results.Ok(new
+                 {
+                   tradeDate,
+                   processed = result.Processed,
+                   inserted = result.Inserted
+                 });
+            }).RequirePermission(
+                MarketIntelligencePermissions
+                .CodalOperations
+                .Execute);
+             group.MapGet("/benchmark/tgju/test",
+                async Task<IResult> (
+                TgjuBenchmarkReader reader,
+                CancellationToken cancellationToken) =>
+             {
+                DateOnly fromDate =
+                   DateOnly.FromDateTime(
+                   DateTime.UtcNow.AddDays(-10));
+
+                IReadOnlyCollection<TgjuBenchmarkPriceRow> rows =
+                await reader
+                     .GetHistoryAsync("price_dollar_rl", fromDate, cancellationToken)
                 .ConfigureAwait(false);
 
-        return Results.Ok(new
-        {
-            processed
-        });
-    });
+                return Results.Ok(rows);
+             }).RequirePermission(MarketIntelligencePermissions
+                  .CodalOperations
+                  .Execute);
             ////////////////////
             ///// TO DO: Remove after CompanyId + Insight pipeline is fully integrated.
             ///////////////////////////////////
-            
+
             group.MapGet("/insights/test-sales-record", async (
                   string symbol,
                   string periodEndDate,
@@ -624,7 +685,17 @@ namespace FSH.Modules.MarketIntelligence
             }
 
         }
-
+        public sealed record CompanyProfileLookupItem(
+            int CompanyId,
+            string Symbol,
+            string? NormalizedSymbol,
+            string? CompanyName,
+            string? NormalizedName,
+            int InstrumentId,
+            string? InsCode,
+            string? Isin,
+            string? YVal,
+            DateTime? TradeDate);
 
 
     }

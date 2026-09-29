@@ -316,7 +316,7 @@ export type CodalOperationResponse = {
 }
 export function collectNewCodalDisclosures(): Promise<CodalOperationResponse> {
     return apiFetch<CodalOperationResponse>(
-        "/api/v1/marketintelligence/codal/newRead",
+        "/api/v1/marketintelligence/codal/Disclosures",
         {
             method: "POST",
         },
@@ -342,13 +342,18 @@ export type CompanyProfile = {
     symbol: string;
     normalizedSymbol: string | null;
     companyName: string | null;
+    normalizedName:string | null;
     instrumentId: number;
     insCode: string | null;
     isin: string | null;
     yVal: number | null;
     tradeDate: string | null;
 };
-
+export function getCompanyProfiles(): Promise<CompanyProfile[]> {
+    return apiFetch<CompanyProfile[]>(
+        "/api/v1/marketintelligence/company-profiles",
+    );
+}
 export function getCodalJobStatus(
     jobId: string,
 ): Promise<CodalJobStatusResponse> {

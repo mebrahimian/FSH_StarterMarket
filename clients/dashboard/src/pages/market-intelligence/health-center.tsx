@@ -15,6 +15,7 @@ import {
     PageHero,
     ToneIconTile,
 } from "@/components/list";
+
 import {
     useMutation,
     useQuery,
@@ -31,6 +32,8 @@ import {
     getSalesPerformanceRebuildStatus,
     updateCodalIncrementalSchedule,
     backfillTsetmcPrices,
+    getCompanyProfiles,
+    type CompanyProfile,
     type CodalIncrementalSchedule,
     type DataQualityIssue,
     type FiscalYearSales,
@@ -100,6 +103,14 @@ function ScheduleIntervalSelect({
         </select>
     );
 }
+
+const normalizeSymbolForSearch = (value: string) =>
+    value
+        .trim()
+        .replace(/ي/g, "ی")
+        .replace(/ك/g, "ک")
+        .replace(/[\s._\-‌]/g, "")
+        .toLowerCase();
 export function MarketHealthCenterPage() {
     const navigate = useNavigate();
     const [rtFilter, ] = useState("");
@@ -109,6 +120,8 @@ export function MarketHealthCenterPage() {
     const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
     const [backfillSymbol, setBackfillSymbol] = useState("");
+    const [debouncedBackfillSymbol, setDebouncedBackfillSymbol] = useState("");
+    const [symbolSuggestionsOpen, setSymbolSuggestionsOpen] = useState(false);
     const [backfillInstrumentId, setBackfillInstrumentId] = useState<number | null>(null);
     const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const [backfillFromDate, setBackfillFromDate] = useState<DateObject | null>(null);
@@ -116,6 +129,18 @@ export function MarketHealthCenterPage() {
     const [backfillMessage, setBackfillMessage] = useState("");
     const [backfillJobId, setBackfillJobId] = useState<string | null>(null);
     const [codalSchedule, setCodalSchedule] = useState<CodalIncrementalSchedule | null>(null);
+   
+    useEffect(() => {
+    const timer = window.setTimeout(() => {
+        setDebouncedBackfillSymbol(
+            backfillSymbol.trim(),
+        );
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+}, [backfillSymbol]);
+    
+    
     const salesInsightRebuildMutation = useMutation({mutationFn: rebuildMissingSalesPerformanceSnapshots, });
 
     const salesPerformanceRebuildStatusQuery = useQuery({
@@ -270,17 +295,18 @@ export function MarketHealthCenterPage() {
             .replace(/[٠-٩]/g, (digit) =>
                 String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)),
             );
-    const handleRunTsetmcBackfill = () => {
-        if (backfillInstrumentId === null) {
-            return;
-        }
+                
+    const handleRunTsetmcBackfill = async () => {
+    if (backfillInstrumentId === null) {
+        return;
+    }
 
-        setBackfillMessage("");
+    setBackfillMessage("");
 
-        tsetmcBackfillMutation.mutate(
-            backfillInstrumentId,
-        );
+    tsetmcBackfillMutation.mutate(
+        backfillInstrumentId, );
     };
+        
     const handleRunBackfill = () => {
         const symbol = backfillSymbol.trim();
 
@@ -582,15 +608,116 @@ export function MarketHealthCenterPage() {
                 ),
         ).size;
 
+    const { data: companyProfiles = [],} = 
+        useQuery<CompanyProfile[]>({
+           queryKey: ["market-intelligence", "company-profiles"],
+           queryFn: getCompanyProfiles,
+           });
+    const matchingCompanyProfiles =
+        debouncedBackfillSymbol.length >= 2
+           ? companyProfiles.filter           
+              (                   
+                (profile) =>                   
+                  {        
+                     const symbol = profile.normalizedSymbol ?? "";
+                     const companyName =profile.normalizedName ?? "";
+                
+                     return (
+                             symbol.includes(normalizeSymbolForSearch(debouncedBackfillSymbol,)) ||
+                             companyName.includes(normalizeSymbolForSearch(debouncedBackfillSymbol,),)
+                            );
+                  }                 
+              ).sort((a, b) => {
+                const aSymbol =
+                    a.normalizedSymbol ?? "";
+
+                const bSymbol =
+                    b.normalizedSymbol ?? "";
+
+                const aStarts =
+                    aSymbol.startsWith(debouncedBackfillSymbol);
+
+                const bStarts =
+                    bSymbol.startsWith(debouncedBackfillSymbol);
+
+                if (aStarts && !bStarts) return -1;
+                if (!aStarts && bStarts) return 1;
+
+                return aSymbol.localeCompare(
+                    bSymbol,
+                    "fa",
+                );
+            }).slice(0, 20)
+           : [];
 
     return (
-        <div className="-mt-5">
-            <PageHero   className="-mt-3 [&>div]:!py-3 sm:[&>div]:!py-3"
+        <div className="-mt-6">
+            <PageHero   className="-mt-5 [&>div]:!py-3 sm:[&>div]:!py-3"
                 title={tMarket("healthCenter.title")}
                 subtitle={tMarket("healthCenter.subtitle")}
                 actions={
-                    <div className="flex items-center gap-2">
-                        <Button
+
+                    
+                    <div className="-mt-5 flex w-[600px] flex-col items-start gap-2 self-start">
+
+                        <div className="grid w-full grid-cols-4 overflow-hidden rounded-xl border border-border/70 bg-background shadow-md ring-1 ring-black/5">
+                            <Button className="rounded-none 
+                                               border-s              
+                                               bg-gradient-to-b 
+                                               from-background 
+                                               to-muted/50 
+                                               text-foreground 
+                                               shadow-sm 
+                                               hover:to-muted">
+                                Incremental
+                            </Button>
+
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="rounded-none
+                                           border-s
+                                           border-border/70
+                                           bg-gradient-to-b
+                                           from-background
+                                           to-muted/50
+                                           text-foreground
+                                           shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
+                                           hover:to-muted">
+                                Backfill
+                            </Button>
+
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="rounded-none
+                                           border-s
+                                           border-border/70
+                                           bg-gradient-to-b
+                                           from-background
+                                           to-muted/50                      
+                                           text-foreground
+                                           shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
+                                           hover:to-muted">
+                                Parse Pending
+                            </Button>
+                            <Button
+                                type="button"
+                                size="sm"
+                                className="rounded-none 
+                                           border-s-3 
+                                           border-s-primary/40
+                                           bg-gradient-to-b 
+                                           from-background
+                                           to-muted/50 
+                                           text-foreground
+                                           shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] 
+                                           hover:to-muted">
+                                DailyPrice
+                            </Button>
+                        </div> 
+                        <div className="mt-2 grid w-full grid-cols-3 gap-2">
+                            <Button
                             type="button"
                             variant="outline"
                             size="sm"
@@ -601,7 +728,7 @@ export function MarketHealthCenterPage() {
                                 : tMarket("codalSchedule.open")}
                         </Button>
                         
-                        <Button
+                            <Button
                             type="button"
                             variant="outline"
                             size="sm"
@@ -615,7 +742,7 @@ export function MarketHealthCenterPage() {
                             <Link2 className="size-3.5" />
                             {tMarket("portfolioMatching")}
                         </Button>
-                        <Button
+                            <Button
                             type="button"
                             variant="outline"
                             size="sm"
@@ -636,7 +763,7 @@ export function MarketHealthCenterPage() {
                             />
                             {t("actions.refresh")}
                         </Button>
-                        
+                        </div>
                     </div>
                 }
             />
@@ -1126,7 +1253,7 @@ export function MarketHealthCenterPage() {
                             );
                         })
                     )}
-                </div>
+                </div> 
 
             </section>
             <section className="relative mt-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-7.5 shadow-xs">
@@ -1139,31 +1266,61 @@ export function MarketHealthCenterPage() {
 
                 <div className="-mt-3 grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end ">
                     <label>
-                        
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={backfillSymbol}
+                                onFocus={() =>
+                                    setSymbolSuggestionsOpen(true)
+                                }
+                                onChange={(event) => {
+                                    setBackfillSymbol(event.target.value);
+                                    setBackfillInstrumentId(null);
+                                    setSymbolSuggestionsOpen(true);
+                                }}
+                                placeholder={tMarket(
+                                    "healthCenter.backfill.symbolPlaceholder",
+                                )}
+                                className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none transition focus:border-[var(--color-ring)]"
+                            />
 
-                        <input
-                            type="text"
-                            value={backfillSymbol}
-                            onChange={(e) => {
-                                const symbol = e.target.value;
+                            {symbolSuggestionsOpen &&
+                                debouncedBackfillSymbol.length >= 2 &&
+                                matchingCompanyProfiles.length > 0 && (
+                                <div className="absolute bottom-full z-50 mb-1 max-h-72 w-full overflow-y-auto rounded-lg border border-blue-900 bg-blue-100 text-red-950 shadow-xl">
+                                    {matchingCompanyProfiles.map((profile) => (
+                                        <button
+                                            key={profile.instrumentId}
+                                            type="button"
+                                            className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-start text-sm hover:bg-muted"
+                                            onMouseDown={(event) =>
+                                                event.preventDefault()
+                                            }
+                                            onClick={() => {
+                                                setBackfillSymbol(profile.symbol);
+                                                setBackfillInstrumentId(
+                                                    profile.instrumentId,
+                                                );
+                                                setSymbolSuggestionsOpen(false);
+                                            }}
+                                        >
 
-                                setBackfillSymbol(symbol);
+                                            <span className="shrink-0 text-xs text-muted-foreground">
+                                                {profile.symbol}
+                                            </span>
+                                            <span className="flex-1 text-right text-xs text-muted-foreground">                                            
+                                                {profile.companyName ?? "—"}
+                                            </span>
 
-                                const matchedIssue = dataQualityIssues.find(
-                                    (issue) => issue.symbol === symbol.trim(),
-                                );
-
-                                setBackfillInstrumentId(
-                                    matchedIssue?.asset?.tsetmcInstrumentId ?? null,
-                                );
-                            }}
-                            placeholder={tMarket(
-                                "healthCenter.backfill.symbolPlaceholder",
-                            )}
-                            className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none transition focus:border-[var(--color-ring)]"
-                        />
-                    </label>
-
+                                            
+                                        </button>
+                                    ))}
+                                </div>
+    )
+                                
+                            }
+                        </div>
+                    </label>                    
                     <label>
                         <PersianDatePicker
                             value={backfillFromDate}
@@ -1223,12 +1380,13 @@ export function MarketHealthCenterPage() {
                             onClick={handleRunTsetmcBackfill}
                             disabled={
                                 !backfillSymbol.trim() ||
+                                backfillInstrumentId === null ||
                                 tsetmcBackfillMutation.isPending
                             }
                             className="whitespace-nowrap"
                         >
                             {tsetmcBackfillMutation.isPending
-                                ? tMarket("healthCenter.backfill.send")
+                                ? tMarket("healthCenter.backfill.receive")
                                 : tMarket("healthCenter.backfill.runtsetmc")}
                         </Button>
                     </div>
