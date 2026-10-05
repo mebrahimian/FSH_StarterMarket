@@ -26,188 +26,12 @@ public sealed class CodalDataQualityAuditService(
 
         
         int requiredMonths = coverageYears * 12;
-
-        CodalDefinitions definitions = CodalDefinitionsProvider.Load();
-
-        byte[] supportedReportTypes = definitions.MonthlyActivities.Keys.ToArray();
-
-        IQueryable<Disclosure> disclosures =
-            dbContext.Disclosures.AsNoTracking();
-
+        
         IQueryable<MonthlyActivitySummary> summaries =
             dbContext.MonthlyActivitySummaries.AsNoTracking();
 
-        var monthlyCandidates =
-             disclosures.Where(d => d.Rt.HasValue &&
-                                    supportedReportTypes.Contains(d.Rt.Value) &&
-        (
-            (d.Let == 58 && d.Rt.Value != 2) ||
-            (d.Let == 8 && d.Rt.Value == 2)
-        ));
-
-        var metadata = new CodalMetadataQuality
-        {
-            TotalDisclosures =
-                await disclosures.CountAsync(
-                    cancellationToken),
-
-            MissingSymbol =
-                await disclosures.CountAsync(
-                    d => d.Symbol == string.Empty,
-                    cancellationToken),
-
-            MissingUrl =
-                await disclosures.CountAsync(
-                    d => d.Url == string.Empty,
-                    cancellationToken),
-
-            MissingPublishDate =
-                await disclosures.CountAsync(
-                    d => d.PublishDateTime == null,
-                    cancellationToken),
-
-            MissingLet =
-                await disclosures.CountAsync(
-                    d => d.Let == null,
-                    cancellationToken),
-
-            MissingRt =
-                await disclosures.CountAsync(
-                    d => d.Rt == null,
-                    cancellationToken),
-        };
-
-        var monthlyProcessing =
-            new CodalMonthlyProcessingQuality
-            {
-                TotalCandidates =
-                    await monthlyCandidates.CountAsync(
-                        cancellationToken),
-
-                Pending =
-                    await monthlyCandidates.CountAsync(
-                        d => d.SalesParseStatus ==
-                            DisclosureParseStatus.Pending,
-                        cancellationToken),
-
-                Success =
-                    await monthlyCandidates.CountAsync(
-                        d => d.SalesParseStatus ==
-                            DisclosureParseStatus.Success,
-                        cancellationToken),
-
-                Failed =
-                    await monthlyCandidates.CountAsync(
-                        d => d.SalesParseStatus ==
-                            DisclosureParseStatus.Failed,
-                        cancellationToken),
-
-                NoData =
-                    await monthlyCandidates.CountAsync(
-                        d => d.SalesParseStatus ==
-                            DisclosureParseStatus.NoData,
-                        cancellationToken),
-
-                Skipped =
-                    await monthlyCandidates.CountAsync(
-                        d => d.SalesParseStatus ==
-                            DisclosureParseStatus.Skipped,
-                        cancellationToken),
-            };
-
-        int missingSourceDisclosure =
-            await summaries.CountAsync(
-                summary =>
-                    summary.DisclosureId == null ||
-                    !disclosures.Any(disclosure =>
-                        disclosure.Id ==
-                        summary.DisclosureId.Value),
-                cancellationToken);
-
-        int sourceIdentityMismatch =
-            await summaries.CountAsync(
-                summary =>
-                    summary.DisclosureId != null &&
-                    disclosures.Any(disclosure =>
-                        disclosure.Id ==
-                            summary.DisclosureId.Value &&
-                        (
-                            summary.TracingNo == null ||
-                            disclosure.TracingNo !=
-                                summary.TracingNo.Value
-                        )),
-                cancellationToken);
-
-        int sourceSymbolMismatch =
-            await summaries.CountAsync(
-                summary =>
-                    summary.DisclosureId != null &&
-                    disclosures.Any(disclosure =>
-                        disclosure.Id ==
-                            summary.DisclosureId.Value &&
-                        disclosure.Symbol !=
-                            summary.Symbol),
-                cancellationToken);
-
-        int sourcePublishDateMismatch =
-            await summaries.CountAsync(
-                summary =>
-                    summary.DisclosureId != null &&
-                    disclosures.Any(disclosure =>
-                        disclosure.Id ==
-                            summary.DisclosureId.Value &&
-                        disclosure.PublishDateTime !=
-                            summary.PublishDateTime),
-                cancellationToken);
-
-        int sourceStatusNotSuccess =
-            await summaries.CountAsync(
-                summary =>
-                    summary.DisclosureId != null &&
-                    disclosures.Any(disclosure =>
-                        disclosure.Id ==
-                            summary.DisclosureId.Value &&
-                        disclosure.SalesParseStatus !=
-                            DisclosureParseStatus.Success),
-                cancellationToken);
-
-        int duplicateSymbolPeriods =
-            await summaries
-                .GroupBy(summary => new
-                {
-                    summary.Symbol,
-                    summary.PeriodEndDate,
-                })
-                .Where(group => group.Count() > 1)
-                .CountAsync(cancellationToken);
-
-        var summaryPeriods =
-            await summaries
-                .Select(summary => new
-                {
-                    summary.Symbol,
-                    summary.PeriodEndDate,
-                    summary.PreviousYearToDateAmount,
-                })
-                .ToListAsync(cancellationToken);
-        var monthlyDisclosures =
-    await dbContext.Disclosures
-        .AsNoTracking()
-        .Where(disclosure =>
-            disclosure.Let == 58 ||
-            (disclosure.Let == 8 &&
-             disclosure.Rt == 2))
-        .Select(disclosure => new
-        {
-            disclosure.Symbol,
-            disclosure.Title,
-            disclosure.PublishDateTimeRaw,
-        })
-        .ToListAsync(cancellationToken)
-        .ConfigureAwait(false);
-
         var persianCalendar =
-    new PersianCalendar();
+        new PersianCalendar();
 
         DateTime auditDateUtc =
             DateTime.UtcNow;
@@ -234,41 +58,39 @@ public sealed class CodalDataQualityAuditService(
         string[] requiredPeriods = CreatePeriodWindow(
                                   windowEndPeriod,
                                   requiredMonths);
-        DateTime activeSinceUtc = auditDateUtc.AddMonths(-12);
-        string[] activeSymbols = await disclosures
-                .Where(disclosure =>
-                   disclosure.Let == 58 &&
-                   disclosure.PublishDateTime.HasValue &&
-                   disclosure.PublishDateTime.Value >= activeSinceUtc &&
-                   disclosure.Symbol != string.Empty)
-                .Select(disclosure =>
-                              disclosure.Symbol)
-                .Distinct()
-                .OrderBy(symbol => symbol)
-                .ToArrayAsync(cancellationToken);
-
-        HashSet<(string Symbol, string PeriodPrefix)>
-            availablePeriods =
-                summaryPeriods
-                    .Where(summary =>
-                        summary.PeriodEndDate.Length >= 7)
-                    .Select(summary => (
-                        summary.Symbol,
-                        summary.PeriodEndDate[..7]))
-                    .ToHashSet();
-
-        int missingPreviousYearWhenHistoryExists =
-            summaryPeriods.Count(summary =>
-                summary.PreviousYearToDateAmount is null &&
-                PreviousYearSummaryLookup
-                    .GetPreviousYearPeriodPrefix(
-                        summary.PeriodEndDate)
-                    is string previousYearPrefix &&
-                availablePeriods.Contains((
-                    summary.Symbol,
-                    previousYearPrefix)));
+        
         HashSet<string> requiredPeriodSet = requiredPeriods.ToHashSet(
                                 StringComparer.Ordinal);
+
+        var summaryPeriods =
+    await summaries
+        .Where(summary =>
+            summary.PeriodEndDate.Length >= 7 &&
+            requiredPeriods.Contains(
+                summary.PeriodEndDate.Substring(0, 7)))
+        .Select(summary => new
+        {
+            summary.Symbol,
+            summary.PeriodEndDate,
+        })
+        .ToListAsync(cancellationToken);
+        var monthlyDisclosures =
+    await dbContext.Disclosures
+        .AsNoTracking()
+        .Where(disclosure =>
+            disclosure.Let == 58 ||
+            (disclosure.Let == 8 &&
+             disclosure.Rt == 2))
+        .Select(disclosure => new
+        {
+            disclosure.Symbol,
+            disclosure.Title,
+            disclosure.PublishDateTimeRaw,
+        })
+        .ToListAsync(cancellationToken)
+        .ConfigureAwait(false);
+
+        
         var disclosurePeriodDetails =
     monthlyDisclosures
         .Where(disclosure =>
@@ -314,11 +136,21 @@ public sealed class CodalDataQualityAuditService(
                     item.PublishDate);
             });
 
-        var disclosurePeriods =
-            disclosurePeriodDetails.Keys.ToHashSet();
-
-
-
+        Dictionary<string, string[]> reportedPeriodsBySymbol =
+            disclosurePeriodDetails.Keys
+              .GroupBy(
+                  item => item.Symbol,
+                  StringComparer.Ordinal)
+              .ToDictionary(
+                  group => group.Key,
+                  group => group
+                     .Select(item => item.Period)
+                     .OrderBy(period => period)
+                     .ToArray(),
+             StringComparer.Ordinal);
+        string[] symbolsWithMonthlyDisclosures = reportedPeriodsBySymbol.Keys
+           .OrderBy(symbol => symbol)
+           .ToArray();
         Dictionary<string, HashSet<string>>
             coveragePeriodsBySymbol =
                 summaryPeriods
@@ -345,13 +177,9 @@ public sealed class CodalDataQualityAuditService(
                             .ToHashSet(
                                 StringComparer.Ordinal),
                         StringComparer.Ordinal);
-        var codalConfirmedPeriods =  new HashSet<(string Symbol, string Period)>();
-        var codalPeriodDetails =    new Dictionary<(string Symbol, string Period), CodalMissingPeriod>();
-
-
         List<CodalSymbolCoverageGap> coverageGaps = [];
 
-        foreach (string symbol in activeSymbols)
+        foreach (string symbol in symbolsWithMonthlyDisclosures)
         {
             if (
                 !coveragePeriodsBySymbol.TryGetValue(
@@ -361,14 +189,10 @@ public sealed class CodalDataQualityAuditService(
                 symbolPeriods = [];
             }
 
-            string[] reportedPeriodsForSymbol =
-                disclosurePeriods
-                    .Where(item =>
-                        item.Symbol == symbol)
-                    .Select(item =>
-                        item.Period)
-                    .OrderBy(period => period)
-                    .ToArray();
+            if (!reportedPeriodsBySymbol.TryGetValue(symbol, out string[]? reportedPeriodsForSymbol))
+            {
+                reportedPeriodsForSymbol = [];
+            }
 
             string[] missingPeriods =
                 reportedPeriodsForSymbol
@@ -417,51 +241,17 @@ public sealed class CodalDataQualityAuditService(
                             .ToArray(),
                 });
         }
-        var summaryQuality =
-            new CodalSummaryQuality
-            {
-                TotalSummaries = await summaries.CountAsync(cancellationToken),
-                MissingSourceDisclosure = missingSourceDisclosure,
-                SourceIdentityMismatch = sourceIdentityMismatch,
-                SourceSymbolMismatch = sourceSymbolMismatch,
-                SourcePublishDateMismatch = sourcePublishDateMismatch,
-                SourceStatusNotSuccess = sourceStatusNotSuccess,
-                DuplicateSymbolPeriods = duplicateSymbolPeriods,
-                MissingPeriodAmount =
-                    await summaries.CountAsync(
-                        summary =>
-                            summary.PeriodAmount == null,
-                        cancellationToken),
-
-                MissingYearToDateAmount =
-                    await summaries.CountAsync(
-                        summary =>
-                            summary.YearToDateAmount == null,
-                        cancellationToken),
-
-                MissingPreviousYearWhenHistoryExists =
-                    missingPreviousYearWhenHistoryExists,
-            };
-
+       
+        
         return new CodalDataQualityReport
         {
-            CheckedAtUtc = auditDateUtc,
-            Metadata = metadata,
-            MonthlyProcessing = monthlyProcessing,
+            
             HistoryCoverage = new CodalHistoryCoverageQuality
-            {
-                CoverageYears = coverageYears,
-                RequiredMonths = requiredMonths,
-                WindowStartPeriod = requiredPeriods.FirstOrDefault(),
-                WindowEndPeriod = requiredPeriods.LastOrDefault(),
-                ActiveSymbols = activeSymbols.Length,
-                CompleteSymbols = activeSymbols.Length - coverageGaps.Count,
-                IncompleteSymbols = coverageGaps.Count,
+            {                
                 Gaps = coverageGaps.OrderByDescending(gap =>
                        gap.MissingMonths).ThenBy(gap =>
                             gap.Symbol).ToArray(),
             },
-            Summaries = summaryQuality,
         };
     }
     private static string[] CreatePeriodWindow(

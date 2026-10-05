@@ -47,11 +47,11 @@ export function describeError(err: unknown): string {
 
 type RequestInitEx = RequestInit & { skipAuth?: boolean; timeoutMs?: number };
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 let refreshPromise: Promise<void> | null = null;
 
-export async function refreshAccessToken() {
+async function performRefreshAccessToken() {
   const refreshToken = tokenStore.getRefreshToken();
   const accessToken = tokenStore.getAccessToken();
   if (!refreshToken || !accessToken) {
@@ -84,8 +84,15 @@ export async function refreshAccessToken() {
     refreshToken: string;
   };
   tokenStore.setTokens(tokens.token, tokens.refreshToken);
+    
 }
+export function refreshAccessToken(): Promise<void> {
+  refreshPromise ??= performRefreshAccessToken().finally(() => {
+    refreshPromise = null;
+  });
 
+  return refreshPromise;
+}
 async function parseError(response: Response): Promise<ApiError | undefined> {
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("json")) {
@@ -147,10 +154,7 @@ export async function apiFetch<T = unknown>(
   });
 
   if (response.status === 401 && !skipAuth && tokenStore.getRefreshToken()) {
-    refreshPromise ??= refreshAccessToken().finally(() => {
-      refreshPromise = null;
-    });
-
+    
     try {
       await refreshPromise;
     } catch (e) {

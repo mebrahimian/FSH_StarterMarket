@@ -1,14 +1,13 @@
 import {
     Activity,
-    Database,
-    ChartNoAxesCombined,
-    HeartPulse,
+    Clock3,    
+    ChartNoAxesCombined,    
     Link2,
-    Newspaper,
-    RefreshCw,
-    type LucideIcon,
+    CalendarClock,    
+    RefreshCw,    
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { CodalOperationsPanel } from "./codal-operations-panel";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +19,11 @@ import {
     useMutation,
     useQuery,
 } from "@tanstack/react-query";
+
 import {
     getCodalDataQuality,
     searchDisclosures,
+    getDisclosureStats,
     getFiscalYearSales,
     getCodalJobStatus,
     getDataQualityIssues,
@@ -33,12 +34,14 @@ import {
     updateCodalIncrementalSchedule,
     backfillTsetmcPrices,
     getCompanyProfiles,
+    getBackgroundJobStatuses,
     type CompanyProfile,
     type CodalIncrementalSchedule,
     type DataQualityIssue,
     type FiscalYearSales,
     type DisclosureParseStatus,
     type DisclosureSortBy,
+    type BackgroundJobStatus,
 } from "@/api/market-intelligence";
 
 import {
@@ -46,11 +49,9 @@ import {
     useState,
 } from "react";
 
-
 import { useTranslation } from "react-i18next";
 import DateObject from "react-date-object";
 import DatePicker from "react-multi-date-picker";
-
 import persian from "react-date-object/calendars/persian";
 import persianFa from "react-date-object/locales/persian_fa";
 import type { ComponentType } from "react";
@@ -69,8 +70,7 @@ type PersianDatePickerProps = {
     placeholder?: string;
 };
 
-const PersianDatePicker =
-    DatePicker as unknown as ComponentType<PersianDatePickerProps>;
+const PersianDatePicker = DatePicker as unknown as ComponentType<PersianDatePickerProps>;
 import {
     codalLetterCategoryOptions,
 } from "@/lib/market-intelligence/codal-letter-categories";
@@ -104,14 +104,8 @@ function ScheduleIntervalSelect({
     );
 }
 
-const normalizeSymbolForSearch = (value: string) =>
-    value
-        .trim()
-        .replace(/ي/g, "ی")
-        .replace(/ك/g, "ک")
-        .replace(/[\s._\-‌]/g, "")
-        .toLowerCase();
 export function MarketHealthCenterPage() {
+    const [isJobStatusOpen, setIsJobStatusOpen] = useState(false);
     const navigate = useNavigate();
     const [rtFilter, ] = useState("");
     const [letFilter, ] = useState("");
@@ -120,8 +114,8 @@ export function MarketHealthCenterPage() {
     const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
     const [backfillSymbol, setBackfillSymbol] = useState("");
-    const [debouncedBackfillSymbol, setDebouncedBackfillSymbol] = useState("");
-    const [symbolSuggestionsOpen, setSymbolSuggestionsOpen] = useState(false);
+    const [, setDebouncedBackfillSymbol] = useState("");
+    const [, setSymbolSuggestionsOpen] = useState(false);
     const [backfillInstrumentId, setBackfillInstrumentId] = useState<number | null>(null);
     const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const [backfillFromDate, setBackfillFromDate] = useState<DateObject | null>(null);
@@ -170,20 +164,14 @@ export function MarketHealthCenterPage() {
         queryFn: getDataQualityIssues,
     });
 
-    const handleSalesClick = async (
-        symbol: string,
-        title: string,
-    ) => {
-        const result = await getFiscalYearSales(
-            symbol,
-            title,
-        );
+   const result = await getFiscalYearSales(
+    fiscalYearSales.symbol,
+    yearEndDate,
+);
 
-        setFiscalYearSales(result);
-        setIsSalesDialogOpen(true);
-
-        console.log("open sales dialog");
-    };
+    setFiscalYearSales(result);
+    setIsSalesDialogOpen(true);
+};
     const handleSalesNavigation = async (
         yearEndDate: string | null,
     ) => {
@@ -193,8 +181,7 @@ export function MarketHealthCenterPage() {
 
         const result = await getFiscalYearSales(
             fiscalYearSales.symbol,
-            "",
-            yearEndDate,
+            "",         
         );
 
         setFiscalYearSales(result);
@@ -415,6 +402,234 @@ export function MarketHealthCenterPage() {
                 includeNullLet,
             }),
     });
+       
+    const disclosureStatsQuery = useQuery({
+       queryKey: [
+          "market-intelligence",
+          "health-center",
+          "disclosure-stats",
+       ],
+       queryFn: getDisclosureStats,
+    });
+
+    //card 1
+    const { data: companyProfiles = [],} = 
+        useQuery<CompanyProfile[]>({
+           queryKey: ["market-intelligence", "company-profiles"],
+           queryFn: getCompanyProfiles,
+        });
+
+    const latestDailyPriceRunAt =
+    companyProfiles.reduce<string | null>((latest, profile) => {
+        const current = profile.lastDailyPriceRunAt;
+
+        if (!current) {
+            return latest;
+        }
+
+        return !latest || current > latest
+            ? current
+            : latest;
+    }, null);
+    console.log(
+    "DailyPriceRunAt:",
+    companyProfiles.find((x) => x.lastDailyPriceRunAt)?.lastDailyPriceRunAt,
+    latestDailyPriceRunAt,
+);
+    const activeSinceDate = new Date();
+    activeSinceDate.setMonth(activeSinceDate.getMonth() - 12);
+
+    const activeCompanySymbolSet = new Set(companyProfiles
+        .filter((profile) => {
+            if (!profile.monthlyPublishDateTime) {
+                return false;
+            }
+
+            return (
+                new Date(profile.monthlyPublishDateTime) >=
+                activeSinceDate
+            );
+        })
+        .map((profile) => profile.symbol),
+);
+
+    const latestTradeDate =
+        companyProfiles.reduce<string | null>((latest, profile) => {
+            if (!profile.tradeDate) {
+                return latest;
+            }
+
+            if (!latest || profile.tradeDate > latest) {
+                return profile.tradeDate;
+            }
+
+            return latest;
+        }, null);
+
+    const activeFromDate = (() => {
+        if (!latestTradeDate) {
+            return null;
+        }
+
+        const normalizedTradeDate =
+            latestTradeDate.length >= 10
+                ? latestTradeDate.slice(0, 10)
+                : latestTradeDate;
+
+        const [year, month, day] =
+            normalizedTradeDate.split("-").map(Number);
+
+        if (!year || !month || !day) {
+            return null;
+        }
+
+        return `${year - 1}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    })();
+
+    const activeCompanyCount = companyProfiles.filter(
+    (profile) => {
+        const hasRecentTrade =
+            activeFromDate !== null &&
+            !!profile.tradeDate &&
+            profile.tradeDate >= activeFromDate;
+
+        const hasRecentCodal =
+            !!profile.monthlyPublishDateTime &&
+            new Date(profile.monthlyPublishDateTime) >=
+                activeSinceDate;
+
+        return hasRecentTrade || hasRecentCodal;
+    },
+).length;
+
+const inactiveCompanyCount = Math.max(
+    companyProfiles.length - activeCompanyCount,
+    0,
+);
+
+const openCompanyCount =
+    latestTradeDate === null
+        ? 0
+        : companyProfiles.filter(
+              (profile) =>
+                  profile.tradeDate === latestTradeDate &&
+                  (!activeFromDate ||
+                      profile.tradeDate >= activeFromDate),
+          ).length;
+
+const closedCompanyCount = Math.max(
+    activeCompanyCount - openCompanyCount,
+    0,
+);
+    //
+
+    // Card 2 - Disclosure statistics
+    const disclosureStats = disclosureStatsQuery.data;
+    const latestDisclosureDate = disclosureStats?.latestDisclosure ?? null;    
+    const disclosureToday = disclosureStats?.dailyCount ?? 0;
+    const disclosureMonth = disclosureStats?.monthlyCount ?? 0;
+    //const disclosureYear = disclosureStats?.yearlyCount ?? 0;
+    const disclosureTotal = disclosureStats?.totalCount ?? 0;
+ //   const currentPersianDay = Number(disclosureStats?.persianDate?.slice(8, 10) ?? 0);
+    const disclosureDayMonthPercent = disclosureMonth > 0
+        ? (disclosureToday / disclosureMonth) * 100
+        : 0;
+    const currentPersianMonth = Number(disclosureStats?.persianDate.slice(5, 7) ?? 0);
+    const currentPersianDay = Number(disclosureStats?.persianDate.slice(8, 10) ?? 0);
+    const daysInCurrentPersianMonth =  currentPersianMonth >= 1 &&
+                                       currentPersianMonth <= 6
+                                          ? 31
+                                          : currentPersianMonth >= 7 &&
+                                            currentPersianMonth <= 11
+                                                ? 30
+                                                : 29;
+
+    const disclosureProgress = daysInCurrentPersianMonth > 0
+        ? Math.min(
+              (currentPersianDay /
+                  daysInCurrentPersianMonth) *
+                  100,
+              100,
+          )
+        : 0; 
+    //
+    // Card 3 - calculations only
+// Card 3 - Monthly reports
+
+// Card 3 - Monthly reports
+
+const monthlyReportProfiles = companyProfiles.filter(
+    (profile) =>
+        profile.isic != null &&
+        profile.monthlyPeriodEndDate != null,
+);
+
+const latestMonthlyPeriod =
+    monthlyReportProfiles.reduce<string | null>(
+        (latest, profile) => {
+            const period = profile.monthlyPeriodEndDate;
+
+            if (!period) {
+                return latest;
+            }
+
+            return !latest || period > latest
+                ? period
+                : latest;
+        },
+        null,
+    );
+
+// شرکت‌هایی که اصولاً گزارش ماهانه دارند
+const monthlyReportTotal =
+    monthlyReportProfiles.length;
+
+// شرکت‌هایی که گزارش آخرین ماه را دارند
+const companiesWithMonthlyReports =
+    latestMonthlyPeriod === null
+        ? 0
+        : monthlyReportProfiles.filter(
+              (profile) =>
+                  profile.monthlyPeriodEndDate ===
+                  latestMonthlyPeriod,
+          ).length;
+
+// شرکت‌هایی که گزارش دارند ولی آخرین ماه را هنوز ندارند
+const companiesWithoutMonthlyReports =
+    monthlyReportTotal -
+    companiesWithMonthlyReports;
+
+const monthlyReportCoverage =
+    monthlyReportTotal > 0
+        ? (companiesWithMonthlyReports /
+              monthlyReportTotal) *
+          100
+        : 0;
+
+const latestMonthlyReportDate =
+    monthlyReportProfiles.reduce<string | null>(
+        (latest, profile) => {
+            const current =
+                profile.monthlyPublishDateTime;
+
+            if (!current) {
+                return latest;
+            }
+
+            if (
+                !latest ||
+                new Date(current).getTime() >
+                    new Date(latest).getTime()
+            ) {
+                return current;
+            }
+
+            return latest;
+        },
+        null,
+    );
+    //
+    
     const dataQualityQuery = useQuery({
         queryKey: [
             "market-intelligence",
@@ -422,29 +637,18 @@ export function MarketHealthCenterPage() {
             "data-quality",
         ],
         queryFn: () => getCodalDataQuality(5),
+       
     });
-    const rule0Issues: DataQualityIssue[] =
-        dataQualityQuery.data?.historyCoverage.gaps.flatMap(
-            (gap) =>
-                gap.missingPeriodDetails.map(
-                    (missingPeriod) => ({
-                        symbol: gap.symbol,
-                        yearEndDate: null,
-                        periodEndDate:
-                            missingPeriod.periodEndDate,
-                        publishDate:
-                            missingPeriod.publishDate,
-                        issueCode: "MissingPeriod",
-                        previousValue: null,
-                        currentValue: null,
-                    }),
-                ),
-        ) ?? [];
-    console.log(
-    "Rule 0 Issues:",
-    rule0Issues.length,
-    rule0Issues,
-);
+    const backgroundJobStatusesQuery = useQuery<BackgroundJobStatus[]>({
+        queryKey: [
+            "market-intelligence",
+            "health-center",
+            "background-jobs",
+        ],
+        queryFn: getBackgroundJobStatuses,
+        enabled: false,
+    });
+    
       
     
     const waitForBackfillJob = async (
@@ -597,58 +801,35 @@ export function MarketHealthCenterPage() {
         } finally {
             setBulkBackfillRunning(false);
         }
-    };
-    const needsReviewCount =
-        new Set(
-            dataQualityIssues
-                .map((issue) => issue.symbol?.trim())
-                .filter(
-                    (symbol): symbol is string =>
-                        Boolean(symbol),
-                ),
-        ).size;
+    };    
+    
+    const rule0Issues: DataQualityIssue[] =
+    dataQualityQuery.data?.historyCoverage.gaps
+        .filter((gap) =>
+            activeCompanySymbolSet.has(gap.symbol),
+        )
+        .flatMap((gap) =>
+            gap.missingPeriodDetails.map(
+                (missingPeriod) => ({
+                    symbol: gap.symbol,
+                    yearEndDate: null,
+                    periodEndDate:
+                        missingPeriod.periodEndDate,
+                    publishDate:
+                        missingPeriod.publishDate,
+                    issueCode: "MissingPeriod",
+                    previousValue: null,
+                    currentValue: null,
+                }),
+            ),
+        ) ?? [];
 
-    const { data: companyProfiles = [],} = 
-        useQuery<CompanyProfile[]>({
-           queryKey: ["market-intelligence", "company-profiles"],
-           queryFn: getCompanyProfiles,
-           });
-    const matchingCompanyProfiles =
-        debouncedBackfillSymbol.length >= 2
-           ? companyProfiles.filter           
-              (                   
-                (profile) =>                   
-                  {        
-                     const symbol = profile.normalizedSymbol ?? "";
-                     const companyName =profile.normalizedName ?? "";
-                
-                     return (
-                             symbol.includes(normalizeSymbolForSearch(debouncedBackfillSymbol,)) ||
-                             companyName.includes(normalizeSymbolForSearch(debouncedBackfillSymbol,),)
-                            );
-                  }                 
-              ).sort((a, b) => {
-                const aSymbol =
-                    a.normalizedSymbol ?? "";
+    console.log(
+    "Rule 0 Issues:",
+    rule0Issues.length,
+    rule0Issues,
+);
 
-                const bSymbol =
-                    b.normalizedSymbol ?? "";
-
-                const aStarts =
-                    aSymbol.startsWith(debouncedBackfillSymbol);
-
-                const bStarts =
-                    bSymbol.startsWith(debouncedBackfillSymbol);
-
-                if (aStarts && !bStarts) return -1;
-                if (!aStarts && bStarts) return 1;
-
-                return aSymbol.localeCompare(
-                    bSymbol,
-                    "fa",
-                );
-            }).slice(0, 20)
-           : [];
 
     return (
         <div className="-mt-6">
@@ -660,73 +841,43 @@ export function MarketHealthCenterPage() {
                     
                     <div className="-mt-5 flex w-[600px] flex-col items-start gap-2 self-start">
 
-                        <div className="grid w-full grid-cols-4 overflow-hidden rounded-xl border border-border/70 bg-background shadow-md ring-1 ring-black/5">
-                            <Button className="rounded-none 
-                                               border-s              
-                                               bg-gradient-to-b 
-                                               from-background 
-                                               to-muted/50 
-                                               text-foreground 
-                                               shadow-sm 
-                                               hover:to-muted">
-                                Incremental
-                            </Button>
+                        <CodalOperationsPanel />
+                        <div className="mt-2 grid w-full grid-cols-4 gap-1">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setIsJobStatusOpen((current) => {
+                                        const next = !current;
 
-                            <Button
-                                type="button"
-                                size="sm"
-                                className="rounded-none
-                                           border-s
-                                           border-border/70
-                                           bg-gradient-to-b
-                                           from-background
-                                           to-muted/50
-                                           text-foreground
-                                           shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
-                                           hover:to-muted">
-                                Backfill
-                            </Button>
+                                        if (next) {
+                                            void backgroundJobStatusesQuery.refetch();
+                                        }
 
-                            <Button
-                                type="button"
-                                size="sm"
-                                className="rounded-none
-                                           border-s
-                                           border-border/70
-                                           bg-gradient-to-b
-                                           from-background
-                                           to-muted/50                      
-                                           text-foreground
-                                           shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
-                                           hover:to-muted">
-                                Parse Pending
+                                        return next;
+                                    });
+                                }}
+                                disabled={backgroundJobStatusesQuery.isFetching}
+                            >
+                                <Clock3 className="h-4 w-4" />
+                                {isJobStatusOpen
+                                    ? "Close Job Status"
+                                    : backgroundJobStatusesQuery.isFetching
+                                        ? "Recieving Jobs ..."
+                                        : tMarket("jobStatus")}
                             </Button>
                             <Button
                                 type="button"
+                                variant="outline"
                                 size="sm"
-                                className="rounded-none 
-                                           border-s-3 
-                                           border-s-primary/40
-                                           bg-gradient-to-b 
-                                           from-background
-                                           to-muted/50 
-                                           text-foreground
-                                           shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] 
-                                           hover:to-muted">
-                                DailyPrice
-                            </Button>
-                        </div> 
-                        <div className="mt-2 grid w-full grid-cols-3 gap-2">
-                            <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setIsScheduleOpen((current) => !current)}
-                        >
+                                onClick={() => setIsScheduleOpen((current) => !current)}
+                            >    
+                            <CalendarClock className="h-4 w-4" />
                             {isScheduleOpen
-                                ? tMarket("codalSchedule.close")
-                                : tMarket("codalSchedule.open")}
-                        </Button>
+                                    ? tMarket("codalSchedule.close")
+                                    : tMarket("codalSchedule.open")}
+                            </Button>
                         
                             <Button
                             type="button"
@@ -741,7 +892,7 @@ export function MarketHealthCenterPage() {
                         >
                             <Link2 className="size-3.5" />
                             {tMarket("portfolioMatching")}
-                        </Button>
+                            </Button>
                             <Button
                             type="button"
                             variant="outline"
@@ -761,53 +912,358 @@ export function MarketHealthCenterPage() {
                                     "animate-spin",
                                 )}
                             />
-                            {t("actions.refresh")}
+                            Refresh
                         </Button>
                         </div>
                     </div>
                 }
             />
-            
+            {isJobStatusOpen &&
+                backgroundJobStatusesQuery.data &&
+                backgroundJobStatusesQuery.data.length > 0 && (
+                <div className="mt-4 overflow-x-auto rounded-lg border">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b">
+                                <th className="px-3 py-2 text-right">جاب</th>
+                                <th className="px-3 py-2 text-right">وضعیت</th>
+                                <th className="px-3 py-2 text-right">شروع</th>
+                                <th className="px-3 py-2 text-right">پایان</th>
+                                <th className="px-3 py-2 text-right">مدت</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {backgroundJobStatusesQuery.data.map((job) => (
+                                <tr
+                                    key={job.jobCode}
+                                    className="border-b last:border-b-0"
+                                >
+                                    <td className="px-3 py-2">
+                                        {job.jobName}
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                        {job.lastStatus}
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                        {job.lastStartAt
+                                            ? new Date(job.lastStartAt).toLocaleString()
+                                            : "-"}
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                        {job.lastEndAt
+                                            ? new Date(job.lastEndAt).toLocaleString()
+                                            : "-"}
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                        {job.lastDurationMs !== null
+                                            ? `${Math.round(job.lastDurationMs / 1000)} s`
+                                            : "-"}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
             <section className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <HealthStat
-                    icon={Activity}
-                    label={tMarket("healthCenter.stats.activeSymbols")}
-                    value={
-                        dataQualityQuery.data
-                            ? dataQualityQuery.data.historyCoverage.activeSymbols.toLocaleString()
-                            : "—"
-                    }
-                    hint={tMarket("healthCenter.stats.activeSymbolsHint")}
-                />
+                <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xs">
+    {/* کل شرکت‌ها */}
+    <div className="-mt-1 flex items-center justify-between gap-3 px-2 py-1">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted-foreground)]">
+            <Activity className="h-4 w-4" />
+            <span>کل شرکت‌ها</span>
+        </div>
 
-                <HealthStat
-                    icon={Newspaper}
-                    label={tMarket("healthCenter.stats.disclosures")}
-                    value={
-                        dataQualityQuery.data
-                            ? dataQualityQuery.data.metadata.totalDisclosures.toLocaleString()
-                            : "—"
-                    }
-                    hint={tMarket("healthCenter.stats.totalDisclosures")} 
-                />
+        <div className="text-2xl font-semibold tracking-tight tabular-nums">
+            {companyProfiles.length > 0
+                ? companyProfiles.length.toLocaleString()
+                : "—"}
+        </div>
+    </div>
 
-                <HealthStat
-                    icon={Database}
-                    label={tMarket("healthCenter.stats.monthlyReports")}
-                    value={
-                        dataQualityQuery.data
-                            ? dataQualityQuery.data.monthlyProcessing.totalCandidates.toLocaleString()
-                            : "—"
-                    }
-                    hint={tMarket("healthCenter.stats.monthlySummaries")}
-                />
+    {/* فعال / غیرفعال */}
+    <div className="-mt-2 grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-emerald-500/10 px-3 py-1.5 h-7">
+            <div className="flex items-center justify-between">
+                <span className="font-black text-xs leading-none text-[var(--color-muted-foreground)]">
+                     فعال                 
+                </span>
 
-                <HealthStat
-                    icon={HeartPulse}
-                    label={tMarket("healthCenter.stats.needsReview")}
-                    value={needsReviewCount.toLocaleString()}
-                    hint={tMarket("healthCenter.gapFailedMissing")}
-                />
+                <span className="font-semibold tabular-nums text-emerald-600">
+                    {activeCompanyCount.toLocaleString()}
+                </span>
+            </div>
+        </div>
+
+        <div className="rounded-lg bg-slate-500/10 px-3 py-1.5 h-7">
+            <div className="flex items-center justify-between">
+                <span className="font-black text-xs text-[var(--color-muted-foreground)]">
+                    غیرفعال
+                </span>
+
+                <span className="font-semibold tabular-nums text-slate-600">
+                    {inactiveCompanyCount.toLocaleString()}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {/* باز / بسته */}
+    <div className="mt-1 grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-emerald-500/10 px-3 py-1.5 h-7">
+            <div className="flex items-center justify-between">
+                <span className="font-black text-xs text-[var(--color-muted-foreground)]">
+                    باز
+                </span>
+
+                <span className="font-semibold tabular-nums text-emerald-600">
+                    {openCompanyCount.toLocaleString()}
+                </span>
+            </div>
+        </div>
+
+        <div className="rounded-lg bg-amber-500/10 px-3 py-1.5 h-7">
+            <div className="flex items-center justify-between">
+                <span className="font-black text-xs text-[var(--color-muted-foreground)]">
+                    بسته
+                </span>
+
+                <span className="font-semibold tabular-nums text-amber-600">
+                    {closedCompanyCount.toLocaleString()}
+                </span>
+            </div>
+        </div>
+    </div>
+    <div className="mt-2 flex items-center justify-between font-semibold text-xs text-[var(--color-muted-foreground)]">
+                            <span>آخرین‌ تاریخ بازار</span>
+
+                            <span dir="ltr" className="font-mono tabular-nums">
+    {latestDailyPriceRunAt
+    ? `${new DateObject({
+          date: `${latestDailyPriceRunAt.slice(0, 4)}/${latestDailyPriceRunAt.slice(4, 6)}/${latestDailyPriceRunAt.slice(6, 8)}:00`,
+          format: "YYYY/MM/DD",
+      })
+          .convert(persian)
+          .format("YYYY/MM/DD")} ${latestDailyPriceRunAt.slice(9)}:00`
+    : "—"}
+</span>
+                        </div>
+
+</div>
+                <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xs">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted-foreground)]">
+                                <Activity className="h-4 w-4" />
+                                <span>اطلاعیه‌های‌کدال</span>
+                            </div>
+
+                            <div className="text-2xl font-semibold tracking-tight tabular-nums">
+                                {disclosureTotal > 0
+                                    ? disclosureTotal.toLocaleString()
+                                    : "—"}
+                            </div>
+                        </div>
+
+                        <div className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+                            {disclosureDayMonthPercent.toFixed(1)}٪ روز/ماه
+                        </div>
+                    </div>
+
+                    <div className="-mt-1 grid grid-cols-2 gap-2">
+                        <div className="rounded-lg bg-emerald-500/10 px-3 py-2">
+                            <div className="flex items-center justify-between">
+                                <div className="font-black text-xs text-[var(--color-muted-foreground)]">
+                                    روز
+                                </div>
+
+                                <div className="font-semibold tabular-nums text-emerald-600">
+                                    {disclosureToday.toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg bg-amber-500/10 px-3 py-2">
+                            <div className="flex items-center justify-between">
+                                <span className="font-black text-xs text-[var(--color-muted-foreground)]">
+                                    ماه
+                                </span>
+
+                                <span className="font-semibold tabular-nums text-amber-600">
+                                    {disclosureMonth.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-3">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-muted)]">
+                            <div
+                                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                                style={{
+                                    width: `${Math.min(disclosureProgress, 100)}%`,
+                                }}
+                            />
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between font-semibold text-xs text-[var(--color-muted-foreground)]">
+                            <span>آخرین‌اطلاعیه‌کدال</span>
+
+                            <span dir="ltr" className="font-mono tabular-nums">
+                               {latestDisclosureDate ?? "—"}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xs">
+    <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted-foreground)]">
+                <Activity className="h-4 w-4" />
+                <span>گزارش‌های ماهانه</span>
+            </div>
+
+            <div className="text-2xl font-semibold tracking-tight tabular-nums">
+                {companyProfiles.length > 0
+                    ? monthlyReportTotal.toLocaleString()
+                    : "—"}
+            </div>
+        </div>
+
+        <div className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+            {monthlyReportCoverage.toFixed(1)}٪ پوشش
+        </div>
+    </div>
+
+    <div className="-mt-1 grid grid-cols-2 gap-2">
+        <div className="rounded-lg bg-emerald-500/10 px-3 py-2">
+            <div className="flex items-center justify-between">
+                <div className="font-black text-xs text-[var(--color-muted-foreground)]">
+                      گزارش شده
+                </div>
+
+                <div className="font-semibold tabular-nums text-emerald-600">
+                    {companiesWithMonthlyReports.toLocaleString()}
+                </div>
+            </div>
+        </div>
+
+        <div className="rounded-lg bg-amber-500/10 px-3 py-2">
+            <div className="flex items-center justify-between">
+                <span className="font-black text-xs text-[var(--color-muted-foreground)]">
+                     گزارش نشده
+                </span>
+
+                <span className="font-semibold tabular-nums text-amber-600">
+                    {companiesWithoutMonthlyReports.toLocaleString()}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div className="mt-3">
+        <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-muted)]">
+            <div
+                className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                style={{
+                    width: `${Math.min(monthlyReportCoverage, 100)}%`,
+                }}
+            />
+        </div>
+
+        <div className="mt-2 flex items-center justify-between font-semibold text-xs text-[var(--color-muted-foreground)]">
+            <span>آخرین گزارش ماهانه</span>
+
+            <span dir="ltr" className="font-mono tabular-nums">
+               {latestMonthlyReportDate
+    ? `${new DateObject({
+          date: latestMonthlyReportDate.slice(0, 10),
+          format: "YYYY-MM-DD",
+      })
+          .convert(persian)
+          .format("YYYY/MM/DD")} ${latestMonthlyReportDate.slice(11, 20)}`
+    : "—"}
+            </span>
+        </div>
+    </div>
+</div>
+                <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xs">
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted-foreground)]">
+                                <Activity className="h-4 w-4" />
+                                <span>شرکت‌های فعال</span>
+                            </div>
+
+                            <div className="text-2xl font-semibold tracking-tight tabular-nums">
+                                {companyProfiles.length > 0
+                                    ? activeCompanyCount.toLocaleString()
+                                    : "—"}
+                            </div>
+                        </div>
+
+                        <div className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600">
+                            ٪ باز
+                        </div>
+                    </div>
+
+                    <div className="-mt-1 grid grid-cols-2 gap-2">
+                        <div className="rounded-lg bg-emerald-500/10 px-3 py-2">
+                            <div className="flex items-center justify-between">
+                                <div className="font-black text-xs text-[var(--color-muted-foreground)]">
+                                    باز
+                                </div>
+
+                                <div className="font-semibold tabular-nums text-emerald-600">
+                                    {openCompanyCount.toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="rounded-lg bg-amber-500/10 px-3 py-2">
+                            <div className="flex items-center justify-between">
+                                <span className="font-black text-xs text-[var(--color-muted-foreground)]">
+                                    بسته
+                                </span>
+
+                                <span className="font-semibold tabular-nums text-amber-600">
+                                    {closedCompanyCount.toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-3">
+                        <div className="h-1.5 overflow-hidden rounded-full bg-[var(--color-muted)]">
+                            <div
+                                
+                            />
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between font-semibold text-xs text-[var(--color-muted-foreground)]">
+                            <span>آخرین‌اطلاعیه‌کدال</span>
+
+                            <span className="font-mono tabular-nums">
+                                {latestDisclosureDate
+                                    ? new DateObject({
+                                        date: latestDisclosureDate.slice(0, 10),
+                                        format: "YYYY-MM-DD",
+                                    })
+                                        .convert(persian)
+                                        .format("YYYY/MM/DD")
+                                    : "—"}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+
+                
             </section>
             <section className="mt-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-xs">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1193,7 +1649,7 @@ export function MarketHealthCenterPage() {
                                                     : `شرح تعریف نشده برای نوع اشکال: ${issue.issueCode}`;
                                     return (
                                         <div
-                                            key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}`}
+                                            key={`${issue.symbol}-${issue.yearEndDate}-${issue.periodEndDate}-${issue.issueCode}-${index}`}
                                             onClick={() => {
                                                 setBackfillSymbol(issue.symbol);
                                                 setBackfillInstrumentId(issue.asset?.tsetmcInstrumentId ?? null);
@@ -1239,8 +1695,7 @@ export function MarketHealthCenterPage() {
                                             type="button"
                                             onClick={() =>
                                                 void handleSalesClick(
-                                                    issue.symbol,
-                                                    issueDescription,
+                                                    issue.symbol,"",
                                                 )
                                             }
                                             title={tMarket("healthCenter.viewSales")}
@@ -1284,41 +1739,7 @@ export function MarketHealthCenterPage() {
                                 className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none transition focus:border-[var(--color-ring)]"
                             />
 
-                            {symbolSuggestionsOpen &&
-                                debouncedBackfillSymbol.length >= 2 &&
-                                matchingCompanyProfiles.length > 0 && (
-                                <div className="absolute bottom-full z-50 mb-1 max-h-72 w-full overflow-y-auto rounded-lg border border-blue-900 bg-blue-100 text-red-950 shadow-xl">
-                                    {matchingCompanyProfiles.map((profile) => (
-                                        <button
-                                            key={profile.instrumentId}
-                                            type="button"
-                                            className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-start text-sm hover:bg-muted"
-                                            onMouseDown={(event) =>
-                                                event.preventDefault()
-                                            }
-                                            onClick={() => {
-                                                setBackfillSymbol(profile.symbol);
-                                                setBackfillInstrumentId(
-                                                    profile.instrumentId,
-                                                );
-                                                setSymbolSuggestionsOpen(false);
-                                            }}
-                                        >
-
-                                            <span className="shrink-0 text-xs text-muted-foreground">
-                                                {profile.symbol}
-                                            </span>
-                                            <span className="flex-1 text-right text-xs text-muted-foreground">                                            
-                                                {profile.companyName ?? "—"}
-                                            </span>
-
-                                            
-                                        </button>
-                                    ))}
-                                </div>
-    )
-                                
-                            }
+                            
                         </div>
                     </label>                    
                     <label>
@@ -1442,40 +1863,4 @@ export function MarketHealthCenterPage() {
     );
 }
 
-function HealthStat({
-    icon,
-    label,
-    value,
-    hint,
-}: {
-    icon: LucideIcon;
-    label: string;
-    value: string;
-    hint: string;
-}) {
-    return (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-xs">
-            <div className="flex items-start justify-between gap-4">
-                <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                        {label}
-                    </p>
 
-                    <p className="mt-2 font-mono text-2xl font-semibold tabular-nums text-[var(--color-foreground)]">
-                        {value}
-                    </p>
-
-                    <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-                        {hint}
-                    </p>
-                </div>
-
-                <ToneIconTile
-                    icon={icon}
-                    tone="muted"
-                    size="md"
-                />
-            </div>
-        </div>
-    );
-}

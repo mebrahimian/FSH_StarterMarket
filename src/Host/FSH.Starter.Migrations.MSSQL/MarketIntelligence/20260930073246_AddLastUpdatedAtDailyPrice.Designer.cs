@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 {
     [DbContext(typeof(MarketIntelligenceDbContext))]
-    partial class MarketIntelligenceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930073246_AddLastUpdatedAtDailyPrice")]
+    partial class AddLastUpdatedAtDailyPrice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -127,68 +130,6 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable((string)null);
 
                     b.ToView("vw_CompanyMaster", "marketintelligence");
-                });
-
-            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BackgroundJobStatus", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("JobCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("JobName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<long?>("LastDurationMs")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LastEndAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("LastError")
-                        .HasMaxLength(4000)
-                        .HasColumnType("nvarchar(4000)");
-
-                    b.Property<DateTimeOffset?>("LastFailedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<int?>("LastInserted")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("LastProcessed")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset?>("LastStartAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("LastStatus")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<DateTimeOffset?>("LastSuccessAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<int?>("LastUpdated")
-                        .HasColumnType("int");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JobCode")
-                        .IsUnique();
-
-                    b.ToTable("BackgroundJobStatuses", "marketintelligence");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CodalCompanyImport", b =>
@@ -1156,15 +1097,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .HasPrecision(20, 6)
                         .HasColumnType("decimal(20,6)");
 
-                    b.Property<DateTimeOffset?>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
-
                     b.Property<decimal>("HighPrice")
                         .HasPrecision(20, 6)
                         .HasColumnType("decimal(20,6)");
-
-                    b.Property<DateTimeOffset?>("LastUpdatedAt")
-                        .HasColumnType("datetimeoffset");
 
                     b.Property<decimal>("LowPrice")
                         .HasPrecision(20, 6)

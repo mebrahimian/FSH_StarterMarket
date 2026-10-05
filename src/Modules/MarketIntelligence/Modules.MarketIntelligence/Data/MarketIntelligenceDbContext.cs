@@ -8,6 +8,7 @@ using FSH.Modules.MarketIntelligence.Domain.Insights;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Modules.MarketIntelligence.Data.Views;
 using Modules.MarketIntelligence.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Data;
@@ -31,6 +32,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<Insight> Insights => Set<Insight>();
     public DbSet<SalesPerformanceSnapshot> SalesPerformanceSnapshots => Set<SalesPerformanceSnapshot>();
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
+    public DbSet<DisclosureStats> DisclosureStats => Set<DisclosureStats>();
     public DbSet<CodalCompanyImport> CodalCompanyImports => Set<CodalCompanyImport>();
     public DbSet<Industry> Industries => Set<Industry>();
     public DbSet<PortfolioHoldingAsset> PortfolioHoldingAssets => Set<PortfolioHoldingAsset>();
@@ -38,6 +40,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<ExternalSourceSetting> ExternalSourceSettings => Set<ExternalSourceSetting>();
     public DbSet<TsetmcInstrument> TsetmcInstruments => Set<TsetmcInstrument>();
     public DbSet<DailyPrice> DailyPrices => Set<DailyPrice>();
+    public DbSet<BackgroundJobStatus> BackgroundJobStatuses => Set<BackgroundJobStatus>();
     public DbSet<BenchmarkAsset> BenchmarkAssets => Set<BenchmarkAsset>();
     public DbSet<BenchmarkDailyPrice> BenchmarkDailyPrices => Set<BenchmarkDailyPrice>();
     public DbSet<InstrumentShareChange> InstrumentShareChanges => Set<InstrumentShareChange>();

@@ -72,21 +72,17 @@ export function DisclosuresPage() {
     const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
     const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
-    const [fiscalYearSalesTitle, setFiscalYearSalesTitle] = useState("");
-    
+        
     const handleSalesClick = async (
-        symbol: string,
-        title: string,
-    ) => {
-        const result = await getFiscalYearSales(
-            symbol,
-            title,
-        );
+    symbol: string,
+) => {
+    const result = await getFiscalYearSales(
+        symbol,
+    );
 
-        setFiscalYearSales(result);
-        setFiscalYearSalesTitle(title);
-        setIsSalesDialogOpen(true);
-    };
+    setFiscalYearSales(result);
+    setIsSalesDialogOpen(true);
+};
     const handlePortfolioClick = async (
         disclosureId: string,
         companyName: string,
@@ -220,10 +216,9 @@ export function DisclosuresPage() {
         }
 
         const result = await getFiscalYearSales(
-            fiscalYearSales.symbol,
-            fiscalYearSalesTitle,
-            yearEndDate,
-        );
+    fiscalYearSales.symbol,
+    yearEndDate,
+);
 
         setFiscalYearSales(result);
     };
@@ -556,9 +551,8 @@ function DisclosureResults({
     items: DisclosureDto[];
     totalCount: number;
     onSalesClick: (
-        symbol: string,
-        title: string,
-    ) => Promise<void>;
+    symbol: string,
+) => Promise<void>;
         onPortfolioClick: (
             disclosureId: string,
             companyName: string,
@@ -627,7 +621,6 @@ function DesktopRow({
     isLast: boolean;
     onSalesClick: (
         symbol: string,
-        title: string,
     ) => Promise<void>;
         onPortfolioClick: (
             disclosureId: string,
@@ -707,8 +700,7 @@ function DesktopRow({
                             type="button"
                             onClick={() =>
                                 void onSalesClick(
-                                    disclosure.symbol,
-                                    disclosure.title,
+                                    disclosure.symbol,                                                                
                                 )
                             }
                             title="مشاهده فروش"

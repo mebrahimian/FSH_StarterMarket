@@ -7,6 +7,7 @@ using Modules.MarketIntelligence.Domain;
 using Modules.MarketIntelligence.Services.Tsetmc;
 using System.Globalization;
 
+
 namespace FSH.Modules.MarketIntelligence.Services.Tsetmc;
 
 public sealed class PriceHistoryCollectorService(
@@ -253,9 +254,7 @@ public sealed class PriceHistoryCollectorService(
         return universe;
     }
         
-    public async Task<int> RunIncrementalAsync(
-    CancellationToken cancellationToken,
-    bool includeShareChanges = false)
+    public async Task<int> RunIncrementalAsync(CancellationToken cancellationToken, bool includeShareChanges = false)
     {
         MarketOverviewDto? marketOverview =
             await priceReader
@@ -331,7 +330,7 @@ public sealed class PriceHistoryCollectorService(
                     !string.IsNullOrWhiteSpace(x.InsCode) &&
                     instrumentByInsCode.ContainsKey(x.InsCode))
                 .ToList();
-
+                
         IReadOnlyCollection<ClientTypeAllItemDto> clientTypeAll =
             await priceReader
                 .GetClientTypeAllAsync(cancellationToken)
@@ -355,7 +354,17 @@ public sealed class PriceHistoryCollectorService(
                 .Select(x => instrumentByInsCode[x.InsCode])
                 .Distinct()
                 .ToArray();
+        HashSet<int> matchedInstrumentIdSet = matchedInstrumentIds.ToHashSet();
 
+        int[] matchedCompanyIds =
+            universe
+                .Where(x =>
+                    x.TsetmcInstrumentId.HasValue &&
+                    matchedInstrumentIdSet.Contains(
+                        x.TsetmcInstrumentId.Value))
+                .Select(x => x.CompanyId)
+                .Distinct()
+                .ToArray();
         Dictionary<int, DateOnly> previousTradeDates =
             await dbContext.DailyPrices
                 .AsNoTracking()
@@ -440,18 +449,40 @@ public sealed class PriceHistoryCollectorService(
             int instrumentId =
                 instrumentByInsCode[item.InsCode];
 
+            long volume = ToLong(item.QTotTran5J ?? 0);
+
+            long value = ToLong(item.QTotCap ?? 0);
+
+            bool hasTrade = volume != 0 || value != 0;
             // -----------------------------
             // SHARE CHANGES
             // فقط وقتی switch روشن باشد
             // -----------------------------
             if (includeShareChanges)
             {
-                IReadOnlyCollection<InstrumentShareChangeDto> shareChanges =
-                    await priceReader
-                        .GetShareChangesAsync(
-                            item.InsCode,
-                            cancellationToken)
-                        .ConfigureAwait(false);
+                IReadOnlyCollection<InstrumentShareChangeDto> shareChanges;
+
+                try
+                {
+                    shareChanges =
+                        await priceReader
+                            .GetShareChangesAsync(
+                                item.InsCode,
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                }
+                catch (Exception ex) when (
+                    ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "TSETMC share changes failed. InstrumentId={InstrumentId}, InsCode={InsCode}. DailyPrice processing will continue.",
+                        instrumentId,
+                        item.InsCode);
+
+                    shareChanges = [];
+                }
+
 
                 if (!shareChangeDatesByInstrument.TryGetValue(
                         instrumentId,
@@ -511,67 +542,70 @@ public sealed class PriceHistoryCollectorService(
                 item.InsCode,
                 out ClientTypeAllItemDto? clientType);
 
-            if (existingDailyPrices.TryGetValue(
-                    instrumentId,
-                    out DailyPrice? existingDailyPrice))
+            if (hasTrade)
             {
-                existingDailyPrice.UpdateMarketSnapshot(
-                    ToLong(item.PriceFirst ?? 0),
-                    ToLong(item.PriceMin ?? 0),
-                    ToLong(item.PriceMax ?? 0),
-                    ToLong(item.PClosing ?? 0),
-                    ToLong(item.PDrCotVal ?? 0),
-                    ToLong(item.ZTotTran ?? 0),
-                    ToLong(item.QTotTran5J ?? 0),
-                    ToLong(item.QTotCap ?? 0));
-
-                if (clientType is not null)
+                if (existingDailyPrices.TryGetValue(
+                        instrumentId,
+                        out DailyPrice? existingDailyPrice))
                 {
-                    existingDailyPrice.UpdateClientTypeSnapshot(
-                        ToLong(clientType.BuyIndividualVolume),
-                        ToLong(clientType.BuyIndividualCount),
-                        ToLong(clientType.SellIndividualVolume),
-                        ToLong(clientType.SellIndividualCount),
-                        ToLong(clientType.BuyInstitutionalVolume),
-                        ToLong(clientType.BuyInstitutionalCount),
-                        ToLong(clientType.SellInstitutionalVolume),
-                        ToLong(clientType.SellInstitutionalCount));
+                    existingDailyPrice.UpdateMarketSnapshot(
+                        ToLong(item.PriceFirst ?? 0),
+                        ToLong(item.PriceMin ?? 0),
+                        ToLong(item.PriceMax ?? 0),
+                        ToLong(item.PClosing ?? 0),
+                        ToLong(item.PDrCotVal ?? 0),
+                        ToLong(item.ZTotTran ?? 0),
+                        ToLong(item.QTotTran5J ?? 0),
+                        ToLong(item.QTotCap ?? 0));
+
+                    if (clientType is not null)
+                    {
+                        existingDailyPrice.UpdateClientTypeSnapshot(
+                            ToLong(clientType.BuyIndividualVolume),
+                            ToLong(clientType.BuyIndividualCount),
+                            ToLong(clientType.SellIndividualVolume),
+                            ToLong(clientType.SellIndividualCount),
+                            ToLong(clientType.BuyInstitutionalVolume),
+                            ToLong(clientType.BuyInstitutionalCount),
+                            ToLong(clientType.SellInstitutionalVolume),
+                            ToLong(clientType.SellInstitutionalCount));
+                    }
                 }
-            }
-            else
-            {
-                DailyPrice newDailyPrice = new(
-                    instrumentId,
-                    tradeDate,
-                    ToLong(item.PriceFirst ?? 0),
-                    ToLong(item.PriceMin ?? 0),
-                    ToLong(item.PriceMax ?? 0),
-                    ToLong(item.PClosing ?? 0),
-                    ToLong(item.PDrCotVal ?? 0),
-                    ToLong(item.PriceYesterday ?? 0),
-                    ToLong(item.ZTotTran ?? 0),
-                    ToLong(item.QTotTran5J ?? 0),
-                    ToLong(item.QTotCap ?? 0),
-
-                    null, null, null,
-                    null, null, null,
-                    null, null, null,
-                    null, null, null);
-
-                if (clientType is not null)
+                else
                 {
-                    newDailyPrice.UpdateClientTypeSnapshot(
-                        ToLong(clientType.BuyIndividualVolume),
-                        ToLong(clientType.BuyIndividualCount),
-                        ToLong(clientType.SellIndividualVolume),
-                        ToLong(clientType.SellIndividualCount),
-                        ToLong(clientType.BuyInstitutionalVolume),
-                        ToLong(clientType.BuyInstitutionalCount),
-                        ToLong(clientType.SellInstitutionalVolume),
-                        ToLong(clientType.SellInstitutionalCount));
-                }
+                    DailyPrice newDailyPrice = new(
+                        instrumentId,
+                        tradeDate,
+                        ToLong(item.PriceFirst ?? 0),
+                        ToLong(item.PriceMin ?? 0),
+                        ToLong(item.PriceMax ?? 0),
+                        ToLong(item.PClosing ?? 0),
+                        ToLong(item.PDrCotVal ?? 0),
+                        ToLong(item.PriceYesterday ?? 0),
+                        ToLong(item.ZTotTran ?? 0),
+                        ToLong(item.QTotTran5J ?? 0),
+                        ToLong(item.QTotCap ?? 0),
 
-                newDailyPrices.Add(newDailyPrice);
+                        null, null, null,
+                        null, null, null,
+                        null, null, null,
+                        null, null, null);
+
+                    if (clientType is not null)
+                    {
+                        newDailyPrice.UpdateClientTypeSnapshot(
+                            ToLong(clientType.BuyIndividualVolume),
+                            ToLong(clientType.BuyIndividualCount),
+                            ToLong(clientType.SellIndividualVolume),
+                            ToLong(clientType.SellIndividualCount),
+                            ToLong(clientType.BuyInstitutionalVolume),
+                            ToLong(clientType.BuyInstitutionalCount),
+                            ToLong(clientType.SellInstitutionalVolume),
+                            ToLong(clientType.SellInstitutionalCount));
+                    }
+
+                    newDailyPrices.Add(newDailyPrice);
+                }
             }
 
             if (previousDailyPrices.TryGetValue(
@@ -682,10 +716,36 @@ public sealed class PriceHistoryCollectorService(
             dbContext.InstrumentShareChanges.AddRange(
                 newShareChanges);
         }
-
+            
         await dbContext
             .SaveChangesAsync(cancellationToken)
             .ConfigureAwait(false);
+        if (matchedCompanyIds.Length > 0)
+        {
+            DateTimeOffset iranNow =
+                TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
+                    DateTimeOffset.UtcNow,
+                    "Iran Standard Time");
+
+            string lastDailyPriceRunAt =
+                iranNow.ToString(
+                    "yyyyMMdd HH:mm",
+                    CultureInfo.InvariantCulture);
+
+            string companyIdsSql = string.Join(",", matchedCompanyIds);
+
+            string sql =
+                "UPDATE marketintelligence.MasterInfo " +
+                "SET LastDailyPriceRunAt = {0} " +
+                $"WHERE CompanyId IN ({companyIdsSql});";
+
+            await dbContext.Database.ExecuteSqlRawAsync(
+                sql,
+                new object[] { lastDailyPriceRunAt },
+                cancellationToken)
+                .ConfigureAwait(false);
+            
+        }
 
         if (logger.IsEnabled(LogLevel.Information))
         {

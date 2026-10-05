@@ -1,5 +1,4 @@
 ﻿using FSH.Framework.Shared.Dates;
-using FSH.Framework.Shared.Utilities;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Contracts.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Data;
@@ -18,21 +17,7 @@ public sealed class GetFiscalYearSalesQueryHandler(
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        string? reportDate = null;
-
-        if (string.IsNullOrWhiteSpace(query.YearEndDate))
-        {
-            reportDate =
-                PersianDateTextParser.TryExtract(query.Title);
-
-            if (reportDate is null)
-            {
-                return new FiscalYearSalesDto(
-                    query.Symbol,
-                    string.Empty,
-                    []);
-            }
-        }
+        
 
         var yearEndDates = await dbContext.MonthlyActivitySummaries
             .AsNoTracking()
@@ -58,27 +43,19 @@ public sealed class GetFiscalYearSalesQueryHandler(
         }
         else
         {
-            // The fiscal year end may change during the year.
-            // Resolve it from the actual monthly summary for the
-            // requested reporting period instead of inferring it
-            // only from the calendar position of the report date.
             yearEndDate = await dbContext.MonthlyActivitySummaries
                 .AsNoTracking()
                 .Where(summary =>
                     summary.Symbol == query.Symbol &&
-                    summary.PeriodEndDate == reportDate &&
                     summary.YearEndDate != null)
-                .OrderByDescending(summary => summary.ParsedAt)
-                .Select(summary => summary.YearEndDate)
+                .OrderByDescending(summary =>
+                    summary.PeriodEndDate)
+                .ThenByDescending(summary =>
+                    summary.ParsedAt)
+                .Select(summary =>
+                    summary.YearEndDate)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // Defensive fallback for old/unparsed data.
-            yearEndDate ??= yearEndDates
-                .FirstOrDefault(date =>
-                    string.CompareOrdinal(
-                        date,
-                        reportDate) >= 0);
         }
 
         if (yearEndDate is null)

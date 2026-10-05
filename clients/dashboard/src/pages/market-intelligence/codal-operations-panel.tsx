@@ -5,11 +5,6 @@ import {
 } from "react";
 import { useMutation, useQuery, } from "@tanstack/react-query";
 
-import {
-    Download,
-    History,
-    Play,
-} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -18,6 +13,8 @@ import {
     collectNewCodalDisclosures,
     getCodalJobStatus,
     parsePendingCodalDisclosures,
+    collectDailyPriceIncremental,
+
 } from "@/api/market-intelligence"; 
 
 import { Button } from "@/components/ui/button";
@@ -34,7 +31,8 @@ import { describe } from "@/lib/list-helpers";
 type CodalOperation =
     | "incremental"
     | "parsePending"
-    | "backfill";
+    | "backfill"
+    | "dailyPrice";
 
 type ActiveCodalJob = {
     jobId: string;
@@ -141,6 +139,9 @@ export function CodalOperationsPanel({
 
                 case "backfill":
                     return collectCodalBackfill();
+
+                case "dailyPrice":
+                    return collectDailyPriceIncremental();
             }
         },
         onSuccess: (response, operation) => {
@@ -273,9 +274,7 @@ export function CodalOperationsPanel({
         setOperationToConfirm(null);
         operationMutation.mutate(operation);
     };
-    const activeOperation =
-        operationMutation.variables;
-
+    
     const confirmationMessage =
         operationToConfirm
             ? {
@@ -288,79 +287,88 @@ export function CodalOperationsPanel({
                 backfill: t(
                     "codalOperations.confirmBackfill",
                 ),
+              dailyPrice:
+                  "Run DailyPrice incremental update?",
+
+
             }[operationToConfirm]
             : "";
 
     return (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-xs">
-            <div className="mb-3">
-                <h2 className="text-sm font-semibold text-[var(--color-foreground)]">
-                    {t("codalOperations.title")}
-                </h2>
-            </div>
+        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]  shadow-xs">
+            <div className="flex w-[600px] flex-col items-start gap-2 self-start">
+                <div className="grid w-full grid-cols-4 overflow-hidden rounded-xl border border-border/70 bg-background">
+                    <Button
+                        type="button"
+                        size="sm"
+                        disabled={operationMutation.isPending || isJobRunning}
+                        onClick={() => runOperation("incremental")}
+                        className="rounded-none
+                       border-s
+                       bg-gradient-to-b
+                       from-background
+                       to-muted/50
+                       text-foreground
+                       shadow-sm
+                       hover:to-muted"
+                    >
+                        Incremental
+                    </Button>
 
-            <div className="flex flex-wrap gap-2">
-                <Button
-                    type="button"
-                    onClick={() =>
-                        runOperation("incremental")
-                    }
-                    disabled={operationMutation.isPending ||
-                        isJobRunning}
-                    className="gap-2"
-                >
-                    <Download
-                        className="size-4"
-                        aria-hidden
-                    />
+                    <Button
+                        type="button"
+                        size="sm"
+                        disabled={operationMutation.isPending || isJobRunning}
+                        onClick={() => runOperation("backfill")}
+                        className="rounded-none
+                       border-s
+                       border-border/70
+                       bg-gradient-to-b
+                       from-background
+                       to-muted/50
+                       text-foreground
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
+                       hover:to-muted"
+                    >
+                        Backfill
+                    </Button>
 
-                    {operationMutation.isPending &&
-                        activeOperation === "incremental"
-                        ? t("codalOperations.queueing")
-                        : t("codalOperations.collectNew")}
-                </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        disabled={operationMutation.isPending || isJobRunning}
+                        onClick={() => runOperation("parsePending")}
+                        className="rounded-none
+                       border-s
+                       border-border/70
+                       bg-gradient-to-b
+                       from-background
+                       to-muted/50
+                       text-foreground
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
+                       hover:to-muted"
+                    >
+                        Parse Pending
+                    </Button>
 
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                        runOperation("parsePending")
-                    }
-                    disabled={operationMutation.isPending ||
-                        isJobRunning}
-                    className="gap-2"
-                >
-                    <Play
-                        className="size-4"
-                        aria-hidden
-                    />
-
-                    {operationMutation.isPending &&
-                        activeOperation === "parsePending"
-                        ? t("codalOperations.queueing")
-                        : t("codalOperations.parsePending")}
-                </Button>
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                        runOperation("backfill")
-                    }
-                    disabled={operationMutation.isPending ||
-                        isJobRunning}
-                    className="gap-2"
-                >
-                    <History
-                        className="size-4"
-                        aria-hidden
-                    />
-
-                    {operationMutation.isPending &&
-                        activeOperation === "backfill"
-                        ? t("codalOperations.queueing")
-                        : t("codalOperations.backfill")}
-                </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        disabled={operationMutation.isPending || isJobRunning}
+                        onClick={() => runOperation("dailyPrice")}
+                        className="rounded-none
+                       border-s-3
+                       border-s-primary/40
+                       bg-gradient-to-b
+                       from-background
+                       to-muted/50
+                       text-foreground
+                       shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]
+                       hover:to-muted"
+                    >
+                        DailyPrice
+                    </Button>
+                </div>
             </div>
             {activeJob && jobStatus && (
                 <div className="mt-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)] p-3">
@@ -459,3 +467,4 @@ export function CodalOperationsPanel({
         </section>
     );
    }
+

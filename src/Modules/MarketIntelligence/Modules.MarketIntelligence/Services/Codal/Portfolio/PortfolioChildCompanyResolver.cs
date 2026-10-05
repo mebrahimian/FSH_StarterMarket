@@ -8,7 +8,9 @@ using System.Data.Common;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 
-public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext dbContext) : IPortfolioChildCompanyResolver
+public sealed class PortfolioChildCompanyResolver(
+    MarketIntelligenceDbContext dbContext,
+    PortfolioHoldingAssetIdentityResolver holdingAssetIdentityResolver) : IPortfolioChildCompanyResolver
 {
     private Dictionary<string, List<CodalCompanyImport>>? _codalByName;
     private static readonly HashSet<string> ExcludedPortfolioNames =
@@ -169,28 +171,26 @@ public sealed class PortfolioChildCompanyResolver(MarketIntelligenceDbContext db
 
             if (alias.HoldingAssetId.HasValue)
             {
-                var asset = await dbContext.PortfolioHoldingAssets
-                    .FirstOrDefaultAsync(
-                        x => x.Id == alias.HoldingAssetId.Value,
-                        cancellationToken)
-                    .ConfigureAwait(false);
+                PortfolioHoldingAsset? asset =
+                    await dbContext.PortfolioHoldingAssets
+                        .FirstOrDefaultAsync(
+                            x => x.Id == alias.HoldingAssetId.Value,
+                            cancellationToken)
+                        .ConfigureAwait(false);
 
-                if (asset?.ListedCompanyId is int listedCompanyId)
+                if (asset is not null)
                 {
-                    return new PortfolioChildCompanyResolution(
-                        CompanyId: listedCompanyId,
-                        HoldingAssetId: asset.Id,
-                        IsListed: true,
-                        IsExcluded: false,
-                        FSortName: fSortName);
-                }
+                    PortfolioHoldingAssetIdentity identity =
+                        await holdingAssetIdentityResolver
+                            .ResolveAsync(
+                                asset,
+                                cancellationToken)
+                            .ConfigureAwait(false);
 
-                if (asset?.UnlistedCompanyId is int unlistedCompanyId)
-                {
                     return new PortfolioChildCompanyResolution(
-                        CompanyId: unlistedCompanyId,
+                        CompanyId: identity.CompanyId,
                         HoldingAssetId: asset.Id,
-                        IsListed: false,
+                        IsListed: identity.IsListed,
                         IsExcluded: false,
                         FSortName: fSortName);
                 }

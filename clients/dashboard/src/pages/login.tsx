@@ -1,3 +1,4 @@
+const APP_VERSION = "v2026.10.04.2";
 import {
     useEffect,
     useRef,
@@ -237,14 +238,20 @@ export function LoginPage() {
                                 <ShieldCheck className="size-3.5" />
                                 ورود امن
                             </div>
-
+                            <div className="-mt-2 flex items-center justify-between">
                             <h1 className="text-[25px] font-black tracking-tight text-slate-950">
                                 ورود به سامانه
                             </h1>
+                               <span className="font-black text-[10px] ">
+                                  {APP_VERSION}
+                               </span>
+                             </div>
+                            
+                               <p className="mt-1 text-[12px] text-slate-500">
+                                 تحلیل، کشف، تصمیم بهتر
+                               </p>
 
-                            <p className="mt-1.5 text-[12px] text-slate-500">
-                                تحلیل، کشف، تصمیم بهتر
-                            </p>
+                            
                         </div>
 
                         {notice && (
@@ -398,6 +405,8 @@ export function LoginPage() {
                                     </>
                                 )}
                             </button>
+                           
+
                         </form>
 
                         {env.demoMode && (
@@ -420,6 +429,10 @@ export function LoginPage() {
                         onPick={onPickDemo}
                     />
                 )}
+
+
+
+                
             </div>
         </>
     );

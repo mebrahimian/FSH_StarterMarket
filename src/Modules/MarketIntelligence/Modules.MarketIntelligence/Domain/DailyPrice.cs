@@ -68,7 +68,7 @@ public sealed class DailyPrice :
         SellInstitutionalVolume = sellInstitutionalVolume;
         SellInstitutionalValue = sellInstitutionalValue;
         SellInstitutionalCount = sellInstitutionalCount;
-
+        LastUpdatedAt = DateTimeOffset.UtcNow;
         RealMoneyFlow =
             CalculateNetFlow(
                 buyIndividualValue,
@@ -129,6 +129,7 @@ public sealed class DailyPrice :
     public long? RealMoneyFlow { get; private set; }
     public decimal? IndividualBuyerPower { get; private set; }
     public long? InstitutionalNetFlow { get; private set; }
+    public DateTimeOffset? LastUpdatedAt { get; private set; }
     public void UpdateMarketSnapshot(
     long firstPrice,
     long lowPrice,
@@ -144,10 +145,11 @@ public sealed class DailyPrice :
         HighPrice = highPrice;
         ClosingPrice = closingPrice;
         LastPrice = lastPrice;
-
+        LastUpdatedAt = DateTimeOffset.UtcNow;
         TradeCount = tradeCount;
         Volume = volume;
         Value = value;
+        LastUpdatedAt = DateTimeOffset.UtcNow;
     }
     public void UpdateClientType(
     long? buyIndividualVolume,

@@ -110,12 +110,13 @@
     "minutes": "{{count}} دقیقه",
     "save": "ذخیره تنظیمات",
     "saving": "در حال ذخیره...",
-    "open": "زمان‌بندی دریافت داده از کدال",
-    "close": "بستن زمان‌بندی"
+    "open": "Codal Schedule",
+    "close": "Close Schedule"
 
   },
-  
-  "portfolioMatching": "تطبیق شرکت‌های پرتفوی",
+
+  "portfolioMatching": "Portfolio Matching",
+  "jobStatus": "Job Status",
   "missingPortfolio": "پرتفوی ثبت نشده {{period}}",
   "codalDisclosureIssue": "اشکال در اعلامیه کدال {{period}}",
   "incompletePortfolioMetadata": "اطلاعات گزارش پرتفوی ناقص {{period}}",

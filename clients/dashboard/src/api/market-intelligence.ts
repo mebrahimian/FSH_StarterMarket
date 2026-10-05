@@ -44,49 +44,9 @@ export type CodalSymbolCoverageGap = {
     missingPeriodDetails: CodalMissingPeriod[];
 };
 export type CodalDataQualityReport = {
-    checkedAtUtc: string;
-
-    metadata: {
-        totalDisclosures: number;
-        missingSymbol: number;
-        missingUrl: number;
-        missingPublishDate: number;
-        missingLet: number;
-        missingRt: number;
-    };
-
-    monthlyProcessing: {
-        totalCandidates: number;
-        pending: number;
-        success: number;
-        failed: number;
-        noData: number;
-        skipped: number;
-    };
-
-    historyCoverage: {
-        coverageYears: number;
-        requiredMonths: number;
-        windowStartPeriod: string | null;
-        windowEndPeriod: string | null;
-        activeSymbols: number;
-        completeSymbols: number;
-        incompleteSymbols: number;
+    historyCoverage: {              
         gaps: CodalSymbolCoverageGap[];
-    };
-
-    summaries: {
-        totalSummaries: number;
-        missingSourceDisclosure: number;
-        sourceIdentityMismatch: number;
-        sourceSymbolMismatch: number;
-        sourcePublishDateMismatch: number;
-        sourceStatusNotSuccess: number;
-        duplicateSymbolPeriods: number;
-        missingPeriodAmount: number;
-        missingYearToDateAmount: number;
-        missingPreviousYearWhenHistoryExists: number;
-    };
+    };    
 };
 export type DisclosureDto = {
   id: string;
@@ -121,6 +81,7 @@ export type DisclosureDto = {
   hasPortfolio: boolean;
   hasSales: boolean;
 };
+
 export type CodalIncrementalSchedule = {
     startHour: number;
     morningEndHour: number;
@@ -181,8 +142,7 @@ export const PortfolioSourceType = {
     FinancialStatement: 2,
 } as const;
 
-export type PortfolioSourceType =
-    (typeof PortfolioSourceType)[keyof typeof PortfolioSourceType];
+export type PortfolioSourceType = (typeof PortfolioSourceType)[keyof typeof PortfolioSourceType];
 
 export const PortfolioAuditStatus = {
     None: 0,
@@ -227,6 +187,27 @@ export type PortfolioReport = {
 
     positions: PortfolioPosition[];
 };
+export type BackgroundJobStatus = {
+    jobCode: string;
+    jobName: string;
+    lastStartAt: string | null;
+    lastEndAt: string | null;
+    lastStatus: string;
+    lastSuccessAt: string | null;
+    lastFailedAt: string | null;
+    lastDurationMs: number | null;
+    lastProcessed: number | null;
+    lastInserted: number | null;
+    lastUpdated: number | null;
+    lastError: string | null;
+    updatedAt: string;
+};
+
+export async function getBackgroundJobStatuses() {
+    return apiFetch<BackgroundJobStatus[]>(
+        "/api/v1/marketintelligence/jobs/status",
+    );
+}
 export function searchDisclosures(
   params: SearchDisclosuresParams = {},
 ): Promise<PagedResponse<DisclosureDto>> {
@@ -299,6 +280,10 @@ export function getCodalDataQuality(
 ): Promise<CodalDataQualityReport> {
     return apiFetch<CodalDataQualityReport>(
         `/api/v1/marketintelligence/codal/data-quality?coverageYears=${coverageYears}`,
+        {
+            timeoutMs: 120_000,
+        },
+
     );
 }
 export function getCodalIncrementalSchedule(): Promise<CodalIncrementalSchedule> {
@@ -314,14 +299,25 @@ export type CodalOperationResponse = {
     jobId: string;
     message: string;
 }
-export function collectNewCodalDisclosures(): Promise<CodalOperationResponse> {
+export function collectNewCodalDisclosures(): 
+    Promise<CodalOperationResponse> {
     return apiFetch<CodalOperationResponse>(
-        "/api/v1/marketintelligence/codal/Disclosures",
+        "/api/v1/marketintelligence/codal/incremental/Disclosures",
         {
             method: "POST",
         },
     );
 }
+export function collectDailyPriceIncremental():
+    Promise<CodalOperationResponse> {
+    return apiFetch<CodalOperationResponse>(
+        "/api/v1/marketintelligence/tsetmc/incremental/DailyPrice",
+        {
+            method: "POST",
+        },
+    );
+}
+
 export type CodalJobStatus =
     | "Enqueued"
     | "Scheduled"
@@ -346,8 +342,14 @@ export type CompanyProfile = {
     instrumentId: number;
     insCode: string | null;
     isin: string | null;
+    isic: string | null;
     yVal: number | null;
     tradeDate: string | null;
+    firstDailyPriceDate: string | null;
+    lastDailyPriceRunAt: string | null;
+    monthlyPeriodEndDate: string | null;
+    monthlyReportCountSince1398: number;
+    monthlyPublishDateTime: string | null;
 };
 export function getCompanyProfiles(): Promise<CompanyProfile[]> {
     return apiFetch<CompanyProfile[]>(
@@ -474,6 +476,21 @@ export type UnmatchPortfolioCompanyInput = {
     isListed: boolean;
     companyId: number;
 };
+
+export type DisclosureStats = {
+    persianDate: string;
+    dailyCount: number;
+    monthlyCount: number;
+    yearlyCount: number;
+    totalCount: number;
+    latestDisclosure: string | null;
+};
+
+export function getDisclosureStats(): Promise<DisclosureStats> {
+    return apiFetch<DisclosureStats>(
+        "/api/v1/marketintelligence/disclosure-stats",
+    );
+}
 export function getDataQualityIssues(): Promise<DataQualityIssue[]> {
     return apiFetch<DataQualityIssue[]>(
         "/api/v1/marketintelligence/data-quality/issues",
@@ -499,13 +516,12 @@ export function backfillTsetmcPrices(
 
 export function getFiscalYearSales(
     symbol: string,
-    title: string,
     yearEndDate?: string,
 ): Promise<FiscalYearSales> {
     const params = new URLSearchParams({
-        symbol,
-        title,
+        symbol,        
     });
+
 
     if (yearEndDate) {
         params.set(
@@ -540,6 +556,8 @@ export type PortfolioCompanyTarget = {
     companyName: string;
     isListed: boolean;
 };
+
+
 export function getUnmatchedPortfolioCompanies():
     Promise<UnmatchedPortfolioCompany[]> {
     return apiFetch<UnmatchedPortfolioCompany[]>(

@@ -51,7 +51,10 @@ public sealed class AuditRetentionJob
         }
     }
 
-    private async Task<long> SweepAsync(AuditEventType eventType, DateTime cutoffUtc, CancellationToken ct)
+    private async Task<long> SweepAsync(
+    AuditEventType eventType,
+    DateTime cutoffUtc,
+    CancellationToken ct)
     {
         long swept = 0;
         var typeId = (int)eventType;
@@ -59,29 +62,28 @@ public sealed class AuditRetentionJob
 
         while (!ct.IsCancellationRequested)
         {
-            // Sub-query trick: ExecuteDeleteAsync doesn't support TOP/LIMIT
-            // directly, so we filter to a bounded id-set first.
-            var deleted = await _db.AuditRecords
-                .Where(a => a.EventType == typeId
-                    && a.OccurredAtUtc < cutoffUtc
-                    && _db.AuditRecords
-                        .Where(b => b.EventType == typeId && b.OccurredAtUtc < cutoffUtc)
-                        .OrderBy(b => b.OccurredAtUtc)
-                        .Select(b => b.Id)
-                        .Take(batchSize)
-                        .Contains(a.Id))
-                .ExecuteDeleteAsync(ct)
-                .ConfigureAwait(false);
+            var deleted = await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+            WITH Batch AS
+            (
+                SELECT TOP ({batchSize}) *
+                FROM [audit].[AuditRecords]
+                WHERE [EventType] = {typeId}
+                  AND [OccurredAtUtc] < {cutoffUtc}
+                ORDER BY [OccurredAtUtc]
+            )
+            DELETE FROM Batch;
+            """,
+                ct);
 
             swept += deleted;
-            if (deleted < batchSize) break;
+
+            if (deleted < batchSize)
+            {
+                break;
+            }
         }
 
-        if (swept > 0 && _logger.IsEnabled(LogLevel.Information))
-        {
-            _logger.LogInformation("[Auditing] purged {Count} {EventType} events older than {Cutoff:o}.",
-                swept, eventType, cutoffUtc);
-        }
         return swept;
     }
 }

@@ -2,20 +2,6 @@
 
 public sealed class CodalHistoryCoverageQuality
 {
-    public int CoverageYears { get; init; }
-
-    public int RequiredMonths { get; init; }
-
-    public string? WindowStartPeriod { get; init; }
-
-    public string? WindowEndPeriod { get; init; }
-
-    public int ActiveSymbols { get; init; }
-
-    public int CompleteSymbols { get; init; }
-
-    public int IncompleteSymbols { get; init; }
-
     public IReadOnlyList<CodalSymbolCoverageGap> Gaps
     {
         get;

@@ -28,8 +28,34 @@ public sealed class BenchmarkDailyPrice :
         LowPrice = lowPrice;
         HighPrice = highPrice;
         ClosePrice = closePrice;
+        CreatedAt = DateTimeOffset.UtcNow;
     }
+    public void Update(
+    decimal lowPrice,
+    decimal highPrice,
+    decimal closePrice)
+    {
+        LowPrice = lowPrice;
+        HighPrice = highPrice;
+        ClosePrice = closePrice;
+        LastUpdatedAt = DateTimeOffset.UtcNow;
+    }
+    public void UpdateFromSnapshot(
+    decimal currentPrice)
+    {
+        if (currentPrice < LowPrice)
+        {
+            LowPrice = currentPrice;
+        }
 
+        if (currentPrice > HighPrice)
+        {
+            HighPrice = currentPrice;
+        }
+
+        ClosePrice = currentPrice;
+        LastUpdatedAt = DateTimeOffset.UtcNow;
+    }
     public int BenchmarkAssetId { get; private set; }
 
     public DateOnly TradeDate { get; private set; }
@@ -41,4 +67,7 @@ public sealed class BenchmarkDailyPrice :
     public decimal HighPrice { get; private set; }
 
     public decimal ClosePrice { get; private set; }
+    public DateTimeOffset? CreatedAt { get; private set; }
+
+    public DateTimeOffset? LastUpdatedAt { get; private set; }
 }

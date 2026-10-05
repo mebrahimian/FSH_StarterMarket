@@ -243,6 +243,7 @@ public sealed class IdentityService : IIdentityService
         if (user is null)
         {
             _logger.LogWarning("No user found with matching refresh token hash for tenant {TenantId}", tenantId);
+            
             throw new UnauthorizedException("refresh token is invalid or expired");
         }
 

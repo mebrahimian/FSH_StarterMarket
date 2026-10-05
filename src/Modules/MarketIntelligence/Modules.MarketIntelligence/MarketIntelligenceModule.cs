@@ -14,6 +14,7 @@ using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 using FSH.Modules.MarketIntelligence.Services.Benchmark;
+using FSH.Modules.MarketIntelligence.Services.Benchmark.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
@@ -25,6 +26,7 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Insights;
 using FSH.Modules.MarketIntelligence.Services.Insights.Jobs;
+using FSH.Modules.MarketIntelligence.Services.Jobs;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
 using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
@@ -85,9 +87,14 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<PortfolioHoldingAssetBootstrapService>();
             builder.Services.AddOptions<TsetmcOptions>().BindConfiguration(TsetmcOptions.SectionName);
             builder.Services.AddScoped<IPortfolioChildCompanyResolver, PortfolioChildCompanyResolver>();
+            builder.Services.AddScoped<PortfolioHoldingAssetIdentityResolver>();
             builder.Services.AddOptions<TgjuOptions>().BindConfiguration(TgjuOptions.SectionName)
                    .Validate(options => !string.IsNullOrWhiteSpace(options.BaseUrl), "TGJU BaseUrl is required.").ValidateOnStart();
-            builder.Services.AddHttpClient<TgjuBenchmarkReader>();
+            builder.Services.AddHttpClient<TgjuBenchmarkReader>();    
+            builder.Services.AddHttpClient<TsetmcBenchmarkReader>();
+            builder.Services.AddScoped<BenchmarkPriceCollectorService>();
+            builder.Services.AddTransient<BenchmarkBackgroundJob>();
+            builder.Services.AddScoped<BackgroundJobStatusService>();
             builder.Services.AddHealthChecks().AddDbContextCheck<MarketIntelligenceDbContext>(
                     name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
@@ -140,6 +147,33 @@ namespace FSH.Modules.MarketIntelligence
             group.MapGetMatchedPortfolioCompaniesEndpoint();
 
 
+            group.MapGet("/jobs/status",
+                async (MarketIntelligenceDbContext dbContext,
+                       CancellationToken cancellationToken) =>
+            {
+                  var statuses = await dbContext.BackgroundJobStatuses
+                    .AsNoTracking()
+                    .OrderBy(x => x.JobName)
+                    .Select(x => new
+                        {
+                            x.JobCode,
+                            x.JobName,
+                            x.LastStartAt,
+                            x.LastEndAt,
+                            x.LastStatus,
+                            x.LastSuccessAt,
+                            x.LastFailedAt,
+                            x.LastDurationMs,
+                            x.LastProcessed,
+                            x.LastInserted,
+                            x.LastUpdated,
+                            x.LastError,
+                            x.UpdatedAt,
+                        }).ToListAsync(cancellationToken)
+                          .ConfigureAwait(false);
+
+            return Results.Ok(statuses);
+            });
 
             group.MapPost("/tsetmc/incremental/DailyPrice", (IJobService jobService) =>
               {
@@ -161,6 +195,21 @@ namespace FSH.Modules.MarketIntelligence
                 .CodalOperations
                 .Execute);
 
+            group.MapGet("/disclosure-stats",
+                  async Task<IResult> (MarketIntelligenceDbContext dbContext,
+                  CancellationToken cancellationToken) =>
+                  {
+                      var stats =
+                          await dbContext.DisclosureStats
+                                         .AsNoTracking()
+                                         .OrderByDescending(x => x.PersianDate)
+                                         .FirstOrDefaultAsync(cancellationToken)
+                                         .ConfigureAwait(false);
+
+                      return stats is null
+                          ? Results.NotFound()
+                          : Results.Ok(stats);
+                  }).RequirePermission(MarketIntelligencePermissions.Disclosures.View);
             ////////////////////////////
             group.MapPost("/codal/backfill",
                     IResult (IJobService jobService,
@@ -313,8 +362,14 @@ namespace FSH.Modules.MarketIntelligence
                               InstrumentId,
                               InsCode,
                               Isin,
+                              Isic,
                               YVal,
-                              TradeDate
+                              TradeDate,
+                              FirstDailyPriceDate, 
+                              LastDailyPriceRunAt,
+                              MonthlyPeriodEndDate,
+                              MonthlyReportCountSince1398,
+                              MonthlyPublishDateTime
                           FROM marketintelligence.CompanyProfileView
                           """)
                      .ToListAsync(cancellationToken);
@@ -389,28 +444,42 @@ namespace FSH.Modules.MarketIntelligence
                 MarketIntelligencePermissions
                 .CodalOperations
                 .Execute);
-             group.MapGet("/benchmark/tgju/test",
-                async Task<IResult> (
-                TgjuBenchmarkReader reader,
-                CancellationToken cancellationToken) =>
-             {
-                DateOnly fromDate =
-                   DateOnly.FromDateTime(
-                   DateTime.UtcNow.AddDays(-10));
 
-                IReadOnlyCollection<TgjuBenchmarkPriceRow> rows =
-                await reader
-                     .GetHistoryAsync("price_dollar_rl", fromDate, cancellationToken)
+            group.MapGet("/benchmark/tsetmc/test/{insCode}",
+    async Task<IResult> (
+        string insCode,
+        TsetmcBenchmarkReader reader,
+        CancellationToken cancellationToken) =>
+    {
+        IReadOnlyCollection<TsetmcBenchmarkPriceRow> rows =
+            await reader
+                .GetHistoryAsync(
+                    insCode,
+                    cancellationToken)
                 .ConfigureAwait(false);
 
-                return Results.Ok(rows);
-             }).RequirePermission(MarketIntelligencePermissions
-                  .CodalOperations
-                  .Execute);
+        return Results.Ok(
+            rows
+                .OrderByDescending(x => x.TradeDate)
+                .Take(10));
+    });
+            group.MapPost("/benchmark/sync",
+    async Task<IResult> (
+        BenchmarkPriceCollectorService collectorService,
+        CancellationToken cancellationToken) =>
+    {
+        BenchmarkSyncResult result =
+            await collectorService
+                .SyncTsetmcIncrementalAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+        return Results.Ok(result);
+    });
+            
+
             ////////////////////
             ///// TO DO: Remove after CompanyId + Insight pipeline is fully integrated.
             ///////////////////////////////////
-
             group.MapGet("/insights/test-sales-record", async (
                   string symbol,
                   string periodEndDate,
@@ -642,7 +711,6 @@ namespace FSH.Modules.MarketIntelligence
                     {
                         TimeZone = TimeZoneInfo.Utc,
                     });
-
                 jobManager.AddOrUpdate(
                     "market-intelligence-tsetmc-incremental-morning",
                     Job.FromExpression<TsetmcBackgroundJob>(
@@ -655,7 +723,6 @@ namespace FSH.Modules.MarketIntelligence
                             TimeZoneInfo.FindSystemTimeZoneById(
                                 "Iran Standard Time"),
                     });
-
                 jobManager.AddOrUpdate(
                     "market-intelligence-tsetmc-incremental-noon",
                     Job.FromExpression<TsetmcBackgroundJob>(
@@ -668,7 +735,6 @@ namespace FSH.Modules.MarketIntelligence
                             TimeZoneInfo.FindSystemTimeZoneById(
                                 "Iran Standard Time"),
                     });
-
                 jobManager.AddOrUpdate(
                     "market-intelligence-tsetmc-incremental-with-share-changes",
                     Job.FromExpression<TsetmcBackgroundJob>(
@@ -678,10 +744,43 @@ namespace FSH.Modules.MarketIntelligence
                     new RecurringJobOptions
                     {
                         TimeZone =
+                            TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"),
+                    });
+                jobManager.AddOrUpdate(
+                    "market-intelligence-tsetmc-incremental-after-market",
+                    Job.FromExpression<TsetmcBackgroundJob>(
+                        job => job.RunIncrementalAsync(
+                            CancellationToken.None)),
+                    "0 19,23 * * 0-3,6",
+                    new RecurringJobOptions
+                    {
+                        TimeZone =
+                            TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"),
+                    });
+                jobManager.AddOrUpdate(
+                    "market-intelligence-benchmark-tgju-incremental",
+                    Job.FromExpression<BenchmarkBackgroundJob>(
+                        job => job.RunTgjuIncrementalAsync(
+                            CancellationToken.None)),
+                    "31,59 * * * *",
+                    new RecurringJobOptions 
+                    {
+                      TimeZone = TimeZoneInfo.FindSystemTimeZoneById("Iran Standard Time"),
+                    });
+
+                jobManager.AddOrUpdate(
+                    "market-intelligence-benchmark-tsetmc-index-incremental",
+                    Job.FromExpression<BenchmarkBackgroundJob>(
+                        job => job.RunTsetmcIndexIncrementalAsync(
+                            CancellationToken.None)),
+                    "1,11,21,31,41,51 9-12 * * 0-3,6",
+                    new RecurringJobOptions
+                    {
+                        TimeZone =
                             TimeZoneInfo.FindSystemTimeZoneById(
                                 "Iran Standard Time"),
                     });
-                         
+
             }
 
         }
@@ -694,8 +793,14 @@ namespace FSH.Modules.MarketIntelligence
             int InstrumentId,
             string? InsCode,
             string? Isin,
+            string? Isic,
             string? YVal,
-            DateTime? TradeDate);
+            DateTime? TradeDate,
+            DateTime? FirstDailyPriceDate,
+            string? LastDailyPriceRunAt,
+            string? MonthlyPeriodEndDate,
+            int MonthlyReportCountSince1398,
+            DateTime? MonthlyPublishDateTime);
 
 
     }

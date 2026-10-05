@@ -639,36 +639,23 @@ public sealed class InvestmentPortfolioProcessor(
         ArgumentException.ThrowIfNullOrWhiteSpace(parentSymbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentPeriodEndDate);
 
-        int[] listedCompanyIds =
-            previousPortfolio
-                .Concat(currentPortfolio)
-                .Where(x =>
-                    x.IsListed &&
-                    x.ChildCompanyId.HasValue)
-                .Select(x => x.ChildCompanyId!.Value)
-                .Distinct()
-                .ToArray();
-
-        int[] unlistedCompanyIds =
-            previousPortfolio
-                .Concat(currentPortfolio)
-                .Where(x =>
-                    !x.IsListed &&
-                    x.ChildCompanyId.HasValue)
-                .Select(x => x.ChildCompanyId!.Value)
-                .Distinct()
-                .ToArray();
+        int[] childCompanyIds =
+    previousPortfolio
+        .Concat(currentPortfolio)
+        .Where(x => x.ChildCompanyId.HasValue)
+        .Select(x => x.ChildCompanyId!.Value)
+        .Distinct()
+        .ToArray();
 
         List<PortfolioHoldingAsset> holdingAssets =
             await dbContext.PortfolioHoldingAssets
                 .AsNoTracking()
                 .Where(x =>
                     (x.ListedCompanyId.HasValue &&
-                     listedCompanyIds.Contains(x.ListedCompanyId.Value)) ||
+                     childCompanyIds.Contains(x.ListedCompanyId.Value)) ||
                     (x.UnlistedCompanyId.HasValue &&
-                     unlistedCompanyIds.Contains(x.UnlistedCompanyId.Value)))
+                     childCompanyIds.Contains(x.UnlistedCompanyId.Value)))
                 .ToListAsync(cancellationToken);
-
         Dictionary<int, int> listedAssetLookup = [];
         Dictionary<int, int> unlistedAssetLookup = [];
 
@@ -689,8 +676,7 @@ public sealed class InvestmentPortfolioProcessor(
             }
         }
 
-        int GetHoldingAssetId(
-            InvestmentPortfolioPosition position)
+        int GetHoldingAssetId(InvestmentPortfolioPosition position)
         {
             if (!position.ChildCompanyId.HasValue)
             {
@@ -700,32 +686,26 @@ public sealed class InvestmentPortfolioProcessor(
             int childCompanyId =
                 position.ChildCompanyId.Value;
 
-            bool found;
-
-            int holdingAssetId;
-
-            if (position.IsListed)
-            {
-                found = listedAssetLookup.TryGetValue(
+            if (listedAssetLookup.TryGetValue(
                     childCompanyId,
-                    out holdingAssetId);
-            }
-            else
+                    out int holdingAssetId))
             {
-                found = unlistedAssetLookup.TryGetValue(
+                return holdingAssetId;
+            }
+
+            if (unlistedAssetLookup.TryGetValue(
                     childCompanyId,
-                    out holdingAssetId);
-            }
-
-            if (!found)
+                    out holdingAssetId))
             {
-                throw new InvalidOperationException(
-                    $"HoldingAsset not found. " +
-                    $"ChildCompanyId={childCompanyId}, " +
-                    $"IsListed={position.IsListed}");
+                return holdingAssetId;
             }
 
-            return holdingAssetId;
+            throw new InvalidOperationException(
+    $"HoldingAsset not found. " +
+    $"ChildCompanyId={childCompanyId}, " +
+    $"RawCompanyName={position.RawCompanyName}, " +
+    $"FSortName={position.FSortName}, " +
+    $"IsListed={position.IsListed}");
         }
 
         Dictionary<int, bool> previousHoldings =

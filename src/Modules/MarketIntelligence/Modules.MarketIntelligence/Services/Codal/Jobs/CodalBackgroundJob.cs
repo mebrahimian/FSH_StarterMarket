@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Companies;
+using FSH.Modules.MarketIntelligence.Services.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ namespace FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
 public sealed class CodalBackgroundJob(
     ICodalCollectorService collectorService,
     CompanyIdBackfillService companyIdBackfillService,
+    BackgroundJobStatusService jobStatusService,
     MarketIntelligenceDbContext dbContext,
     IJobService jobService)
 {
@@ -48,23 +50,32 @@ public sealed class CodalBackgroundJob(
                 cancellationToken);
     }
 
-    public async Task RunScheduledIncrementalAsync(
-    CancellationToken cancellationToken)
+    public async Task RunScheduledIncrementalAsync(CancellationToken cancellationToken)
     {
         CodalIncrementalScheduleSetting setting =
-            await GetScheduleSettingAsync(cancellationToken);
+            await GetScheduleSettingAsync(cancellationToken)
+                .ConfigureAwait(false);
 
         if (!ShouldRunIncremental(setting))
         {
             return;
         }
 
-        await companyIdBackfillService
-            .RunAsync(cancellationToken);
+        await jobStatusService.ExecuteAsync(
+            "codal-incremental",
+            "Codal Incremental",
+            async () =>
+            {
+                await companyIdBackfillService
+                    .RunAsync(cancellationToken)
+                    .ConfigureAwait(false);
 
-        await collectorService
-            .CollectIncrementalAsync(
-                cancellationToken);
+                await collectorService
+                    .CollectIncrementalAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            },
+            cancellationToken)
+            .ConfigureAwait(false);
     }
 
     [AutomaticRetry(Attempts = 0)]

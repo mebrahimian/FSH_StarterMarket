@@ -110,11 +110,12 @@
     "minutes": "{{count}} min",
     "save": "Save settings",
     "saving": "Saving...",
-    "open": "Codal Schedule Settings",
+    "open": "Codal Schedule",
     "close": "Close Schedule"
   },
-  
-  "portfolioMatching": "Portfolio Company Matching",
+
+  "portfolioMatching": "Portfolio Matching",
+  "jobStatus" :  "Job Status",
   "missingPortfolio": "Portfolio not recorded {{period}}",
   "codalDisclosureIssue": "Codal disclosure issue {{period}}",
   "incompletePortfolioMetadata": "Incomplete portfolio report information {{period}}",
