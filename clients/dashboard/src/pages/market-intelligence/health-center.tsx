@@ -164,28 +164,27 @@ export function MarketHealthCenterPage() {
         queryFn: getDataQualityIssues,
     });
 
-   const result = await getFiscalYearSales(
-    fiscalYearSales.symbol,
-    yearEndDate,
-);
+     const handleSalesClick = async (symbol: string) => {
+    const result = await getFiscalYearSales(symbol);
 
     setFiscalYearSales(result);
     setIsSalesDialogOpen(true);
 };
+
     const handleSalesNavigation = async (
-        yearEndDate: string | null,
-    ) => {
-        if (!yearEndDate || !fiscalYearSales) {
-            return;
-        }
+    yearEndDate: string | null,
+) => {
+    if (!yearEndDate || !fiscalYearSales) {
+        return;
+    }
 
-        const result = await getFiscalYearSales(
-            fiscalYearSales.symbol,
-            "",         
-        );
+    const result = await getFiscalYearSales(
+        fiscalYearSales.symbol,
+        yearEndDate,
+    );
 
-        setFiscalYearSales(result);
-    };
+    setFiscalYearSales(result);
+};
     const backfillMutation = useMutation({
         mutationFn: queueCodalSymbolBackfill,
 
@@ -1694,9 +1693,7 @@ const latestMonthlyReportDate =
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                void handleSalesClick(
-                                                    issue.symbol,"",
-                                                )
+                                                void handleSalesClick(issue.symbol)
                                             }
                                             title={tMarket("healthCenter.viewSales")}
                                             className="grid size-8 place-items-center rounded-md text-[var(--color-success)] transition-colors hover:bg-[var(--color-muted)]"
