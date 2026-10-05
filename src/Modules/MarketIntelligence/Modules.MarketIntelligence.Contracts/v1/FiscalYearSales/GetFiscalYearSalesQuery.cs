@@ -5,6 +5,5 @@ namespace FSH.Modules.MarketIntelligence.Contracts.v1.FiscalYearSales;
 
 public sealed record GetFiscalYearSalesQuery(
     string Symbol,
-    string Title,
     string? YearEndDate = null)
     : IQuery<FiscalYearSalesDto>;

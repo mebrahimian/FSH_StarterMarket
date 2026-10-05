@@ -18,19 +18,17 @@ public static class GetFiscalYearSalesEndpoint
                 "/fiscal-year-sales",
                (
                  string symbol,
-                 string title,
                  string? yearEndDate,
                  IMediator mediator,
                  CancellationToken cancellationToken) =>
                  mediator.Send(
                      new GetFiscalYearSalesQuery(
                         Symbol: symbol,
-                        Title: title,
                         YearEndDate: yearEndDate),
                         cancellationToken))
             .WithName("GetFiscalYearSales")
             .WithSummary(
-                "Gets fiscal year sales for a symbol based on the report title")
+                "Gets fiscal year sales for a symbol and optional year end date")
             .RequirePermission(
                 MarketIntelligencePermissions.Disclosures.View);
     }
