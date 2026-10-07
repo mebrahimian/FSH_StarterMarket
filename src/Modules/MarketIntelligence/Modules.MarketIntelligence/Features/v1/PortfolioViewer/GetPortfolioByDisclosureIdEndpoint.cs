@@ -18,11 +18,13 @@ public static class GetPortfolioByDisclosureIdEndpoint
                 "/portfolio-viewer/{disclosureId:guid}",
                 (
                     Guid disclosureId,
+                    bool? latest,
                     IMediator mediator,
                     CancellationToken cancellationToken) =>
                     mediator.Send(
                         new GetPortfolioByDisclosureIdQuery(
-                            disclosureId),
+                            disclosureId,
+                            latest ?? false),
                         cancellationToken))
             .WithName("GetPortfolioByDisclosureId")
             .WithSummary(

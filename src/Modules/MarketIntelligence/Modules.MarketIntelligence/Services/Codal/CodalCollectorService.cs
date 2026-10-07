@@ -1,11 +1,11 @@
-﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
-using FSH.Framework.Shared.Dates;
+﻿using FSH.Framework.Shared.Dates;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
+using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Insights;
@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
+using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
@@ -258,7 +259,326 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
         _logger.LogInformation("Disclosure Reading is completed.");
     }
+    public async Task CollectHistoricalRebuildAsync(
+    string fromDate,
+    string toDate,
+    CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
+        ArgumentException.ThrowIfNullOrWhiteSpace(toDate);
 
+        string normalizedFromDate = NormalizeDigits(fromDate.Trim());
+
+        string normalizedToDate = NormalizeDigits(toDate.Trim());
+
+        if (!IsValidPersianDate(normalizedFromDate))
+        {
+            throw new ArgumentException(
+                "From date is not a valid Persian date.",
+                nameof(fromDate));
+        }
+
+        if (!IsValidPersianDate(normalizedToDate))
+        {
+            throw new ArgumentException(
+                "To date is not a valid Persian date.",
+                nameof(toDate));
+        }
+
+        if (string.CompareOrdinal(
+                normalizedFromDate,
+                normalizedToDate) > 0)
+        {
+            throw new ArgumentException(
+                "From date cannot be after to date.",
+                nameof(fromDate));
+        }
+        string windowFromDate = normalizedFromDate;
+        while (string.CompareOrdinal(windowFromDate, normalizedToDate) <= 0)
+        {
+           string windowToDate = GetPersianMonthEnd(windowFromDate);
+
+           if (string.CompareOrdinal(windowToDate, normalizedToDate) > 0)
+        {
+            windowToDate = normalizedToDate;
+        }
+           CodalSearchResponse firstPage =
+                await _codalClient.SearchAsync(
+                   new CodalSearchRequest
+                    {
+                      FromDate = windowFromDate,
+                      ToDate = windowToDate,
+                      PageNumber = 1,
+                    }, cancellationToken);
+
+           List<CodalLetterDto> windowLetters = [.. firstPage.Letters];
+
+           for (int pageNumber = 2; pageNumber <= firstPage.TotalPages; pageNumber++)
+           {
+              await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+
+              CodalSearchResponse page =
+                await _codalClient.SearchAsync(
+                    new CodalSearchRequest
+                    {
+                        FromDate = windowFromDate,
+                        ToDate = windowToDate,
+                        PageNumber = pageNumber,
+                    },
+                    cancellationToken);
+
+              windowLetters.AddRange(page.Letters);
+           }
+           List<CodalLetterDto> orderedWindowLetters =
+              windowLetters
+                .GroupBy(letter => letter.TracingNo).Select(group => group.First())
+                .OrderBy(letter => PersianDateHelper.ToGregorian(letter.PublishDateTimeRaw))
+                .ThenBy(letter => letter.TracingNo)
+                .ToList();
+
+           long[] tracingNos = orderedWindowLetters
+                .Select(letter => letter.TracingNo)
+                .ToArray();
+
+           Dictionary<long, Disclosure> existingDisclosures =
+                await _dbContext.Disclosures
+                   .Where(disclosure => EF.Constant(tracingNos).Contains(disclosure.TracingNo))
+                   .ToDictionaryAsync(disclosure => disclosure.TracingNo, cancellationToken);
+           foreach (CodalLetterDto letter in orderedWindowLetters)
+           {
+             cancellationToken.ThrowIfCancellationRequested();
+             if (string.IsNullOrWhiteSpace(letter.Symbol) ||
+                    letter.Symbol.Length > 64)
+                {
+                    continue;
+                }
+             var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
+             if (rt is null)
+                {
+                    continue;
+                }
+             int? reportingTypeCode = rt is >= 0 and <= 9
+                    ? 1000000 + rt
+                    : null;
+             long tracingNo = letter.TracingNo;
+
+             existingDisclosures.TryGetValue(tracingNo, out Disclosure? disclosure);
+             if (disclosure is null)
+                {
+                    string? sentRaw = letter.SentDateTimeRaw;
+
+                    string? publishRaw = letter.PublishDateTimeRaw;
+
+                    DateTime? sent = PersianDateHelper.ToGregorian(sentRaw);
+
+                    DateTime? published = PersianDateHelper.ToGregorian(publishRaw);
+
+                    disclosure =
+                        new Disclosure(
+                            letter.TracingNo,
+                            letter.Symbol,
+                            letter.CompanyName ?? string.Empty,
+                            letter.Title ?? string.Empty,
+                            letter.LetterCode ?? string.Empty,
+                            sentRaw ?? string.Empty,
+                            publishRaw ?? string.Empty,
+                            sent,
+                            published,
+                            letter.Url ?? string.Empty,
+                            letter.HasHtml,
+                            false,
+                            letter.HasExcel,
+                            letter.HasPdf,
+                            letter.HasXbrl,
+                            letter.HasAttachment,
+                            letter.AttachmentUrl ?? string.Empty,
+                            letter.PdfUrl ?? string.Empty,
+                            letter.ExcelUrl ?? string.Empty,
+                            letter.XbrlUrl ?? string.Empty,
+                            letter.TedanUrl ?? string.Empty,
+                            let,
+                            rt,
+                            ct,
+                            ft,
+                            reportingTypeCode);
+                    CompanyIdentity? company =
+                       await _companyRegistry.FindBySymbolAsync(letter.Symbol, cancellationToken);
+
+                    if (company is not null)
+                       {
+                        disclosure.AssignCompanyId(company.CompanyId);
+                       }
+                    _dbContext.Disclosures.Add(disclosure);
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+             if (disclosure.Let is null || disclosure.Rt is null ||
+                    disclosure.ReportingTypeCode is null)
+                {
+                    disclosure.Let = let;
+                    disclosure.Rt = rt;
+                    disclosure.Ct = ct;
+                    disclosure.Ft = ft;
+                    disclosure.ReportingTypeCode = reportingTypeCode;
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+                List<ICodalDisclosureProcessor> processors =
+                   processors = _processors
+                     .Where(processor => processor.CanProcess(disclosure))
+                     .ToList();
+
+                if (processors.Count == 0)
+                {
+                    continue;
+                }
+                foreach (ICodalDisclosureProcessor processor in processors)
+                {
+                    try
+                    {
+                        if (processor is InvestmentPortfolioProcessor portfolioProcessor)
+                        {
+                            await portfolioProcessor.ProcessBackfillAsync(
+                                disclosure,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            await processor.ProcessAsync(
+                                disclosure,
+                                cancellationToken);
+                        }
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Historical rebuild processor HTTP error. TracingNo={TracingNo}, Processor={Processor}",
+                            disclosure.TracingNo,
+                            processor.GetType().Name);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Historical rebuild processor error. TracingNo={TracingNo}, Processor={Processor}",
+                            disclosure.TracingNo,
+                            processor.GetType().Name);
+                    }
+                }
+                try
+                {
+                    await _insightPipeline.ProcessAsync(
+                        disclosure,
+                        cancellationToken);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Historical rebuild insight pipeline failed. TracingNo={TracingNo}",
+                        disclosure.TracingNo);
+                }
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    _logger.LogDebug(
+                        "Historical rebuild disclosure. TracingNo={TracingNo}, Exists={Exists}",
+                        tracingNo,
+                        true);
+                }
+           }
+           if (_logger.IsEnabled(LogLevel.Information))
+             {
+                 _logger.LogInformation( "Historical rebuild window. FromDate={FromDate}, ToDate={ToDate}, TotalPages={TotalPages}, Letters={LettersCount}",
+                      windowFromDate,
+                      windowToDate,
+                      firstPage.TotalPages,
+                      orderedWindowLetters.Count);
+             }
+           windowFromDate = GetNextPersianMonthStart(windowFromDate);
+        }
+        Dictionary<int, string> parentSymbols = await _dbContext.CompanyMaster
+             .AsNoTracking()
+             .Where(company => company.IsListed && company.Symbol != null)
+             .ToDictionaryAsync(company => company.CompanyId,
+                                company => company.Symbol!,
+                                cancellationToken);
+        List<InvestmentPortfolioPosition> monthlyPositions = await _dbContext.InvestmentPortfolioPositions
+             .AsNoTracking()
+             .Where(position => position.SourceType == PortfolioSourceType.MonthlyActivity)
+             .ToListAsync(cancellationToken);
+
+        int deletedHoldingPeriods = await _dbContext
+             .InvestmentPortfolioHoldingPeriods
+             .ExecuteDeleteAsync(cancellationToken);
+
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Historical rebuild holding periods cleared. Deleted={DeletedCount}",
+                deletedHoldingPeriods);
+        }
+        var monthlyPortfolios = monthlyPositions
+             .Where(position => string.CompareOrdinal(position.PeriodEndDate, "1399/01/31") >= 0)
+             .GroupBy(position => new
+                  {
+                    position.ParentCompanyId,
+                    position.PeriodEndDate,
+                  })
+             .OrderBy(group => group.Key.ParentCompanyId)
+             .ThenBy(group => group.Key.PeriodEndDate)
+             .ToList();
+
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Historical rebuild holding portfolios prepared. Portfolios={PortfolioCount}",
+                monthlyPortfolios.Count);
+        }
+        InvestmentPortfolioProcessor holdingPortfolioProcessor = _processors
+            .OfType<InvestmentPortfolioProcessor>()
+            .Single();
+        int? previousParentCompanyId = null;
+        IReadOnlyList<InvestmentPortfolioPosition>
+        previousPortfolio = [];
+        foreach (var portfolioGroup in monthlyPortfolios)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int parentCompanyId = portfolioGroup.Key.ParentCompanyId;
+            if (!parentSymbols.TryGetValue(parentCompanyId,
+                      out string? parentSymbol) ||
+                      string.IsNullOrWhiteSpace(parentSymbol))
+            {
+               throw new InvalidOperationException($"Parent symbol not found. CompanyId={parentCompanyId}");
+            }
+
+            if (previousParentCompanyId != parentCompanyId)
+            {
+                previousPortfolio = [];
+                previousParentCompanyId =
+                parentCompanyId;
+            }
+
+            List<InvestmentPortfolioPosition> currentPortfolio = portfolioGroup.ToList();
+
+            await holdingPortfolioProcessor
+                .ApplyHoldingEntryExitAsync(
+                    parentSymbol,
+                    previousPortfolio,
+                    currentPortfolio,
+                    portfolioGroup.Key.PeriodEndDate,
+                    cancellationToken);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            previousPortfolio = currentPortfolio;
+        }
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Historical rebuild holding source loaded. Positions={PositionCount}",
+                monthlyPositions.Count);
+        }
+    }
     public async Task CollectSymbolBackfillAsync(string symbol, string fromDate, string toDate,
                                              CancellationToken cancellationToken = default)
     {
@@ -298,25 +618,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
 
         string searchFromDate = normalizedFromDate;
-
-        string maximumSearchToDate =
-            AddYearsToPersianDate(
-                normalizedToDate,
-                2);
-
-        string todayPersianDateWithTime = NormalizeDigits(PersianDateHelper.ToPersian(DateTime.Today));
-
-        string todayPersianDate =
-            todayPersianDateWithTime.Length >= 10
-                ? todayPersianDateWithTime[..10]
-                : todayPersianDateWithTime;
-
-        string searchToDate =
-            string.CompareOrdinal(
-                maximumSearchToDate,
-                todayPersianDate) > 0
-                    ? todayPersianDate
-                    : maximumSearchToDate;
+        string searchToDate = normalizedToDate;
+       
         TimeSpan requestDelay = TimeSpan.FromSeconds(5);
 
         List<CodalLetterDto> letters = [];
@@ -335,12 +638,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     windowFromDate,
                     1);
 
-            string windowToDate =
-                string.CompareOrdinal(
-                    nextYearDate,
-                    searchToDate) > 0
-                        ? searchToDate
-                        : nextYearDate;
+            string windowToDate = searchToDate;                
 
             if (!isFirstRequest)
             {
@@ -406,8 +704,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 break;
             }
 
-            windowFromDate =
-                windowToDate;
+            windowFromDate = windowToDate;
         }
 
         HashSet<long> processedTracingNos = [];
@@ -417,7 +714,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
         int missingPeriodCount = 0;
         int outsidePeriodCount = 0;
 
-        string parseFromDate =  AddYearsToPersianDate(normalizedFromDate, -1);
+        string parseFromDate = normalizedFromDate;
         foreach (
             CodalLetterDto letter in
             letters.OrderBy(letter =>
@@ -534,19 +831,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             {
                 missingPeriodCount++;
                 continue;
-            }
-
-            if (
-                string.CompareOrdinal(
-                    periodDate,
-                    parseFromDate) < 0 ||
-                string.CompareOrdinal(
-                    periodDate,
-                    normalizedToDate) > 0)
-            {
-                outsidePeriodCount++;
-                continue;
-            }
+            }          
 
             await Task.Delay(
                 requestDelay,
@@ -554,9 +839,18 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             foreach (ICodalDisclosureProcessor processor in processors)
             {
-                await processor.ProcessAsync(
-                    disclosure,
-                    cancellationToken);
+                if (processor is InvestmentPortfolioProcessor portfolioProcessor)
+                {
+                    await portfolioProcessor.ProcessBackfillAsync(
+                        disclosure,
+                        cancellationToken);
+                }
+                else
+                {
+                    await processor.ProcessAsync(
+                        disclosure,
+                        cancellationToken);
+                }
 
                 processedCount++;
             }
@@ -801,10 +1095,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _logger.LogInformation("End Of Parse Pending Disclosures.");
         return processedCount >= maxDisclosuresPerRun;
     }
-    public async Task CollectBackfillChunkAsync(
-    int startPage,
-    int endPage,
-    CancellationToken cancellationToken = default)
+    public async Task CollectBackfillChunkAsync(int startPage, int endPage, CancellationToken cancellationToken = default)
     {
         var lastPublishDateStr = await _dbContext.Disclosures
             .OrderByDescending(x => x.PublishDateTimeRaw)
@@ -827,9 +1118,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 {                            // 1000000:تولیدی 
                                              // 1000001:ساختمانی     
                                              // 1000002:سرمایه گذاری  
-                    PageNumber = pageNumber,// 1000003:بانک            
-                    Category = 1,            // 1000004:لیزینگ   
-                    ReportingType = 1000002  // 1000005:خدماتی 
+                    PageNumber = pageNumber, // 1000003:بانک            
+                                             // 1000004:لیزینگ   
+                                             // 1000005:خدماتی 
                                                               // 1000006:بیمه               
                                                               // 1000007:حمل ونقل دریایی
                 },                           // 1000008:کشاورزی          
@@ -851,14 +1142,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     startPage,
                     endPage);
             }
-            /*
-            Console.WriteLine(
-                $"Reading page {pageNumber}/{result.TotalPages}");
-
-            Console.WriteLine(
-                $"Letters count: {result.Letters.Count}");
-            */
-
+            
             // TracingNo های این صفحه
             var tracingNos = result.Letters
                 .Select(x => x.TracingNo)
@@ -949,9 +1233,18 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 {
                     try
                     {
-                        await processor.ProcessAsync(
-                            disclosure,
-                            cancellationToken);
+                        if (processor is InvestmentPortfolioProcessor portfolioProcessor)
+                        {
+                            await portfolioProcessor.ProcessBackfillAsync(
+                                disclosure,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            await processor.ProcessAsync(
+                                disclosure,
+                                cancellationToken);
+                        }
                     }
                     
                     catch (HttpRequestException ex)
@@ -1151,7 +1444,57 @@ public sealed class CodalCollectorService : ICodalCollectorService
             day >= 1 &&
             day <= maximumDay;
     }
+    private static string GetPersianMonthEnd(
+    string value)
+    {
+        int year =
+            int.Parse(
+                value.AsSpan(0, 4),
+                CultureInfo.InvariantCulture);
 
+        int month =
+            int.Parse(
+                value.AsSpan(5, 2),
+                CultureInfo.InvariantCulture);
+
+        var calendar =
+            new PersianCalendar();
+
+        int day =
+            calendar.GetDaysInMonth(
+                year,
+                month);
+
+        return string.Create(CultureInfo.InvariantCulture,
+                             $"{year:0000}/{month:00}/{day:00}");
+    }
+    private static string GetNextPersianMonthStart(
+    string value)
+    {
+        int year =
+            int.Parse(
+                value.AsSpan(0, 4),
+                CultureInfo.InvariantCulture);
+
+        int month =
+            int.Parse(
+                value.AsSpan(5, 2),
+                CultureInfo.InvariantCulture);
+
+        if (month == 12)
+        {
+            year++;
+            month = 1;
+        }
+        else
+        {
+            month++;
+        }
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"{year:0000}/{month:00}/01");
+    }
     private static string AddYearsToPersianDate(
         string value,
         int years)

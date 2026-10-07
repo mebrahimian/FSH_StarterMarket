@@ -68,8 +68,19 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
             .ThenByDescending(report => report.PublishDateTime)
             .FirstOrDefault();
 
+        if (query.OpenLatestForCompany &&
+                  latestReport is not null &&
+                  latestReport.DisclosureId != query.DisclosureId)
+        {
+            return await Handle(
+                new GetPortfolioByDisclosureIdQuery(
+                    latestReport.DisclosureId),
+                cancellationToken);
+        }
         bool isLatestPortfolio = latestReport is not null &&
-                                 latestReport.DisclosureId == query.DisclosureId; decimal? registeredCapital =
+                                 latestReport.DisclosureId == query.DisclosureId; 
+
+        decimal? registeredCapital =
         await dbContext.InvestmentPortfolioReportMetadata
             .Where(x =>
                    x.DisclosureId == query.DisclosureId &&

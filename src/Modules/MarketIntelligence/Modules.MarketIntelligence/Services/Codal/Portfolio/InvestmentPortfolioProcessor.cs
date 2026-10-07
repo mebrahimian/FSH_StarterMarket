@@ -25,10 +25,34 @@ public sealed class InvestmentPortfolioProcessor(
         return disclosure.Rt == 2 &&
                disclosure.Let is 58 or 6;
     }
-
+    /// <summary>
+    ///  متد دو ورژن با پارامترهای نختلف دارد
+    /// </summary>
+    /// <param name="disclosure"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
     public async Task ProcessAsync(
+    Disclosure disclosure,
+    CancellationToken cancellationToken = default)
+    {
+        await ProcessInternalAsync(
+            disclosure,
+            updateHoldingPeriods: true,
+            cancellationToken);
+    }
+    public async Task ProcessBackfillAsync(
         Disclosure disclosure,
         CancellationToken cancellationToken = default)
+    {
+        await ProcessInternalAsync(
+            disclosure,
+            updateHoldingPeriods: false,
+            cancellationToken);
+    }
+    private async Task ProcessInternalAsync(
+    Disclosure disclosure,
+    bool updateHoldingPeriods,
+    CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(disclosure);
 
@@ -124,7 +148,11 @@ public sealed class InvestmentPortfolioProcessor(
 
         PortfolioAuditStatus auditStatus = PortfolioAuditStatus.None;
 
-        if (sheets.Any(x => x.Metadata.MetaTableId is 1529 or 1530))
+        if (disclosure.Title?.Contains("حسابرسی نشده", StringComparison.Ordinal) == true)
+        {
+            auditStatus = PortfolioAuditStatus.Unaudited;
+        }
+        else if (disclosure.Title?.Contains("حسابرسی شده", StringComparison.Ordinal) == true)
         {
             auditStatus = PortfolioAuditStatus.Audited;
         }
@@ -132,13 +160,7 @@ public sealed class InvestmentPortfolioProcessor(
         {
             auditStatus = PortfolioAuditStatus.Unaudited;
         }
-        else if (sheets.Any(x => x.Metadata.MetaTableId is 1470 or 1471) &&
-                       disclosure.Title?.Contains("حسابرسی نشده", StringComparison.Ordinal) == true)
-        {
-            auditStatus =  PortfolioAuditStatus.Unaudited;
-        }
-        else if (sheets.Any(x => x.Metadata.MetaTableId is 1470 or 1471) &&
-                       disclosure.Title?.Contains("حسابرسی شده", StringComparison.Ordinal) == true)
+        else if (sheets.Any(x => x.Metadata.MetaTableId is 1529 or 1530))
         {
             auditStatus = PortfolioAuditStatus.Audited;
         }
@@ -206,16 +228,7 @@ public sealed class InvestmentPortfolioProcessor(
                 metadata.UnauthorizedCapital));
         }
         //////////////////////////////////////////
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.ToString());
-            throw;
-        }
-
+       
         var entities = new List<InvestmentPortfolioPosition>();
 
         foreach (InvestmentPortfolioSheetData sheet in sheets)
@@ -304,16 +317,21 @@ public sealed class InvestmentPortfolioProcessor(
             .AddRangeAsync(
                 entities,
                 cancellationToken);
-        IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio =
-            await GetPreviousPortfolioAsync(parentCompanyId.Value,
-                                            periodEndDate, cancellationToken);
+        if (updateHoldingPeriods)
+        {
+            IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio =
+                await GetPreviousPortfolioAsync(
+                    parentCompanyId.Value,
+                    periodEndDate,
+                    cancellationToken);
 
-        await ApplyHoldingEntryExitAsync(
-            disclosure.Symbol,
-            previousPortfolio,
-            entities,
-            periodEndDate,
-            cancellationToken);
+            await ApplyHoldingEntryExitAsync(
+                disclosure.Symbol,
+                previousPortfolio,
+                entities,
+                periodEndDate,
+                cancellationToken);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -629,7 +647,7 @@ public sealed class InvestmentPortfolioProcessor(
                     previousPeriodEndDate)
             .ToListAsync(cancellationToken);
     }
-    private async Task ApplyHoldingEntryExitAsync(
+    internal async Task ApplyHoldingEntryExitAsync(
     string parentSymbol,
     IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio,
     IReadOnlyList<InvestmentPortfolioPosition> currentPortfolio,

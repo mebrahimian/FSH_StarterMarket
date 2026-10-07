@@ -114,8 +114,8 @@ export function MarketHealthCenterPage() {
     const [fiscalYearSales, setFiscalYearSales] = useState<FiscalYearSales | null>(null);
     const [isSalesDialogOpen, setIsSalesDialogOpen] = useState(false);
     const [backfillSymbol, setBackfillSymbol] = useState("");
-    const [, setDebouncedBackfillSymbol] = useState("");
-    const [, setSymbolSuggestionsOpen] = useState(false);
+    const [debouncedBackfillSymbol, setDebouncedBackfillSymbol,] = useState("");
+    const [symbolSuggestionsOpen, setSymbolSuggestionsOpen,] = useState(false);
     const [backfillInstrumentId, setBackfillInstrumentId] = useState<number | null>(null);
     const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const [backfillFromDate, setBackfillFromDate] = useState<DateObject | null>(null);
@@ -372,6 +372,16 @@ export function MarketHealthCenterPage() {
         selectedLetterCategory?.letCodes.includes(
             null,
         ) ?? false;
+
+    const dataQualityQuery = useQuery({
+        queryKey: [
+            "market-intelligence",
+            "health-center",
+            "data-quality",
+        ],
+        queryFn: () => getCodalDataQuality(5),
+       
+    });
     const disclosuresQuery = useQuery({
         queryKey: [
             "market-intelligence",
@@ -412,15 +422,75 @@ export function MarketHealthCenterPage() {
     });
 
     //card 1
-    const { data: companyProfiles = [],} = 
-        useQuery<CompanyProfile[]>({
+    const { data: companyProfiles = [],} = useQuery<CompanyProfile[]>({
            queryKey: ["market-intelligence", "company-profiles"],
            queryFn: getCompanyProfiles,
         });
 
-    const latestDailyPriceRunAt =
-    companyProfiles.reduce<string | null>((latest, profile) => {
-        const current = profile.lastDailyPriceRunAt;
+    const normalizeSymbolForSearch = (value: string,) =>
+    value
+        .trim()
+        .replace(/ي/g, "ی")
+        .replace(/ك/g, "ک")
+        .replace(/\u200c/g, "")
+        .replace(/\s+/g, "");
+
+    const searchText = normalizeSymbolForSearch(debouncedBackfillSymbol, );
+
+    const matchingCompanyProfiles =  searchText.length >= 2 ? companyProfiles
+            .filter((profile) => {
+                const symbol =
+                    profile.normalizedSymbol ??
+                    normalizeSymbolForSearch(
+                        profile.symbol,
+                    );
+
+                const companyName =
+                    profile.normalizedName ??
+                    normalizeSymbolForSearch(
+                        profile.companyName ?? "",
+                    );
+
+                return (
+                    symbol.includes(searchText) ||
+                    companyName.includes(searchText)
+                );
+            })
+            .sort((a, b) => {
+                const aSymbol =
+                    a.normalizedSymbol ??
+                    normalizeSymbolForSearch(
+                        a.symbol,
+                    );
+
+                const bSymbol =
+                    b.normalizedSymbol ??
+                    normalizeSymbolForSearch(
+                        b.symbol,
+                    );
+
+                const aStarts =
+                    aSymbol.startsWith(searchText);
+
+                const bStarts =
+                    bSymbol.startsWith(searchText);
+
+                if (aStarts !== bStarts) {
+                    return aStarts ? -1 : 1;
+                }
+
+                return a.symbol.localeCompare(
+                    b.symbol,
+                    "fa",
+                );
+            })
+            .slice(0, 20)
+        : [];
+
+    const latestDailyPriceRunAt = companyProfiles.reduce<string | null>((latest, profile) =>
+    
+    {
+        const current = profile.monthlyPeriodEndDate;
 
         if (!current) {
             return latest;
@@ -430,11 +500,9 @@ export function MarketHealthCenterPage() {
             ? current
             : latest;
     }, null);
-    console.log(
-    "DailyPriceRunAt:",
-    companyProfiles.find((x) => x.lastDailyPriceRunAt)?.lastDailyPriceRunAt,
-    latestDailyPriceRunAt,
-);
+    console.log("DailyPriceRunAt:",
+        companyProfiles.find((x) => x.lastDailyPriceRunAt)?.lastDailyPriceRunAt,
+         latestDailyPriceRunAt,);
     const activeSinceDate = new Date();
     activeSinceDate.setMonth(activeSinceDate.getMonth() - 12);
 
@@ -511,9 +579,11 @@ const openCompanyCount =
         ? 0
         : companyProfiles.filter(
               (profile) =>
-                  profile.tradeDate === latestTradeDate &&
-                  (!activeFromDate ||
-                      profile.tradeDate >= activeFromDate),
+    dataQualityQuery.data?.historyCoverage.windowEndPeriod
+        ? profile.monthlyPeriodEndDate?.startsWith(
+              dataQualityQuery.data.historyCoverage.windowEndPeriod,
+          ) === true
+        : false,
           ).length;
 
 const closedCompanyCount = Math.max(
@@ -563,34 +633,24 @@ const monthlyReportProfiles = companyProfiles.filter(
         profile.monthlyPeriodEndDate != null,
 );
 
-const latestMonthlyPeriod =
-    monthlyReportProfiles.reduce<string | null>(
-        (latest, profile) => {
-            const period = profile.monthlyPeriodEndDate;
-
-            if (!period) {
-                return latest;
-            }
-
-            return !latest || period > latest
-                ? period
-                : latest;
-        },
-        null,
-    );
-
 // شرکت‌هایی که اصولاً گزارش ماهانه دارند
 const monthlyReportTotal =
     monthlyReportProfiles.length;
-
+const expectedMonthlyPeriod =
+    new DateObject({
+        calendar: persian,
+    })
+        .subtract(1, "month")
+        .format("YYYY/MM");
 // شرکت‌هایی که گزارش آخرین ماه را دارند
 const companiesWithMonthlyReports =
-    latestMonthlyPeriod === null
+    expectedMonthlyPeriod === null
         ? 0
         : monthlyReportProfiles.filter(
               (profile) =>
-                  profile.monthlyPeriodEndDate ===
-                  latestMonthlyPeriod,
+                  profile.monthlyPeriodEndDate?.startsWith(
+                      expectedMonthlyPeriod,
+                  ) === true,
           ).length;
 
 // شرکت‌هایی که گزارش دارند ولی آخرین ماه را هنوز ندارند
@@ -629,15 +689,7 @@ const latestMonthlyReportDate =
     );
     //
     
-    const dataQualityQuery = useQuery({
-        queryKey: [
-            "market-intelligence",
-            "health-center",
-            "data-quality",
-        ],
-        queryFn: () => getCodalDataQuality(5),
-       
-    });
+    
     const backgroundJobStatusesQuery = useQuery<BackgroundJobStatus[]>({
         queryKey: [
             "market-intelligence",
@@ -1735,7 +1787,36 @@ const latestMonthlyReportDate =
                                 )}
                                 className="h-8 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none transition focus:border-[var(--color-ring)]"
                             />
+                            {symbolSuggestionsOpen &&
+                             searchText.length >= 2 &&
+                             matchingCompanyProfiles.length > 0 && (
+                            <div className="absolute bottom-full z-50 mb-1 max-h-72 w-full overflow-y-auto rounded-lg border border-blue-900 bg-blue-100 text-red-950 shadow-xl">
+                                {matchingCompanyProfiles.map(
+                                     (profile) => (
+                                       <button
+                                          key={profile.instrumentId}
+                                          type="button"
+                                          className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-start text-sm hover:bg-muted"
+                                          onMouseDown={(event) =>
+                                          event.preventDefault()                               }
+                                          onClick={() => {
+                                             setBackfillSymbol(profile.symbol, );
+                                             setBackfillInstrumentId(profile.instrumentId,);
+                                             setSymbolSuggestionsOpen(false,);
+                                }}
+                                       >
+                                <span className="font-semibold">
+                                    {profile.symbol}
+                                </span>
 
+                                <span className="truncate text-xs">
+                                    {profile.companyName ?? ""}
+                                </span>
+                    </button>
+                ),
+            )}
+        </div>
+    )}
                             
                         </div>
                     </label>                    

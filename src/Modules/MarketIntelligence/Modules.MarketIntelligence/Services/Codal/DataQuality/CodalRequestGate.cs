@@ -39,11 +39,26 @@ public sealed class CodalRequestGate : IDisposable
                 }
             }
 
-            _lastRequestStartedAt =
-                DateTimeOffset.UtcNow;
+            while (true)
+            {
+                _lastRequestStartedAt = DateTimeOffset.UtcNow;
 
-            return await action(cancellationToken)
-                .ConfigureAwait(false);
+                try
+                {
+                    return await action(cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex)
+                    when (
+                        ex.StatusCode ==
+                        System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    await Task.Delay(
+                            TimeSpan.FromMinutes(1),
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
         }
         finally
         {

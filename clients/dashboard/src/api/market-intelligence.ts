@@ -44,7 +44,8 @@ export type CodalSymbolCoverageGap = {
     missingPeriodDetails: CodalMissingPeriod[];
 };
 export type CodalDataQualityReport = {
-    historyCoverage: {              
+    historyCoverage: {           
+        windowEndPeriod: string | null;
         gaps: CodalSymbolCoverageGap[];
     };    
 };
@@ -366,7 +367,7 @@ export function getCodalJobStatus(
 
 export function collectCodalBackfill(): Promise<CodalOperationResponse> {
     return apiFetch<CodalOperationResponse>(
-        "/api/v1/marketintelligence/codal/backfill",
+        "/api/v1/marketintelligence/codal/historical-rebuild",
         {
             method: "POST",
         },
@@ -633,9 +634,14 @@ export function unmatchPortfolioCompany(
 }
 export function getPortfolioByDisclosureId(
     disclosureId: string,
+    latest = false,
 ): Promise<PortfolioReport | null> {
+    const query = latest
+        ? "?latest=true"
+        : "";
+
     return apiFetch<PortfolioReport | null>(
-        `/api/v1/marketintelligence/portfolio-viewer/${encodeURIComponent(disclosureId)}`,
+        `/api/v1/marketintelligence/portfolio-viewer/${encodeURIComponent(disclosureId)}${query}`,
     );
 }
 export function updateCodalIncrementalSchedule(

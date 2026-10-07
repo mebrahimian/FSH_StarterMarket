@@ -74,9 +74,10 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityBankProcessor>();
             builder.Services.AddScoped<InvestmentPortfolioReader>();
+            builder.Services.AddScoped<PortfolioHistoryRebuildService>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, InvestmentPortfolioProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
-            builder.Services.AddScoped<IMarketPriceProvider, BorsMarketPriceProvider>();
+            builder.Services.AddScoped<IMarketPriceProvider, DailyPriceMarketPriceProvider>();
             builder.Services.AddScoped<ICompanyRegistry, BorsCompanyRegistry>();
             builder.Services.AddScoped<CompanyIdBackfillService>();
             builder.Services.AddScoped<SalesPerformanceAnalyzer>();
@@ -295,7 +296,22 @@ namespace FSH.Modules.MarketIntelligence
                   .RequirePermission(MarketIntelligencePermissions
                           .CodalOperations
                           .Execute);
-            ////////
+            group.MapPost("/codal/historical-rebuild", 
+                  IResult (IJobService jobService) =>    {
+                      string jobId = jobService.Enqueue<CodalBackgroundJob>(
+                             job => job.RunHistoricalRebuildAsync());
+
+                    return Results.Accepted(
+                        value: new
+                        {
+                            jobId,
+                            message = "Codal historical rebuild queued.",});
+                  }).WithName("QueueCodalHistoricalRebuild")
+                    .WithSummary("Queues full Codal historical rebuild from 1399/01/01 to current date")
+                    .RequirePermission(MarketIntelligencePermissions
+                            .CodalOperations
+                            .Execute);
+
             group.MapPost("/codal/symbol-backfill/direct", async Task<IResult> (
                   CodalSymbolBackfillRequest request,
                   [FromServices] ICodalCollectorService codalCollectorService,
@@ -546,6 +562,68 @@ namespace FSH.Modules.MarketIntelligence
                     MarketIntelligencePermissions
                         .CodalOperations
                         .Execute);
+            group.MapGet("/portfolio/rebuild/plan",
+       async (
+           PortfolioHistoryRebuildService rebuildService,
+           CancellationToken cancellationToken) =>
+       {
+           PortfolioHistoryRebuildPlan plan =
+               await rebuildService.BuildPlanAsync(
+                   cancellationToken);
+
+           return Results.Ok(plan);
+       })
+       .WithName("GetPortfolioRebuildPlan")
+       .WithSummary("Builds a dry-run plan for portfolio history rebuild")
+       .RequirePermission(
+           MarketIntelligencePermissions
+               .CodalOperations
+               .Execute);
+            group.MapPost(
+         "/portfolio/rebuild",
+         async Task<IResult> (
+             PortfolioHistoryRebuildService rebuildService,
+             IJobService jobService,
+             CancellationToken cancellationToken) =>
+         {
+             PortfolioHistoryRebuildCompany[] companies =
+                 await rebuildService.BuildUniverseAsync(
+                     cancellationToken);
+
+             if (companies.Length == 0)
+             {
+                 return Results.BadRequest(
+                     new
+                     {
+                         message =
+                             "Portfolio rebuild universe is empty."
+                     });
+             }
+
+             string jobId =
+                 jobService.Enqueue<PortfolioHistoryRebuildService>(
+                     service =>
+                         service.RebuildAsync(
+                             companies,
+                             CancellationToken.None));
+
+             return Results.Accepted(
+                 value: new
+                 {
+                     jobId,
+                     companyCount = companies.Length,
+                     message =
+                         "Portfolio history rebuild queued."
+                 });
+         })
+         .WithName("RebuildPortfolioHistory")
+         .WithSummary(
+             "Queues a company-by-company portfolio history rebuild")
+         .RequirePermission(
+             MarketIntelligencePermissions
+                 .CodalOperations
+                 .Execute);
+
             //////////////////////////////
             // End of To do Remove
             ///////////////////////
@@ -698,19 +776,21 @@ namespace FSH.Modules.MarketIntelligence
 
             var jobManager = endpoints.ServiceProvider
                                       .GetService<IRecurringJobManager>();
-
+            
             if (jobManager is not null)
             {
+                /*
                 jobManager.AddOrUpdate(
                     "market-intelligence-codal-incremental",
                     Job.FromExpression<CodalBackgroundJob>(
                         job => job.RunScheduledIncrementalAsync(
                             CancellationToken.None)),
-                    "*/5 * * * *",
+                    "* /5 * * * *",
                     new RecurringJobOptions
                     {
                         TimeZone = TimeZoneInfo.Utc,
                     });
+                */
                 jobManager.AddOrUpdate(
                     "market-intelligence-tsetmc-incremental-morning",
                     Job.FromExpression<TsetmcBackgroundJob>(

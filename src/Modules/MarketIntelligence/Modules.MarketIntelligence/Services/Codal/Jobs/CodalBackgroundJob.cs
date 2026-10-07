@@ -5,7 +5,7 @@ using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Jobs;
-using FSH.Modules.MarketIntelligence.Services.Tsetmc;
+using FSH.Framework.Shared.Dates;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -84,7 +84,22 @@ public sealed class CodalBackgroundJob(
         return collectorService
             .CollectSymbolBackfillAsync(symbol, fromDate, toDate, CancellationToken.None);
     }
+    [AutomaticRetry(Attempts = 0)]
+    public Task RunHistoricalRebuildAsync()
+    {
+        const string fromDate =
+            "1399/01/01";
 
+        string frozenToDate =
+            PersianDateHelper
+                .ToPersian(DateTime.Now)[..10];
+
+        return collectorService
+            .CollectHistoricalRebuildAsync(
+                fromDate,
+                frozenToDate,
+                CancellationToken.None);
+    }
     [AutomaticRetry(Attempts = 0)]
     public async Task RunParsePendingAsync(
      CancellationToken cancellationToken)

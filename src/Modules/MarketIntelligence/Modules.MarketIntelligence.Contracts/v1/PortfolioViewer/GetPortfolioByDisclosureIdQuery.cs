@@ -4,7 +4,8 @@ using Microsoft.Extensions.Logging;
 namespace FSH.Modules.MarketIntelligence.Contracts.v1.PortfolioViewer;
 
 public sealed record GetPortfolioByDisclosureIdQuery(
-    Guid DisclosureId)
+    Guid DisclosureId,
+    bool OpenLatestForCompany = false)
     : IQuery<PortfolioReportDto?>;
 
 public sealed record PortfolioReportDto(

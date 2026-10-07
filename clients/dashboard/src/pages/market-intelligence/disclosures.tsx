@@ -33,7 +33,6 @@ import { PortfolioReportDialog } from "@/components/market-intelligence/portfoli
 import { Combobox, EntityPageHeader, EntityPager,} from "@/components/list";
 import { cn } from "@/lib/cn";
 import { describe } from "@/lib/list-helpers";
-import { CodalOperationsPanel } from "./codal-operations-panel";
 import { codalReportTypeOptions, } from "@/lib/market-intelligence/codal-report-types";
 import { codalLetterCategoryOptions, } from "@/lib/market-intelligence/codal-letter-categories";
 import { FiscalYearSalesDialog } from
@@ -89,7 +88,7 @@ export function DisclosuresPage() {
     ) => {
         const result =
             await getPortfolioByDisclosureId(
-                disclosureId,
+                disclosureId, true,
             );
 
         if (!result) {
@@ -256,9 +255,7 @@ export function DisclosuresPage() {
 
                 </Button>
             </EntityPageHeader>
-            <CodalOperationsPanel
-                onCompleted={query.refetch}
-            />
+            
             <SearchBox
                 value={search}
                 onChange={setSearch}
