@@ -7,11 +7,13 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.Codal.Logging;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Insights;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
@@ -27,6 +29,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
     private readonly ILogger<CodalCollectorService> _logger;
     private readonly ICompanyRegistry _companyRegistry;
     private readonly DisclosureInsightPipeline _insightPipeline;
+    private readonly CodalProcessingLogService _processingLogService;
     public CodalCollectorService(
     ICodalClient codalClient,
     MarketIntelligenceDbContext dbContext,
@@ -35,6 +38,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
     IConfiguration configuration,
     IEnumerable<ICodalDisclosureProcessor> processors,
     ICompanyRegistry companyRegistry,
+    CodalProcessingLogService processingLogService,
     DisclosureInsightPipeline insightPipeline)
     {
         _codalClient = codalClient;
@@ -43,6 +47,8 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _logger = logger;
         _companyRegistry = companyRegistry;
         _insightPipeline = insightPipeline;
+        _processingLogService = processingLogService;
+        
     }
 
 #pragma warning disable S4144 // Temporary copy; will use ascending persistence order
@@ -54,7 +60,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             .OrderByDescending(x => x.PublishDateTimeRaw)
             .Select(x => x.PublishDateTimeRaw)
             .FirstOrDefaultAsync(cancellationToken);
-
+        _ = _processingLogService;
         if (string.IsNullOrWhiteSpace(lastPublishDateStr))
         {
             throw new InvalidOperationException(
@@ -262,7 +268,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
     public async Task CollectHistoricalRebuildAsync(
     string fromDate,
     string toDate,
-    CancellationToken cancellationToken = default)
+    bool resumeFromCheckpoint = true, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
         ArgumentException.ThrowIfNullOrWhiteSpace(toDate);
@@ -293,208 +299,133 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 "From date cannot be after to date.",
                 nameof(fromDate));
         }
+        long progressId = await _processingLogService.CreateProgressAsync(
+            normalizedFromDate,
+            normalizedToDate,
+            cancellationToken);
         string windowFromDate = normalizedFromDate;
         while (string.CompareOrdinal(windowFromDate, normalizedToDate) <= 0)
         {
            string windowToDate = GetPersianMonthEnd(windowFromDate);
 
            if (string.CompareOrdinal(windowToDate, normalizedToDate) > 0)
-        {
-            windowToDate = normalizedToDate;
-        }
-           CodalSearchResponse firstPage =
-                await _codalClient.SearchAsync(
-                   new CodalSearchRequest
-                    {
-                      FromDate = windowFromDate,
-                      ToDate = windowToDate,
-                      PageNumber = 1,
-                    }, cancellationToken);
-
-           List<CodalLetterDto> windowLetters = [.. firstPage.Letters];
-
-           for (int pageNumber = 2; pageNumber <= firstPage.TotalPages; pageNumber++)
            {
-              await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-
-              CodalSearchResponse page =
-                await _codalClient.SearchAsync(
-                    new CodalSearchRequest
-                    {
-                        FromDate = windowFromDate,
-                        ToDate = windowToDate,
-                        PageNumber = pageNumber,
-                    },
-                    cancellationToken);
-
-              windowLetters.AddRange(page.Letters);
+               windowToDate = normalizedToDate;
            }
-           List<CodalLetterDto> orderedWindowLetters =
-              windowLetters
-                .GroupBy(letter => letter.TracingNo).Select(group => group.First())
-                .OrderBy(letter => PersianDateHelper.ToGregorian(letter.PublishDateTimeRaw))
-                .ThenBy(letter => letter.TracingNo)
-                .ToList();
-
-           long[] tracingNos = orderedWindowLetters
-                .Select(letter => letter.TracingNo)
-                .ToArray();
-
-           Dictionary<long, Disclosure> existingDisclosures =
-                await _dbContext.Disclosures
-                   .Where(disclosure => EF.Constant(tracingNos).Contains(disclosure.TracingNo))
-                   .ToDictionaryAsync(disclosure => disclosure.TracingNo, cancellationToken);
-           foreach (CodalLetterDto letter in orderedWindowLetters)
+           if (resumeFromCheckpoint)
            {
-             cancellationToken.ThrowIfCancellationRequested();
-             if (string.IsNullOrWhiteSpace(letter.Symbol) ||
-                    letter.Symbol.Length > 64)
-                {
-                    continue;
-                }
-             var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
-             if (rt is null)
-                {
-                    continue;
-                }
-             int? reportingTypeCode = rt is >= 0 and <= 9
-                    ? 1000000 + rt
-                    : null;
-             long tracingNo = letter.TracingNo;
-
-             existingDisclosures.TryGetValue(tracingNo, out Disclosure? disclosure);
-             if (disclosure is null)
-                {
-                    string? sentRaw = letter.SentDateTimeRaw;
-
-                    string? publishRaw = letter.PublishDateTimeRaw;
-
-                    DateTime? sent = PersianDateHelper.ToGregorian(sentRaw);
-
-                    DateTime? published = PersianDateHelper.ToGregorian(publishRaw);
-
-                    disclosure =
-                        new Disclosure(
-                            letter.TracingNo,
-                            letter.Symbol,
-                            letter.CompanyName ?? string.Empty,
-                            letter.Title ?? string.Empty,
-                            letter.LetterCode ?? string.Empty,
-                            sentRaw ?? string.Empty,
-                            publishRaw ?? string.Empty,
-                            sent,
-                            published,
-                            letter.Url ?? string.Empty,
-                            letter.HasHtml,
-                            false,
-                            letter.HasExcel,
-                            letter.HasPdf,
-                            letter.HasXbrl,
-                            letter.HasAttachment,
-                            letter.AttachmentUrl ?? string.Empty,
-                            letter.PdfUrl ?? string.Empty,
-                            letter.ExcelUrl ?? string.Empty,
-                            letter.XbrlUrl ?? string.Empty,
-                            letter.TedanUrl ?? string.Empty,
-                            let,
-                            rt,
-                            ct,
-                            ft,
-                            reportingTypeCode);
-                    CompanyIdentity? company =
-                       await _companyRegistry.FindBySymbolAsync(letter.Symbol, cancellationToken);
-
-                    if (company is not null)
-                       {
-                        disclosure.AssignCompanyId(company.CompanyId);
-                       }
-                    _dbContext.Disclosures.Add(disclosure);
-
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                }
-             if (disclosure.Let is null || disclosure.Rt is null ||
-                    disclosure.ReportingTypeCode is null)
-                {
-                    disclosure.Let = let;
-                    disclosure.Rt = rt;
-                    disclosure.Ct = ct;
-                    disclosure.Ft = ft;
-                    disclosure.ReportingTypeCode = reportingTypeCode;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                }
-                List<ICodalDisclosureProcessor> processors =
-                   processors = _processors
-                     .Where(processor => processor.CanProcess(disclosure))
-                     .ToList();
-
-                if (processors.Count == 0)
-                {
-                    continue;
-                }
-                foreach (ICodalDisclosureProcessor processor in processors)
-                {
-                    try
-                    {
-                        if (processor is InvestmentPortfolioProcessor portfolioProcessor)
-                        {
-                            await portfolioProcessor.ProcessBackfillAsync(
-                                disclosure,
-                                cancellationToken);
-                        }
-                        else
-                        {
-                            await processor.ProcessAsync(
-                                disclosure,
-                                cancellationToken);
-                        }
-                    }
-                    catch (HttpRequestException ex)
-                    {
-                        _logger.LogError(
-                            ex,
-                            "Historical rebuild processor HTTP error. TracingNo={TracingNo}, Processor={Processor}",
-                            disclosure.TracingNo,
-                            processor.GetType().Name);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        _logger.LogError(
-                            ex,
-                            "Historical rebuild processor error. TracingNo={TracingNo}, Processor={Processor}",
-                            disclosure.TracingNo,
-                            processor.GetType().Name);
-                    }
-                }
-                try
-                {
-                    await _insightPipeline.ProcessAsync(
-                        disclosure,
+                bool alreadyCompleted = await _dbContext.CodalProcessingLogs
+                    .AsNoTracking()
+                    .AnyAsync(
+                        x => x.Operation == "Historical"
+                            && x.Stage == "Search"
+                            && x.Status == "Completed"
+                            && x.FromDate == windowFromDate
+                            && x.ToDate == windowToDate,
                         cancellationToken);
-                }
-                catch (InvalidOperationException ex)
+
+                if (alreadyCompleted)
                 {
-                    _logger.LogError(
-                        ex,
-                        "Historical rebuild insight pipeline failed. TracingNo={TracingNo}",
-                        disclosure.TracingNo);
-                }
-                if (_logger.IsEnabled(LogLevel.Debug))
-                {
-                    _logger.LogDebug(
-                        "Historical rebuild disclosure. TracingNo={TracingNo}, Exists={Exists}",
-                        tracingNo,
-                        true);
+                    if (_logger.IsEnabled(LogLevel.Information))
+                    {
+                        _logger.LogInformation(
+                            "Historical checkpoint skipped completed month. FromDate={FromDate}, ToDate={ToDate}",
+                            windowFromDate,
+                            windowToDate);
+                    }
+
+                    windowFromDate = GetNextPersianMonthStart(windowFromDate);
+                    continue;
                 }
            }
-           if (_logger.IsEnabled(LogLevel.Information))
-             {
-                 _logger.LogInformation( "Historical rebuild window. FromDate={FromDate}, ToDate={ToDate}, TotalPages={TotalPages}, Letters={LettersCount}",
+           bool logged = await _processingLogService.TryLogAsync(
+              operation: "Historical",
+              stage: "Search",
+              level: 1,
+              status: "Started",
+              fromDate: windowFromDate,
+              toDate: windowToDate,
+              cancellationToken: cancellationToken);
+
+           if (!logged)
+            {
+                _logger.LogWarning("Unable to persist Historical month completion. FromDate={FromDate}, ToDate={ToDate}",
                       windowFromDate,
-                      windowToDate,
-                      firstPage.TotalPages,
-                      orderedWindowLetters.Count);
-             }
-           windowFromDate = GetNextPersianMonthStart(windowFromDate);
+                      windowToDate);
+            }
+           CodalSearchResponse firstPage =
+              await SearchHistoricalPageAsync(windowFromDate, windowToDate, 1, cancellationToken)
+              ?? throw new InvalidOperationException(
+                   $"Historical first page failed. FromDate={windowFromDate}, ToDate={windowToDate}");
+           // bool hasFailedPages = false;
+            for (int pageNumber = firstPage.TotalPages; pageNumber >= 2; pageNumber--)
+            {
+              await Task.Delay(TimeSpan.FromSeconds(25), cancellationToken);
+
+              CodalSearchResponse? page = await SearchHistoricalPageAsync(
+                    windowFromDate,
+                    windowToDate,
+                    pageNumber,
+                     cancellationToken);
+              if (page is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Historical page failed. " +
+                        $"FromDate={windowFromDate}, " +
+                        $"ToDate={windowToDate}, " +
+                        $"Page={pageNumber}");
+                }
+              await ProcessHistoricalPageAsync(page.Letters, cancellationToken);
+              await _processingLogService.UpdateProgressAsync(
+                 progressId,
+                 windowFromDate,
+                 windowToDate,
+                 pageNumber,
+                 cancellationToken);
+              if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation(
+                        "Historical rebuild page. FromDate={FromDate}, ToDate={ToDate}, Page={PageNumber}, TotalPages={TotalPages}, Letters={LettersCount}",
+                        windowFromDate,
+                        windowToDate,
+                        pageNumber,
+                        firstPage.TotalPages,
+                        page.Letters.Count);
+                }                
+            }
+           await ProcessHistoricalPageAsync(firstPage.Letters, cancellationToken);
+           await _processingLogService.UpdateProgressAsync(
+              progressId,
+              windowFromDate,
+              windowToDate,
+              1,
+              cancellationToken);
+           if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                   "Historical rebuild page. FromDate={FromDate}, ToDate={ToDate}, Page={PageNumber}, TotalPages={TotalPages}, Letters={LettersCount}",
+                   windowFromDate,
+                   windowToDate,
+                   1,
+                   firstPage.TotalPages,
+                   firstPage.Letters.Count);
+            }
+           bool completedLogged = await _processingLogService.TryLogAsync(
+                 operation: "Historical",
+                 stage: "Search",
+                 level: 1,
+                 status: "Completed",
+                 fromDate: windowFromDate,
+                 toDate: windowToDate,
+                 cancellationToken: cancellationToken);
+
+           if (!completedLogged)
+            {
+                _logger.LogWarning("Unable to persist Historical month completion. FromDate={FromDate}, ToDate={ToDate}",
+                      windowFromDate,
+                      windowToDate);
+            }
+            windowFromDate = GetNextPersianMonthStart(windowFromDate);
         }
         Dictionary<int, string> parentSymbols = await _dbContext.CompanyMaster
              .AsNoTracking()
@@ -578,6 +509,252 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 "Historical rebuild holding source loaded. Positions={PositionCount}",
                 monthlyPositions.Count);
         }
+    }                  
+    private async Task ProcessHistoricalPageAsync(
+    Collection<CodalLetterDto> letters,
+    CancellationToken cancellationToken)
+    {
+        if (letters.Count == 0)
+        {
+            return;
+        }
+        List<CodalLetterDto> orderedWindowLetters =
+              letters
+                .GroupBy(letter => letter.TracingNo).Select(group => group.First())
+                .OrderBy(letter => PersianDateHelper.ToGregorian(letter.PublishDateTimeRaw))
+                .ThenBy(letter => letter.TracingNo)
+                .ToList();
+
+        long[] tracingNos = orderedWindowLetters
+             .Select(letter => letter.TracingNo)
+             .ToArray();
+
+        Dictionary<long, Disclosure> existingDisclosures =
+             await _dbContext.Disclosures
+                .Where(disclosure => EF.Constant(tracingNos).Contains(disclosure.TracingNo))
+                .ToDictionaryAsync(disclosure => disclosure.TracingNo, cancellationToken);
+        foreach (CodalLetterDto letter in orderedWindowLetters)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.IsNullOrWhiteSpace(letter.Symbol) ||
+                   letter.Symbol.Length > 64)
+            {
+                continue;
+            }
+            var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
+            if (rt is null)
+            {
+                continue;
+            }
+            int? reportingTypeCode = rt is >= 0 and <= 9
+                   ? 1000000 + rt
+                   : null;
+            long tracingNo = letter.TracingNo;
+
+            existingDisclosures.TryGetValue(tracingNo, out Disclosure? disclosure);
+            if (disclosure is null)
+            {
+                string? sentRaw = letter.SentDateTimeRaw;
+
+                string? publishRaw = letter.PublishDateTimeRaw;
+
+                DateTime? sent = PersianDateHelper.ToGregorian(sentRaw);
+
+                DateTime? published = PersianDateHelper.ToGregorian(publishRaw);
+
+                disclosure =
+                    new Disclosure(
+                        letter.TracingNo,
+                        letter.Symbol,
+                        letter.CompanyName ?? string.Empty,
+                        letter.Title ?? string.Empty,
+                        letter.LetterCode ?? string.Empty,
+                        sentRaw ?? string.Empty,
+                        publishRaw ?? string.Empty,
+                        sent,
+                        published,
+                        letter.Url ?? string.Empty,
+                        letter.HasHtml,
+                        false,
+                        letter.HasExcel,
+                        letter.HasPdf,
+                        letter.HasXbrl,
+                        letter.HasAttachment,
+                        letter.AttachmentUrl ?? string.Empty,
+                        letter.PdfUrl ?? string.Empty,
+                        letter.ExcelUrl ?? string.Empty,
+                        letter.XbrlUrl ?? string.Empty,
+                        letter.TedanUrl ?? string.Empty,
+                        let,
+                        rt,
+                        ct,
+                        ft,
+                        reportingTypeCode);
+                CompanyIdentity? company =
+                   await _companyRegistry.FindBySymbolAsync(letter.Symbol, cancellationToken);
+
+                if (company is not null)
+                {
+                    disclosure.AssignCompanyId(company.CompanyId);
+                }
+                _dbContext.Disclosures.Add(disclosure);
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            if (disclosure.Let is null || disclosure.Rt is null ||
+                   disclosure.ReportingTypeCode is null)
+            {
+                disclosure.Let = let;
+                disclosure.Rt = rt;
+                disclosure.Ct = ct;
+                disclosure.Ft = ft;
+                disclosure.ReportingTypeCode = reportingTypeCode;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            List<ICodalDisclosureProcessor> processors =
+                _processors
+                 .Where(processor => processor.CanProcess(disclosure))
+                 .ToList();
+
+            if (processors.Count == 0)
+            {
+                continue;
+            }
+            bool processorFailed = false;
+            foreach (ICodalDisclosureProcessor processor in processors)
+            {
+                try
+                {
+                    if (processor is InvestmentPortfolioProcessor portfolioProcessor)
+                    {
+                        await portfolioProcessor.ProcessBackfillAsync(
+                            disclosure,
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        await processor.ProcessAsync(
+                            disclosure,
+                            cancellationToken);
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    processorFailed = true;
+                    bool logged = await _processingLogService.TryLogAsync(
+                        operation: "Historical",
+                        stage: $"Parse:{processor.GetType().Name}",
+                        level: 3,
+                        exception: ex,
+                        status: "Incomplete",
+                        tracingNo: disclosure.TracingNo,
+                        cancellationToken: cancellationToken);
+
+                    if (!logged)
+                    {
+                        throw new InvalidOperationException(
+                            $"Unable to persist Historical processor HTTP failure. " +
+                            $"TracingNo={disclosure.TracingNo}, " +
+                            $"Processor={processor.GetType().Name}",
+                            ex);
+                    }
+                }
+                catch (InvalidOperationException ex)
+                {
+                    processorFailed = true;
+                    bool logged = await _processingLogService.TryLogAsync(
+                        operation: "Historical",
+                        stage: $"Parse:{processor.GetType().Name}",
+                        level: 2,
+                        exception: ex,
+                        status: "Incomplete",
+                        tracingNo: disclosure.TracingNo,
+                        cancellationToken: cancellationToken);
+
+                    if (!logged)
+                    {
+                        throw new InvalidOperationException(
+                            $"Unable to persist failure. TracingNo={disclosure.TracingNo}",
+                            ex);
+                    }
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    processorFailed = true;
+                    bool logged = await _processingLogService.TryLogAsync(
+                        operation: "Historical",
+                        stage: $"Parse:{processor.GetType().Name}",
+                        level: 3,
+                        exception: ex,
+                        status: "Incomplete",
+                        tracingNo: disclosure.TracingNo,
+                        cancellationToken: cancellationToken);
+
+                    if (!logged)
+                    {
+                        throw new InvalidOperationException(
+                            $"Failed to persist JSON parsing error. TracingNo={disclosure.TracingNo}",
+                            ex);
+                    }
+                }
+                catch (FormatException ex)
+                {
+                    processorFailed = true;
+                    bool logged = await _processingLogService.TryLogAsync(
+                       operation: "Historical",
+                       stage: $"Parse:{processor.GetType().Name}",
+                       level: 3,
+                       exception: ex,
+                       status: "Incomplete",
+                       tracingNo: disclosure.TracingNo,
+                       cancellationToken: cancellationToken);
+
+                    if (!logged)
+                      {
+                        throw new InvalidOperationException(
+                        $"Failed to persist formatting error. TracingNo={disclosure.TracingNo}",
+                        ex);
+                      }
+                }
+            }
+            if (processorFailed)
+            {
+                continue;
+            }
+            try
+            {
+                await _insightPipeline.ProcessAsync(
+                    disclosure,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                bool logged = await _processingLogService.TryLogAsync(
+                    operation: "Historical",
+                    stage: "Insight",
+                    level: 2,
+                    exception: ex,
+                    status: "Incomplete",
+                    tracingNo: disclosure.TracingNo,
+                    cancellationToken: cancellationToken);
+
+                if (!logged)
+                {
+                    throw new InvalidOperationException(
+                        $"Unable to persist Insight failure. TracingNo={disclosure.TracingNo}",
+                        ex);
+                }
+            }
+
+            if (_logger.IsEnabled(LogLevel.Debug))
+            {
+                _logger.LogDebug(
+                    "Historical rebuild disclosure. TracingNo={TracingNo}, Exists={Exists}",
+                    tracingNo,
+                    true);
+            }
+        }
+
     }
     public async Task CollectSymbolBackfillAsync(string symbol, string fromDate, string toDate,
                                              CancellationToken cancellationToken = default)
@@ -1509,5 +1686,53 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 CultureInfo.InvariantCulture);
 
         return shiftedYear + value[4..];
+    }
+    private async Task<CodalSearchResponse?> SearchHistoricalPageAsync(
+    string fromDate,
+    string toDate,
+    int pageNumber,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _codalClient.SearchAsync(
+                new CodalSearchRequest
+                {
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    PageNumber = pageNumber
+                },
+                cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            bool logged = await _processingLogService.TryLogAsync(
+                operation: "Historical",
+                stage: "Search",
+                level: 3,
+                exception: ex,
+                status: "Incomplete",
+                fromDate: fromDate,
+                toDate: toDate,
+                pageNumber: pageNumber,
+                attemptCount: 4,
+                cancellationToken: cancellationToken);
+
+            if (!logged)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to persist Historical search failure. Page={pageNumber}, FromDate={fromDate}, ToDate={toDate}",
+                    ex);
+            }
+
+            _logger.LogError(
+                ex,
+                "Historical search failed after retries. FromDate={FromDate}, ToDate={ToDate}, Page={PageNumber}",
+                fromDate,
+                toDate,
+                pageNumber);
+
+            return null;
+        }
     }
 }

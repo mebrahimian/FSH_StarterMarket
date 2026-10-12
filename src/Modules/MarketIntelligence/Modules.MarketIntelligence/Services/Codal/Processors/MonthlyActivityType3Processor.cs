@@ -3,6 +3,7 @@ using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.Codal;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,7 +18,8 @@ public sealed class MonthlyActivityType3Processor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
     PreviousYearSummaryLookup previousYearSummaryLookup,
-    ILogger<MonthlyActivityType3Processor> logger)
+    ILogger<MonthlyActivityType3Processor> logger,
+    CodalRequestGate requestGate)
     : ICodalDisclosureProcessor
 {
 
@@ -364,19 +366,42 @@ public sealed class MonthlyActivityType3Processor(
         {
             try
             {
-                using var request = new HttpRequestMessage(
+                using HttpResponseMessage response =
+    await requestGate.ExecuteAsync(
+        async ct =>
+        {
+            using var request =
+                new HttpRequestMessage(
                     HttpMethod.Get,
                     reportUri);
 
-                request.Version = HttpVersion.Version11;
-                request.VersionPolicy =
-                    HttpVersionPolicy.RequestVersionOrLower;
+            request.Version =
+                HttpVersion.Version11;
 
-                using HttpResponseMessage response =
-                    await httpClient.SendAsync(
-                        request,
-                        HttpCompletionOption.ResponseHeadersRead,
-                        cancellationToken);
+            request.VersionPolicy =
+                HttpVersionPolicy.RequestVersionOrLower;
+
+            HttpResponseMessage result =
+                await httpClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    ct);
+
+            if (
+                result.StatusCode ==
+                HttpStatusCode.TooManyRequests)
+            {
+                result.Dispose();
+
+                throw new HttpRequestException(
+                    "Codal rate limit triggered (HTTP 429).",
+                    null,
+                    HttpStatusCode.TooManyRequests);
+            }
+
+            return result;
+        },
+        cancellationToken);
                 if ((int)response.StatusCode == 490)
                 {
                     throw new HttpRequestException(

@@ -118,7 +118,229 @@ internal static class CodalCellReader
                            ReportingTypeCode: reportingTypeCode
                          );
     }
+    public static CodalCellResult? FindCellValueByAddress(
+    string html,
+    int metaTableCode,
+    string address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return null;
+        }
 
+        using JsonDocument? document =
+            ParseDatasource(html);
+
+        if (document is null)
+        {
+            return null;
+        }
+
+        JsonElement root =
+            document.RootElement;
+
+        int reportingTypeCode =
+            root
+                .GetProperty("sheets")[0]
+                .GetProperty("code")
+                .GetInt32();
+
+        string? periodETD =
+            root
+                .GetProperty("periodEndToDate")
+                .GetString();
+
+        string? yearETD =
+            root
+                .GetProperty("yearEndToDate")
+                .GetString();
+
+        JsonElement selectedCell =
+            root
+                .GetProperty("sheets")
+                .EnumerateArray()
+                .SelectMany(sheet =>
+                    sheet
+                        .GetProperty("tables")
+                        .EnumerateArray())
+                .Where(table =>
+                    table.TryGetProperty(
+                        "code",
+                        out JsonElement tableCode) &&
+                    tableCode.GetInt32() ==
+                        metaTableCode)
+                .SelectMany(table =>
+                    table
+                        .GetProperty("cells")
+                        .EnumerateArray())
+                .FirstOrDefault(cell =>
+                    string.Equals(
+                        GetString(
+                            cell,
+                            "address"),
+                        address,
+                        StringComparison.OrdinalIgnoreCase));
+
+        if (selectedCell.ValueKind ==
+            JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        return new CodalCellResult(
+            Value: GetString(
+                selectedCell,
+                "value"),
+            Formula: GetString(
+                selectedCell,
+                "formula"),
+            PeriodEndToDate: periodETD,
+            YearEndToDate: yearETD,
+            Address: GetString(
+                selectedCell,
+                "address"),
+            RowSequence: GetInt(
+                selectedCell,
+                "rowSequence"),
+            ReportingTypeCode:
+                reportingTypeCode);
+    }
+    public static decimal? EvaluateSimpleFormula(
+    string html,
+    int metaTableCode,
+    string? formula)
+    {
+        if (string.IsNullOrWhiteSpace(formula))
+        {
+            return null;
+        }
+
+        string expression = formula
+                .Trim()
+                .TrimStart('=')
+                .Replace(" ", string.Empty, StringComparison.Ordinal); 
+
+        decimal? ReadValue(string address)
+        {
+            CodalCellResult? cell =
+                FindCellValueByAddress(
+                    html,
+                    metaTableCode,
+                    address);
+
+            if (cell is null ||
+                !decimal.TryParse(
+                    cell.Value,
+                    NumberStyles.Number,
+                    CultureInfo.InvariantCulture,
+                    out decimal value))
+            {
+                return null;
+            }
+
+            return value;
+        }
+
+        if (expression.StartsWith(
+                "SUM(",
+                StringComparison.OrdinalIgnoreCase) &&
+            expression.EndsWith(')'))
+        {
+            string range =
+                expression[4..^1];
+
+            string[] parts =
+                range.Split(':');
+
+            if (parts.Length != 2)
+            {
+                return null;
+            }
+
+            string startAddress =
+                parts[0];
+
+            string endAddress =
+                parts[1];
+
+            string startColumn =
+                new(
+                    startAddress
+                        .TakeWhile(char.IsLetter)
+                        .ToArray());
+
+            string endColumn =
+                new(
+                    endAddress
+                        .TakeWhile(char.IsLetter)
+                        .ToArray());
+
+            if (!string.Equals(
+                    startColumn,
+                    endColumn,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            if (!int.TryParse(
+                    startAddress[startColumn.Length..],
+                    CultureInfo.InvariantCulture,
+                    out int startRow) ||
+                !int.TryParse(
+                    endAddress[endColumn.Length..],
+                    CultureInfo.InvariantCulture,
+                    out int endRow))
+            {
+                return null;
+            }
+
+            decimal sum = 0m;
+
+            for (int row = startRow; row <= endRow; row++)
+            {
+                decimal? value =
+                    ReadValue(
+                        $"{startColumn}{row}");
+
+                if (!value.HasValue)
+                {
+                    return null;
+                }
+
+                sum += value.Value;
+            }
+
+            return sum;
+        }
+
+        string[] addresses =
+            expression.Split(
+                '+',
+                StringSplitOptions.RemoveEmptyEntries);
+
+        if (addresses.Length <= 1)
+        {
+            return null;
+        }
+
+        decimal total = 0m;
+
+        foreach (string address in addresses)
+        {
+            decimal? value =
+                ReadValue(address);
+
+            if (!value.HasValue)
+            {
+                return null;
+            }
+
+            total += value.Value;
+        }
+
+        return total;
+    }
     public static IReadOnlyList<CodalTableRow> ReadTableRows(
     string html,
     int metaTableCode)

@@ -292,6 +292,82 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("CodalIncrementalScheduleSettings", "marketintelligence");
                 });
 
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CodalProcessingLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("ErrorType")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("FromDate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("JobId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte>("Level")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int?>("PageNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ToDate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<long?>("TracingNo")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("TracingNo");
+
+                    b.HasIndex("Operation", "OccurredAt");
+
+                    b.HasIndex("Status", "Level");
+
+                    b.ToTable("CodalProcessingLogs", "marketintelligence");
+                });
+
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CompanyIndustry", b =>
                 {
                     b.Property<int>("CompanyId")
@@ -1087,6 +1163,34 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         {
                             t.HasCheckConstraint("CK_PortfolioHoldingAssets_CompanyId", "[UnlistedCompanyId] IS NOT NULL OR [ListedCompanyId] IS NOT NULL");
                         });
+                });
+
+            modelBuilder.Entity("Modules.MarketIntelligence.Data.Views.DisclosureStats", b =>
+                {
+                    b.Property<string>("PersianDate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<long>("DailyCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("LatestDisclosure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("MonthlyCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TotalCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("YearlyCount")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PersianDate");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vw_DisclosureStats", "marketintelligence");
                 });
 
             modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkAsset", b =>

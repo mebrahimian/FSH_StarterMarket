@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Domain.Enums;
 using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
+using FSH.Modules.MarketIntelligence.Services.Codal;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,8 +18,8 @@ public sealed class MonthlyActivityProcessor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
     PreviousYearSummaryLookup previousYearSummaryLookup,
-    ILogger<MonthlyActivityProcessor> logger)
-    : ICodalDisclosureProcessor
+    ILogger<MonthlyActivityProcessor> logger,
+    CodalRequestGate requestGate) : ICodalDisclosureProcessor
 {
 
 #pragma warning disable S1075
@@ -144,16 +145,44 @@ public sealed class MonthlyActivityProcessor(
                     $"Disclosure {disclosure.TracingNo} does not have a symbol.");
             }
 
-            if (!decimal.TryParse(periodCell.Value,
-                                  NumberStyles.Number,
-                                  CultureInfo.InvariantCulture,
-                                  out decimal periodAmount) ||
-                !decimal.TryParse(yearToDateCell.Value,
-                                  NumberStyles.Number,
-                                  CultureInfo.InvariantCulture,
-                                  out decimal yearToDateAmount))
+            decimal.TryParse(
+                periodCell.Value,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out decimal periodAmount);
+
+            decimal.TryParse(
+                yearToDateCell.Value,
+                NumberStyles.Number,
+                CultureInfo.InvariantCulture,
+                out decimal yearToDateAmount);
+
+            if (periodAmount == 0m)
             {
-                return;
+                decimal? calculatedPeriodAmount =
+                    CodalCellReader.EvaluateSimpleFormula(
+                        html,
+                        definition.MetaTableCode,
+                        periodCell.Formula);
+
+                if (calculatedPeriodAmount.HasValue)
+                {
+                    periodAmount = calculatedPeriodAmount.Value;
+                }
+            }
+
+            if (yearToDateAmount == 0m)
+            {
+                decimal? calculatedYearToDateAmount =
+                    CodalCellReader.EvaluateSimpleFormula(
+                        html,
+                        definition.MetaTableCode,
+                        yearToDateCell.Formula);
+
+                if (calculatedYearToDateAmount.HasValue)
+                {
+                    yearToDateAmount = calculatedYearToDateAmount.Value;
+                }
             }
 
             decimal? previousYearToDateAmount = null;
@@ -336,19 +365,42 @@ public sealed class MonthlyActivityProcessor(
         {
             try
             {
-                using var request = new HttpRequestMessage(
+                using HttpResponseMessage response =
+    await requestGate.ExecuteAsync(
+        async ct =>
+        {
+            using var request =
+                new HttpRequestMessage(
                     HttpMethod.Get,
                     reportUri);
 
-                request.Version = HttpVersion.Version11;
-                request.VersionPolicy =
-                    HttpVersionPolicy.RequestVersionOrLower;
+            request.Version =
+                HttpVersion.Version11;
 
-                using HttpResponseMessage response =
-                    await httpClient.SendAsync(
-                        request,
-                        HttpCompletionOption.ResponseHeadersRead,
-                        cancellationToken);
+            request.VersionPolicy =
+                HttpVersionPolicy.RequestVersionOrLower;
+
+            HttpResponseMessage result =
+                await httpClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    ct);
+
+            if (
+                result.StatusCode ==
+                HttpStatusCode.TooManyRequests)
+            {
+                result.Dispose();
+
+                throw new HttpRequestException(
+                    "Codal rate limit triggered (HTTP 429).",
+                    null,
+                    HttpStatusCode.TooManyRequests);
+            }
+
+            return result;
+        },
+        cancellationToken);
 
                 if ((int)response.StatusCode == 490)
                 {

@@ -20,6 +20,7 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Configuration;
 using FSH.Modules.MarketIntelligence.Services.Codal.DataQuality;
 using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Codal.Jobs;
+using FSH.Modules.MarketIntelligence.Services.Codal.Logging;
 using FSH.Modules.MarketIntelligence.Services.Codal.Lookups;
 using FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
@@ -43,6 +44,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Modules.MarketIntelligence.Services.Codal.Processors;
+
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -101,6 +103,7 @@ namespace FSH.Modules.MarketIntelligence
                     failureStatus: HealthStatus.Unhealthy);
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
             builder.Services.AddScoped<SalesRecordBrokenDetector>();
+            builder.Services.AddScoped<CodalProcessingLogService>();
             builder.Services.AddTransient<CodalBackgroundJob>();
             builder.Services.AddTransient<TsetmcBackgroundJob>();
             builder.Services.AddTransient<SalesPerformanceSnapshotRebuildJob>();
@@ -307,7 +310,7 @@ namespace FSH.Modules.MarketIntelligence
                             jobId,
                             message = "Codal historical rebuild queued.",});
                   }).WithName("QueueCodalHistoricalRebuild")
-                    .WithSummary("Queues full Codal historical rebuild from 1399/01/01 to current date")
+                    .WithSummary("Queues full Codal historical rebuild from 1399/08/11 to current date")
                     .RequirePermission(MarketIntelligencePermissions
                             .CodalOperations
                             .Execute);
@@ -778,19 +781,18 @@ namespace FSH.Modules.MarketIntelligence
                                       .GetService<IRecurringJobManager>();
             
             if (jobManager is not null)
-            {
-                /*
-                jobManager.AddOrUpdate(
-                    "market-intelligence-codal-incremental",
-                    Job.FromExpression<CodalBackgroundJob>(
-                        job => job.RunScheduledIncrementalAsync(
-                            CancellationToken.None)),
-                    "* /5 * * * *",
-                    new RecurringJobOptions
-                    {
-                        TimeZone = TimeZoneInfo.Utc,
-                    });
-                */
+            {                
+                //jobManager.AddOrUpdate(
+                //    "market-intelligence-codal-incremental",
+                //    Job.FromExpression<CodalBackgroundJob>(
+                //        job => job.RunScheduledIncrementalAsync(
+                //            CancellationToken.None)),
+                //    "*/5 * * * *",
+                //    new RecurringJobOptions
+                //    {
+                //        TimeZone = TimeZoneInfo.Utc,
+                //    });
+                
                 jobManager.AddOrUpdate(
                     "market-intelligence-tsetmc-incremental-morning",
                     Job.FromExpression<TsetmcBackgroundJob>(

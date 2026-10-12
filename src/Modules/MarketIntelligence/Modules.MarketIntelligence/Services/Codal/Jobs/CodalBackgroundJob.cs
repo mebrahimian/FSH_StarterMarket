@@ -87,18 +87,17 @@ public sealed class CodalBackgroundJob(
     [AutomaticRetry(Attempts = 0)]
     public Task RunHistoricalRebuildAsync()
     {
-        const string fromDate =
-            "1399/01/01";
+        const string fromDate = "1399/08/11";
 
         string frozenToDate =
             PersianDateHelper
-                .ToPersian(DateTime.Now)[..10];
+                .ToPersian(DateTime.Now.AddDays(-3))[..10];
 
         return collectorService
             .CollectHistoricalRebuildAsync(
                 fromDate,
                 frozenToDate,
-                CancellationToken.None);
+                true, CancellationToken.None);
     }
     [AutomaticRetry(Attempts = 0)]
     public async Task RunParsePendingAsync(

@@ -19,7 +19,8 @@ public sealed class MonthlyActivityBankProcessor(
     HttpClient httpClient,
     MarketIntelligenceDbContext dbContext,
     PreviousYearSummaryLookup previousYearSummaryLookup,
-    ILogger<MonthlyActivityBankProcessor> logger)
+    ILogger<MonthlyActivityBankProcessor> logger,
+    CodalRequestGate requestGate)
     : ICodalDisclosureProcessor
 {
 #pragma warning disable S1075
@@ -592,22 +593,42 @@ public sealed class MonthlyActivityBankProcessor(
         {
             try
             {
-                using var request =
-                    new HttpRequestMessage(
-                        HttpMethod.Get,
-                        reportUri);
-
-                request.Version =
-                    HttpVersion.Version11;
-
-                request.VersionPolicy =
-                    HttpVersionPolicy.RequestVersionOrLower;
-
                 using HttpResponseMessage response =
-                    await httpClient.SendAsync(
-                        request,
-                        HttpCompletionOption.ResponseHeadersRead,
-                        cancellationToken);
+    await requestGate.ExecuteAsync(
+        async ct =>
+        {
+            using var request =
+                new HttpRequestMessage(
+                    HttpMethod.Get,
+                    reportUri);
+
+            request.Version =
+                HttpVersion.Version11;
+
+            request.VersionPolicy =
+                HttpVersionPolicy.RequestVersionOrLower;
+
+            HttpResponseMessage result =
+                await httpClient.SendAsync(
+                    request,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    ct);
+
+            if (
+                result.StatusCode ==
+                HttpStatusCode.TooManyRequests)
+            {
+                result.Dispose();
+
+                throw new HttpRequestException(
+                    "Codal rate limit triggered (HTTP 429).",
+                    null,
+                    HttpStatusCode.TooManyRequests);
+            }
+
+            return result;
+        },
+        cancellationToken);
 
                 if ((int)response.StatusCode == 490)
                 {

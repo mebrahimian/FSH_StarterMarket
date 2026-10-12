@@ -134,8 +134,9 @@ public sealed class TsetmcPriceReader(HttpClient httpClient, IOptions<TsetmcOpti
 
         return response?.InstrumentIdentity;
     }
-    internal async Task<InstrumentInfoDto?>
-    GetInstrumentInfoAsync(string insCode, CancellationToken cancellationToken)
+    internal async Task<InstrumentInfoDto?> GetInstrumentInfoAsync(
+    string insCode,
+    CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(insCode);
 
@@ -144,14 +145,22 @@ public sealed class TsetmcPriceReader(HttpClient httpClient, IOptions<TsetmcOpti
             $"{_options.InstrumentInfoPath}/" +
             insCode;
 
-        InstrumentInfoResponse? response =
-            await httpClient
-                .GetFromJsonAsync<InstrumentInfoResponse>(
-                    url,
-                    cancellationToken)
-                .ConfigureAwait(false);
+        try
+        {
+            InstrumentInfoResponse? response =
+                await httpClient
+                    .GetFromJsonAsync<InstrumentInfoResponse>(
+                        url,
+                        cancellationToken)
+                    .ConfigureAwait(false);
 
-        return response?.Item;
+            return response?.Item;
+        }
+        catch (HttpRequestException ex)
+            when (ex.StatusCode == System.Net.HttpStatusCode.InternalServerError)
+        {
+            return null;
+        }
     }
     internal async Task<MarketOverviewDto?>
     GetMarketOverviewAsync(

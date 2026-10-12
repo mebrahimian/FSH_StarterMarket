@@ -74,37 +74,25 @@ public sealed class PortfolioChildCompanyResolver(
                 connection.CreateCommand();
 
             command.CommandText =
-                   """
-                   INSERT INTO marketintelligence.MasterInfo
-                   (
-                       Symbol,
-                       CompanyName,
-                       Grp,
-                       GrpId,
-                       Nav,
-                       ShareCount,
-                       Zarar,
-                       Status,
-                       NormalizedName,
-                       NormalizedSymbol,
-                       EPS1
-                   )
-                   OUTPUT INSERTED.CompanyId
-                   VALUES
-                   (
-                       @Symbol,
-                       @CompanyName,
-                       N'',
-                       @GrpId,
-                       0,
-                       0,
-                       0,
-                       1,
-                       dbo.NormalizeForMatch(@CompanyName),
-                       dbo.NormalizeForMatch(@Symbol),
-                       0
-                   );
-                   """;
+    """
+    INSERT INTO marketintelligence.MasterInfo
+    (
+        Symbol,
+        CompanyName,
+        NormalizedName,
+        NormalizedSymbol
+    )
+    OUTPUT INSERTED.CompanyId
+    SELECT
+        parent.Symbol + N'ح',
+        parent.CompanyName + N' (حق تقدم)',
+        dbo.NormalizeForMatch(
+            parent.CompanyName + N' (حق تقدم)'),
+        dbo.NormalizeForMatch(
+            parent.Symbol + N'ح')
+    FROM marketintelligence.MasterInfo AS parent
+    WHERE parent.CompanyId = @ParentCompanyId;
+    """;
 
             DbParameter parentParameter =
                 command.CreateParameter();
@@ -398,85 +386,12 @@ public sealed class PortfolioChildCompanyResolver(
                 }
             }
         }
-        /*
+        
         IReadOnlyList<CodalCompanyImport> codalMatches =
-                await FindCodalMatchesAsync(
+            await FindCodalMatchesAsync(
                 fSortName,
                 cancellationToken)
-               .ConfigureAwait(false);
-
-        if (codalMatches.Count == 1)
-        {
-            CodalCompanyImport codal = codalMatches[0];
-
-            int? companyId =
-                await EnsureMasterInfoAsync(codal, cancellationToken)
-                    .ConfigureAwait(false);
-
-            if (companyId.HasValue)
-            {
-                string companyName =
-                    codal.CompanyName ?? codal.Symbol;
-
-                string fSortSymbol = NormalizeForMatch(codal.Symbol);
-
-                PortfolioHoldingAsset asset =
-                    await ResolveHoldingAssetAsync(
-                        companyId.Value,
-                        true,
-                        companyName,
-                        fSortName,
-                        codal.Symbol,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (aliases.Count == 1)
-                {
-                    // Alias تاریخی را نگه می‌داریم؛
-                    // فقط به Asset canonical وصلش می‌کنیم.
-                    var alias = aliases[0];
-
-                    if (!alias.HoldingAssetId.HasValue)
-                    {
-                        alias.AssignHoldingAsset(asset.Id);
-
-                        await dbContext
-                            .SaveChangesAsync(cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                }
-                else if (aliases.Count == 0)
-                {
-                    var newAlias = new PortfolioCompanyAlias(
-                        companyId: companyId.Value,
-                        symbol: codal.Symbol,
-                        fSortSymbol: fSortSymbol,
-                        aliasName: rawCompanyName,
-                        fSortName: fSortName,
-                        isListed: true,
-                        holdingAssetId: asset.Id);
-
-                    dbContext.PortfolioCompanyAliases.Add(newAlias);
-
-                    await dbContext
-                        .SaveChangesAsync(cancellationToken)
-                        .ConfigureAwait(false);
-                }
-
-                return new PortfolioChildCompanyResolution(
-                    CompanyId: companyId.Value,
-                    HoldingAssetId: asset.Id,
-                    IsListed: true,
-                    IsExcluded: false,
-                    FSortName: fSortName);
-            }
-        }
-        */
-        IReadOnlyList<CodalCompanyImport> codalMatches =
-    await FindCodalMatchesAsync(
-        fSortName,
-        cancellationToken)
-    .ConfigureAwait(false);
+            .ConfigureAwait(false);
 
         if (codalMatches.Count == 1)
         {

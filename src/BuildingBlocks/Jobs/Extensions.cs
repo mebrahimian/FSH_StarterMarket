@@ -21,15 +21,18 @@ public static class Extensions
             .BindConfiguration(nameof(HangfireOptions))
             .ValidateDataAnnotations()
             .ValidateOnStart();
-        
-        services.AddHangfireServer(options =>
+
+        if (configuration.GetValue($"{nameof(HangfireOptions)}:ServerEnabled", true))
         {
-            options.HeartbeatInterval = TimeSpan.FromSeconds(30);
-            options.Queues = ["default", "email"];
-            options.WorkerCount = 1;
-            options.SchedulePollingInterval = TimeSpan.FromSeconds(30);
-        });
-        
+            services.AddHangfireServer(options =>
+            {
+                options.HeartbeatInterval = TimeSpan.FromSeconds(30);
+                options.Queues = ["default", "email"];
+                options.WorkerCount = 5;
+                options.SchedulePollingInterval = TimeSpan.FromSeconds(30);
+            });
+        }
+
         services.AddHangfire((provider, config) =>
         {
 

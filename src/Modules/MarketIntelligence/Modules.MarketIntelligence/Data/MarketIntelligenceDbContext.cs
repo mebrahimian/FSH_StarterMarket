@@ -29,6 +29,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<InvestmentPortfolioPosition> InvestmentPortfolioPositions => Set<InvestmentPortfolioPosition>();
     public DbSet<InvestmentPortfolioReportMetadata> InvestmentPortfolioReportMetadata => Set<InvestmentPortfolioReportMetadata>();
     public DbSet<CodalIncrementalScheduleSetting> CodalIncrementalScheduleSettings => Set<CodalIncrementalScheduleSetting>();
+    public DbSet<CodalProcessingLog> CodalProcessingLogs => Set<CodalProcessingLog>();
     public DbSet<Insight> Insights => Set<Insight>();
     public DbSet<SalesPerformanceSnapshot> SalesPerformanceSnapshots => Set<SalesPerformanceSnapshot>();
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();

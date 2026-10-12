@@ -255,7 +255,8 @@ export function MarketHealthCenterPage() {
             backfillStatusQuery.data?.status;
 
         if (status === "Succeeded") {
-            window.location.reload();
+            void refetchCompanyProfiles();
+            void disclosureStatsQuery.refetch();
             return;
         }
 
@@ -422,10 +423,11 @@ export function MarketHealthCenterPage() {
     });
 
     //card 1
-    const { data: companyProfiles = [],} = useQuery<CompanyProfile[]>({
-           queryKey: ["market-intelligence", "company-profiles"],
-           queryFn: getCompanyProfiles,
-        });
+    const { data: companyProfiles = [],
+            refetch: refetchCompanyProfiles,
+          } = useQuery<CompanyProfile[]>({
+               queryKey: ["market-intelligence", "company-profiles"],
+               queryFn: getCompanyProfiles,});
 
     const normalizeSymbolForSearch = (value: string,) =>
     value
@@ -622,11 +624,8 @@ const closedCompanyCount = Math.max(
           )
         : 0; 
     //
-    // Card 3 - calculations only
+// Card 3 - calculations only
 // Card 3 - Monthly reports
-
-// Card 3 - Monthly reports
-
 const monthlyReportProfiles = companyProfiles.filter(
     (profile) =>
         profile.isic != null &&
