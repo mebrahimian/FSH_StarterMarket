@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Modules.MarketIntelligence.Data.Views;
-using Modules.MarketIntelligence.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Data;
 
@@ -46,6 +45,11 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<BenchmarkDailyPrice> BenchmarkDailyPrices => Set<BenchmarkDailyPrice>();
     public DbSet<InstrumentShareChange> InstrumentShareChanges => Set<InstrumentShareChange>();
     public DbSet<InstrumentValuationHistory> InstrumentValuationHistory => Set<InstrumentValuationHistory>();
+    public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
+    public DbSet<UserSelectedSymbol> UserSelectedSymbols => Set<UserSelectedSymbol>();
+    public DbSet<UserPlanLimit> UserPlanLimits => Set<UserPlanLimit>();
+    public DbSet<UserPaymentRequest> UserPaymentRequests => Set<UserPaymentRequest>();
+    public DbSet<UserSubscriptionTerm> UserSubscriptionTerms => Set<UserSubscriptionTerm>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

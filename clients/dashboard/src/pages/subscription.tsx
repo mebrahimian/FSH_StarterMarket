@@ -1,3 +1,5 @@
+import { MarketSubscriptionPage } from "@/pages/market-intelligence/market-subscription";
+import { tokenStore } from "@/auth/token-store";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -100,7 +102,12 @@ function formatPeriod(year: number, month: number) {
 // Page
 // ────────────────────────────────────────────────────────────────────
 
-export function SubscriptionPage() {
+export function TenantSubscriptionPage() {
+
+  if (tokenStore.getTenant() === "marketintelligence")   
+  {
+    return <MarketSubscriptionPage />;
+  }
   const status = useQuery({
     queryKey: ["tenant", "me", "status"],
     queryFn: () => getMyStatus(),
@@ -537,4 +544,13 @@ function RecentInvoicesBody({
       ))}
     </ul>
   );
+
+
+}
+export function SubscriptionPage() {
+    const tenantId = tokenStore.getTenant();
+
+    return tenantId === "marketintelligence"
+        ? <MarketSubscriptionPage />
+        : <TenantSubscriptionPage />;
 }

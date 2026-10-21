@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Modules.MarketIntelligence.Domain.Enums;
+namespace FSH.Modules.MarketIntelligence.Domain.Enums;
 
 public enum TsetmcAssetCategory
 {

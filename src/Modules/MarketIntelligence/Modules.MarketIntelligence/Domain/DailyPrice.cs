@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Modules.MarketIntelligence.Domain;
+namespace FSH.Modules.MarketIntelligence.Domain;
 
 public sealed class DailyPrice :
     BaseEntity<int>,

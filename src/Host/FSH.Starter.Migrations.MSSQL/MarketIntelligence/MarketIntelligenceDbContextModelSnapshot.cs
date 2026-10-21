@@ -191,6 +191,102 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("BackgroundJobStatuses", "marketintelligence");
                 });
 
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkAsset", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("ExternalCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("Source", "ExternalCode")
+                        .IsUnique();
+
+                    b.ToTable("BenchmarkAssets", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BenchmarkAssetId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("ClosePrice")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.Property<DateTimeOffset?>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("HighPrice")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<decimal>("LowPrice")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.Property<decimal>("OpenPrice")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.Property<DateOnly>("TradeDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BenchmarkAssetId", "TradeDate")
+                        .IsUnique();
+
+                    b.ToTable("BenchmarkDailyPrices", "marketintelligence");
+                });
+
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CodalCompanyImport", b =>
                 {
                     b.Property<int>("Id")
@@ -392,6 +488,104 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.HasIndex("IndustryId");
 
                     b.ToTable("CompanyIndustries", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.DailyPrice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long?>("BuyIndividualCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BuyIndividualValue")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BuyIndividualVolume")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BuyInstitutionalCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BuyInstitutionalValue")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("BuyInstitutionalVolume")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ClosingPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("FirstPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("HighPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("IndividualBuyerPower")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<long?>("InstitutionalNetFlow")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("InstrumentId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("LastPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset?>("LastUpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<long>("LowPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("RealMoneyFlow")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SellIndividualCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SellIndividualValue")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SellIndividualVolume")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SellInstitutionalCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SellInstitutionalValue")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("SellInstitutionalVolume")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TradeCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("TradeDate")
+                        .HasColumnType("date");
+
+                    b.Property<long>("Value")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("Volume")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("YesterdayPrice")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstrumentId", "TradeDate")
+                        .IsUnique();
+
+                    b.ToTable("DailyPrices", "marketintelligence");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.Disclosure", b =>
@@ -804,6 +998,75 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("SalesPerformanceSnapshots", "marketintelligence");
                 });
 
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.InstrumentShareChange", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("InstrumentId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("NewShares")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("OldShares")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstrumentId", "EffectiveDate")
+                        .IsUnique();
+
+                    b.ToTable("InstrumentShareChanges", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.InstrumentValuationHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal?>("Eps")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.Property<int>("InstrumentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("ObservedDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("PE")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.Property<decimal?>("PSR")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("SalesPerShare")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("SectorPE")
+                        .HasPrecision(20, 6)
+                        .HasColumnType("decimal(20,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstrumentId", "ObservedDate")
+                        .IsUnique();
+
+                    b.ToTable("InstrumentValuationHistory", "marketintelligence");
+                });
+
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.InvestmentPortfolioHoldingPeriod", b =>
                 {
                     b.Property<int>("Id")
@@ -1165,298 +1428,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         });
                 });
 
-            modelBuilder.Entity("Modules.MarketIntelligence.Data.Views.DisclosureStats", b =>
-                {
-                    b.Property<string>("PersianDate")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<long>("DailyCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("LatestDisclosure")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("MonthlyCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("TotalCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("YearlyCount")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("PersianDate");
-
-                    b.ToTable((string)null);
-
-                    b.ToView("vw_DisclosureStats", "marketintelligence");
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkAsset", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<string>("ExternalCode")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code")
-                        .IsUnique();
-
-                    b.HasIndex("Source", "ExternalCode")
-                        .IsUnique();
-
-                    b.ToTable("BenchmarkAssets", "marketintelligence");
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BenchmarkAssetId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("ClosePrice")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.Property<DateTimeOffset?>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<decimal>("HighPrice")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.Property<DateTimeOffset?>("LastUpdatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<decimal>("LowPrice")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.Property<decimal>("OpenPrice")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.Property<DateOnly>("TradeDate")
-                        .HasColumnType("date");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BenchmarkAssetId", "TradeDate")
-                        .IsUnique();
-
-                    b.ToTable("BenchmarkDailyPrices", "marketintelligence");
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.DailyPrice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<long?>("BuyIndividualCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BuyIndividualValue")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BuyIndividualVolume")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BuyInstitutionalCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BuyInstitutionalValue")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("BuyInstitutionalVolume")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("ClosingPrice")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("FirstPrice")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("HighPrice")
-                        .HasColumnType("bigint");
-
-                    b.Property<decimal?>("IndividualBuyerPower")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("decimal(18,6)");
-
-                    b.Property<long?>("InstitutionalNetFlow")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("InstrumentId")
-                        .HasColumnType("int");
-
-                    b.Property<long>("LastPrice")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTimeOffset?>("LastUpdatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<long>("LowPrice")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("RealMoneyFlow")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SellIndividualCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SellIndividualValue")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SellIndividualVolume")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SellInstitutionalCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SellInstitutionalValue")
-                        .HasColumnType("bigint");
-
-                    b.Property<long?>("SellInstitutionalVolume")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("TradeCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateOnly>("TradeDate")
-                        .HasColumnType("date");
-
-                    b.Property<long>("Value")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("Volume")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("YesterdayPrice")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InstrumentId", "TradeDate")
-                        .IsUnique();
-
-                    b.ToTable("DailyPrices", "marketintelligence");
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.InstrumentShareChange", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateOnly>("EffectiveDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("InstrumentId")
-                        .HasColumnType("int");
-
-                    b.Property<long>("NewShares")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("OldShares")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InstrumentId", "EffectiveDate")
-                        .IsUnique();
-
-                    b.ToTable("InstrumentShareChanges", "marketintelligence");
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.InstrumentValuationHistory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal?>("Eps")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.Property<int>("InstrumentId")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly>("ObservedDate")
-                        .HasColumnType("date");
-
-                    b.Property<decimal?>("PE")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.Property<decimal?>("PSR")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("SalesPerShare")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("SectorPE")
-                        .HasPrecision(20, 6)
-                        .HasColumnType("decimal(20,6)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("InstrumentId", "ObservedDate")
-                        .IsUnique();
-
-                    b.ToTable("InstrumentValuationHistory", "marketintelligence");
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.TsetmcInstrument", b =>
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.TsetmcInstrument", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1511,11 +1483,301 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("TsetmcInstruments", "dbo");
                 });
 
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserPaymentRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("AppliedCredit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("BankReferenceNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("DurationMonths")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("OriginalPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("PlanKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid?>("ReceiptFileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("RemainingCredit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("RequestType")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("ReviewedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<decimal>("UpgradeFee")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiptFileId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserPaymentRequests_ReceiptFileId")
+                        .HasFilter("[ReceiptFileId] IS NOT NULL");
+
+                    b.HasIndex("TenantId", "UserId", "CreatedAtUtc");
+
+                    b.ToTable("UserPaymentRequests", "marketintelligence");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserPlanLimit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("MaxSelectedSymbols")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxSymbolsPerIndustry")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PlanKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlanKey")
+                        .IsUnique();
+
+                    b.ToTable("UserPlanLimits", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserSelectedSymbol", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SelectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "UserId", "CompanyId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "UserId", "SelectedAtUtc");
+
+                    b.ToTable("UserSelectedSymbols", "marketintelligence");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserSubscription", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("PaymentRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PlanKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("StartUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentRequestId", "TenantId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_UserSubscriptions_PaymentRequestId")
+                        .HasFilter("[PaymentRequestId] IS NOT NULL");
+
+                    b.HasIndex("TenantId", "UserId", "StartUtc");
+
+                    b.ToTable("UserSubscriptions", "marketintelligence");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserSubscriptionTerm", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<int>("DurationMonths")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DurationMonths")
+                        .IsUnique();
+
+                    b.ToTable("UserSubscriptionTerms", "marketintelligence");
+                });
+
+            modelBuilder.Entity("Modules.MarketIntelligence.Data.Views.DisclosureStats", b =>
+                {
+                    b.Property<string>("PersianDate")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<long>("DailyCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("LatestDisclosure")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("MonthlyCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TotalCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("YearlyCount")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PersianDate");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("vw_DisclosureStats", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
+                {
+                    b.HasOne("FSH.Modules.MarketIntelligence.Domain.BenchmarkAsset", null)
+                        .WithMany()
+                        .HasForeignKey("BenchmarkAssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CompanyIndustry", b =>
                 {
                     b.HasOne("FSH.Modules.MarketIntelligence.Domain.Industry", null)
                         .WithMany()
                         .HasForeignKey("IndustryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.DailyPrice", b =>
+                {
+                    b.HasOne("FSH.Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.InstrumentShareChange", b =>
+                {
+                    b.HasOne("FSH.Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.InstrumentValuationHistory", b =>
+                {
+                    b.HasOne("FSH.Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1535,42 +1797,6 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .WithMany()
                         .HasForeignKey("HoldingAssetId")
                         .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
-                {
-                    b.HasOne("Modules.MarketIntelligence.Domain.BenchmarkAsset", null)
-                        .WithMany()
-                        .HasForeignKey("BenchmarkAssetId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.DailyPrice", b =>
-                {
-                    b.HasOne("Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
-                        .WithMany()
-                        .HasForeignKey("InstrumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.InstrumentShareChange", b =>
-                {
-                    b.HasOne("Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
-                        .WithMany()
-                        .HasForeignKey("InstrumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.InstrumentValuationHistory", b =>
-                {
-                    b.HasOne("Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
-                        .WithMany()
-                        .HasForeignKey("InstrumentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

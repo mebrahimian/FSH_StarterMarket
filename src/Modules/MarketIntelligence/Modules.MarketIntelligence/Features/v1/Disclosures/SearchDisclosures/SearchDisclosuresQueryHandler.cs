@@ -23,16 +23,50 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         IQueryable<Disclosure> q =
     dbContext.Disclosures.AsNoTracking();
 
+
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             string term = query.Search.Trim();
 
+            string englishTerm = term;
+
+            for (int i = 0; i < 10; i++)
+            {
+                englishTerm = englishTerm
+                    .Replace((char)('۰' + i), (char)('0' + i))
+                    .Replace((char)('٠' + i), (char)('0' + i));
+            }
+
+            string persianTerm = englishTerm;
+            string arabicTerm = englishTerm;
+
+            for (int i = 0; i < 10; i++)
+            {
+                persianTerm = persianTerm.Replace(
+                    (char)('0' + i),
+                    (char)('۰' + i));
+
+                arabicTerm = arabicTerm.Replace(
+                    (char)('0' + i),
+                    (char)('٠' + i));
+            }
+
+            bool isTracingNo =
+                long.TryParse(englishTerm, out long tracingNo);
+
             q = q.Where(disclosure =>
                 disclosure.Symbol.Contains(term) ||
                 disclosure.CompanyName.Contains(term) ||
+                disclosure.LetterCode.Contains(term) ||
                 disclosure.Title.Contains(term) ||
-                disclosure.LetterCode.Contains(term));
+                disclosure.Title.Contains(englishTerm) ||
+                disclosure.Title.Contains(persianTerm) ||
+                disclosure.Title.Contains(arabicTerm) ||
+                (disclosure.PublishDateTimeRaw != null &&
+                 disclosure.PublishDateTimeRaw.Contains(persianTerm)) ||
+                (isTracingNo && disclosure.TracingNo == tracingNo));
         }
+
 
         if (query.Lets is { Length: > 0 })
         {

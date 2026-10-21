@@ -1,7 +1,6 @@
 ﻿using FSH.Framework.Core.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Domain;
-
 public sealed class InvestmentPortfolioHoldingPeriod :
     BaseEntity<int>,
     IGlobalEntity

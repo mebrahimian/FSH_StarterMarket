@@ -2,11 +2,9 @@
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Codal.Contracts;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Modules.MarketIntelligence.Domain;
 using System.Globalization;
 using System.IO.Compression;
 using System.Net.Http.Headers;

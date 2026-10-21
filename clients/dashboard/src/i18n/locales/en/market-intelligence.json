@@ -115,7 +115,7 @@
   },
 
   "portfolioMatching": "Portfolio Matching",
-  "jobStatus" :  "Job Status",
+  "jobStatus": "Job Status",
   "missingPortfolio": "Portfolio not recorded {{period}}",
   "codalDisclosureIssue": "Codal disclosure issue {{period}}",
   "incompletePortfolioMetadata": "Incomplete portfolio report information {{period}}",
@@ -168,5 +168,32 @@
       "listed": "Listed",
       "unlisted": "Unlisted"
     }
+  },
+  "subscription": {
+    "title": "My Subscription",
+    "description": "Subscription status and selected symbol limits",
+    "currentPlan": "Current Plan",
+    "plan": "Plan",
+    "selectedSymbols": "Selected Symbols",
+    "maxSelectedSymbols": "Maximum Symbols",
+    "maxSymbolsPerIndustry": "Maximum Symbols per Industry",
+    "unlimited": "Unlimited",
+    "loading": "Loading subscription...",
+    "upgradeTab": "Upgrade",
+    "renewTab": "Renew",
+    "renewDescription": "Renew your current subscription. The new subscription period will begin after your current period ends.",
+    "actualPaidAmount": "Actual Paid Amount (IRR)",
+    "upgradeDescription": "Choose a higher-tier plan. The remaining credit, after deducting the service fee, will be applied toward the cost of the new plan.",
+    "loadError": "Unable to load subscription information.",
+    "plans": {
+      "free": "Free",
+      "economic": "Bronze",
+      "professional": "Silver",
+      "premium": "Gold"
+    },
+    "availablePlans": "Subscription Plans",
+    "durationMonths": "{{count}} months",
+    "discount": "Discount",
+    "toman": "toman"
   }
 }

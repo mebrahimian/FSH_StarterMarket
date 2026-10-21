@@ -1,6 +1,6 @@
 ﻿using FSH.Framework.Core.Domain;
 
-namespace Modules.MarketIntelligence.Domain;
+namespace FSH.Modules.MarketIntelligence.Domain;
 
 public sealed class BenchmarkDailyPrice :
     BaseEntity<int>,

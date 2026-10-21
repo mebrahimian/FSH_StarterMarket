@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Modules.MarketIntelligence.Domain;
-using Modules.MarketIntelligence.Services.Tsetmc;
+using FSH.Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using System.Globalization;
 
 

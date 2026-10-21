@@ -81,7 +81,10 @@ public static class Extensions
 
 
         // Deferred stale lock cleanup — runs after app starts accepting requests
-        services.AddHostedService<HangfireStaleLockCleanupService>();
+        if (configuration.GetValue("HangfireOptions:ServerEnabled", true))
+        {
+            services.AddHostedService<HangfireStaleLockCleanupService>();
+        }
 
         services.AddTransient<IJobService, HangfireService>();
 

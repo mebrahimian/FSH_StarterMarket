@@ -131,7 +131,7 @@ public sealed class GetDataQualityIssuesQueryHandler(
                      .ToHashSet(StringComparer.Ordinal);
         var missingPortfolioDisclosures = (await dbContext.Disclosures
                      .AsNoTracking()
-                     .Where(disclosure => disclosure.Let == 58 &&
+                     .Where(disclosure => (disclosure.Let == 58 || disclosure.Let == 6) &&
                                           disclosure.Rt == 2 &&
                                           disclosure.HasHtml &&
                                           !dbContext.InvestmentPortfolioPositions
@@ -140,11 +140,15 @@ public sealed class GetDataQualityIssuesQueryHandler(
                                               {
                                                  disclosure.Symbol,
                                                  disclosure.Title,
+                                                 disclosure.Let,
                                                  disclosure.PublishDateTimeRaw,
                                               })
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false))
-                    .Where(disclosure =>listedCompanySymbols.Contains(NormalizeForMatch(disclosure.Symbol)))
+                    .Where(disclosure =>
+                           listedCompanySymbols.Contains(
+                           NormalizeForMatch(disclosure.Symbol)) &&
+                           (disclosure.Let == 58 || IsMainFinancialReport(disclosure.Title)))    
                     .ToList();
 
         foreach (var disclosure in missingPortfolioDisclosures)
@@ -354,5 +358,18 @@ public sealed class GetDataQualityIssuesQueryHandler(
                + month.ToString(
                    "00",
                    System.Globalization.CultureInfo.InvariantCulture);
+    }
+    private static bool IsMainFinancialReport(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return false;
+
+        string cleanTitle = title.Replace(
+            "(اصلاحیه)", "", StringComparison.Ordinal);
+
+        int opens = cleanTitle.Count(c => c == '(');
+        int closes = cleanTitle.Count(c => c == ')');
+
+        return opens == 1 && closes == 1;
     }
 }

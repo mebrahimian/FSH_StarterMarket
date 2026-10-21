@@ -84,10 +84,25 @@ public sealed class CodalBackgroundJob(
         return collectorService
             .CollectSymbolBackfillAsync(symbol, fromDate, toDate, CancellationToken.None);
     }
+
+    [AutomaticRetry(Attempts = 0)]
+    public Task RunInsightSymbolBackfillAsync(
+        string symbol,
+        string fromDate,
+        string toDate)
+    {
+        return collectorService
+            .CollectInsightSymbolBackfillAsync(
+                symbol,
+                fromDate,
+                toDate,
+                CancellationToken.None);
+    }
+
     [AutomaticRetry(Attempts = 0)]
     public Task RunHistoricalRebuildAsync()
     {
-        const string fromDate = "1399/08/11";
+        const string fromDate = "1400/08/08";
 
         string frozenToDate =
             PersianDateHelper

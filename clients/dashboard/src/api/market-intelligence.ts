@@ -408,6 +408,22 @@ export function queueCodalSymbolBackfill(
     );
 }
 
+
+export function queueCodalInsightSymbolBackfill(
+    request: CodalSymbolBackfillRequest,
+): Promise<CodalSymbolBackfillResponse> {
+    return apiFetch<CodalSymbolBackfillResponse>(
+        "/api/v1/marketintelligence/codal/insight-symbol-backfill",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(request),
+        },
+    );
+}
+
 export function collectCodalSymbolBackfill(
     request: CodalSymbolBackfillRequest,
 ): Promise<CodalOperationResponse> {
@@ -679,5 +695,201 @@ export function getSalesPerformanceRebuildStatus():
     Promise<SalesPerformanceRebuildStatus> {
     return apiFetch<SalesPerformanceRebuildStatus>(
         "/api/v1/marketintelligence/insights/sales-performance/rebuild-status",
+    );
+}
+
+export type MyMarketSubscription = {
+    planKey: string;
+    maxSelectedSymbols: number;
+    maxSymbolsPerIndustry: number;
+    selectedSymbolsCount: number;
+    startUtc: string | null;
+    endUtc: string | null;
+    isFree: boolean;
+};
+
+export function getMyMarketSubscription() {
+    return apiFetch<MyMarketSubscription>(
+        "/api/v1/marketintelligence/subscriptions/me"
+    );
+}
+
+export type SubscriptionTerm = {
+    durationMonths: number;
+    discountPercent: number;
+    finalPrice: number;
+};
+
+export type SubscriptionPlan = {
+    planKey: string;
+    currency: string;
+    monthlyBasePrice: number;
+    terms: SubscriptionTerm[];
+};
+
+export function getSubscriptionPlans() {
+    return apiFetch<SubscriptionPlan[]>(
+        "/api/v1/marketintelligence/subscriptions/plans"
+    );
+}
+export type MyPendingPaymentRequest = {
+    id: string;
+    planKey: string;
+    durationMonths: number;
+    originalPrice: number;
+    discountPercent: number;
+    amount: number;
+    currency: string;
+    hasReceipt: boolean;
+    createdAtUtc: string;
+};
+
+export async function getMyPendingPaymentRequest():
+    Promise<MyPendingPaymentRequest | null> {
+
+    const response = await apiFetch<MyPendingPaymentRequest | null>(
+        "/api/v1/marketintelligence/subscriptions/payment-requests/pending"
+    );
+
+    return response ?? null;
+}
+export type AttachPaymentReceiptInput = {
+    receiptFileId: string;
+    bankReferenceNumber: string | null;
+};
+
+export function attachPaymentReceipt(
+    paymentRequestId: string,
+    input: AttachPaymentReceiptInput
+): Promise<void> {
+    return apiFetch<void>(
+        `/api/v1/marketintelligence/subscriptions/payment-requests/${paymentRequestId}/receipt`,
+        {
+            method: "POST",
+            body: JSON.stringify(input),
+        }
+    );
+}
+export function cancelUserPaymentRequest(
+    paymentRequestId: string,
+    confirmedNoPayment: boolean
+): Promise<void> {
+    return apiFetch<void>(
+        `/api/v1/marketintelligence/subscriptions/payment-requests/${paymentRequestId}/cancel`,
+        {
+            method: "POST",
+            body: JSON.stringify({ confirmedNoPayment }),
+        }
+    );
+}
+export type PaymentRequestStatus =
+    | "Pending"
+    | "Approved"
+    | "Rejected"
+    | "Cancelled";
+
+export type AdminPaymentRequest = {
+    id: string;
+    userId: string;
+    planKey: string;
+    durationMonths: number;
+    amount: number;
+    currency: string;
+    status: PaymentRequestStatus;
+    receiptFileId: string | null;
+    bankReferenceNumber: string | null;
+    createdAtUtc: string;
+    reviewedByUserId: string | null;
+    reviewedAtUtc: string | null;
+    reviewNote: string | null;
+};
+
+export type AdminPaymentRequestsResponse = {
+    items: AdminPaymentRequest[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+};
+
+export function getAdminPaymentRequests(
+    status?: PaymentRequestStatus,
+    pageNumber = 1,
+    pageSize = 20
+): Promise<AdminPaymentRequestsResponse> {
+    const params = new URLSearchParams({
+        pageNumber: String(pageNumber),
+        pageSize: String(pageSize),
+    });
+
+    if (status) {
+        params.set("status", status);
+    }
+
+    return apiFetch<AdminPaymentRequestsResponse>(
+        `/api/v1/marketintelligence/subscriptions/payment-requests?${params.toString()}`
+    );
+}
+
+export type FileDownloadUrlResponse = {
+    url: string;
+    expiresAt: string;
+};
+
+export function getPaymentReceiptUrl(
+    receiptFileId: string
+): Promise<FileDownloadUrlResponse> {
+    return apiFetch<FileDownloadUrlResponse>(
+        `/api/v1/files/${encodeURIComponent(receiptFileId)}/url?inline=true`
+    );
+}
+
+export type ApproveUserPaymentInput = {
+    paymentRequestId: string;
+    paidAmount: number;
+};
+
+export function approveUserPayment(
+    input: string | ApproveUserPaymentInput
+): Promise<void> {
+    const paymentRequestId =
+        typeof input === "string"
+            ? input
+            : input.paymentRequestId;
+
+    const paidAmount =
+        typeof input === "string"
+            ? undefined
+            : input.paidAmount;
+
+    return apiFetch<void>(
+        `/api/v1/marketintelligence/subscriptions/payment-requests/${encodeURIComponent(paymentRequestId)}/approve`,
+        {
+            method: "POST",
+            ...(paidAmount !== undefined
+                ? {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ paidAmount }),
+                }
+                : {}),
+        }
+    );
+}
+export type CreateUserPaymentRequestInput = {
+    planKey: string;
+    durationMonths: number;
+    requestType?: 0 | 1 | 2;
+};
+
+export function createUserPaymentRequest(
+    input: CreateUserPaymentRequestInput
+): Promise<string> {
+    return apiFetch<string>(
+        "/api/v1/marketintelligence/subscriptions/payment-requests",
+        {
+            method: "POST",
+            body: JSON.stringify(input),
+        }
     );
 }

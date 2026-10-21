@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain;
 
-namespace Modules.MarketIntelligence.Data.Configurations;
+namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 
 public sealed class InstrumentShareChangeConfiguration :
     IEntityTypeConfiguration<InstrumentShareChange>

@@ -1,7 +1,7 @@
 ﻿using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Services.Benchmark;
 

@@ -106,6 +106,12 @@ internal static class CodalCellReader
 
             selectedCell = matchedCells[index];
         }
+        Console.WriteLine(
+    $"TracingNo={tracingNo} | " +
+    $"Period={periodETD} | " +
+    $"Matches={matchedCells.Count} | " +
+    $"Row={GetInt(selectedCell, "rowSequence")} | " +
+    $"Value={GetString(selectedCell, "value")}");
 
         return new CodalCellResult
                          (

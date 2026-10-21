@@ -15,6 +15,7 @@ using FSH.Modules.Files.Features.v1.GetFileMetadata;
 using FSH.Modules.Files.Features.v1.ListMyFiles;
 using FSH.Modules.Files.Features.v1.ListSharedFiles;
 using FSH.Modules.Files.Features.v1.ListTrashedFiles;
+using FSH.Modules.Files.Features.v1.LocalUpload;
 using FSH.Modules.Files.Features.v1.RequestUploadUrl;
 using FSH.Modules.Files.Features.v1.RestoreFile;
 using FSH.Modules.Files.Jobs;
@@ -81,7 +82,8 @@ public sealed class FilesModule : IModule
         // Literal routes first so they win over the /{id:guid} catch-all (matches the Catalog
         // pattern for /trash etc.).
         group.MapRequestUploadUrlEndpoint();         // POST  /upload-url
-        group.MapListMyFilesEndpoint();              // GET   /mine
+        group.MapLocalUploadEndpoint();              // PUT   /local-upload/{token}
+        group.MapListMyFilesEndpoint();              // GET   /mine             // GET   /mine
         group.MapListSharedFilesEndpoint();          // GET   /shared
         group.MapListTrashedFilesEndpoint();         // GET   /trash
         group.MapRestoreFileEndpoint();              // POST  /{id}/restore  (literal verb path)

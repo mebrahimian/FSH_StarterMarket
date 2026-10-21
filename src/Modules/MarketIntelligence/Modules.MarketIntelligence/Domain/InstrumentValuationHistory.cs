@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using FSH.Framework.Core.Domain;
 
-namespace Modules.MarketIntelligence.Domain;
+namespace FSH.Modules.MarketIntelligence.Domain;
 
 [SuppressMessage(
     "CodeQuality",

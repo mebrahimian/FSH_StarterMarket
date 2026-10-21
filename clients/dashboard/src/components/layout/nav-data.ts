@@ -111,6 +111,13 @@ export const sections: NavSection[] = [
             perm: "Permissions.Billing.View"
         },
         {
+            to: "/market-intelligence/payment-management",
+            label: "Payment Management",
+            labelKey: "items.paymentManagement",
+            icon: CreditCard,
+            perm: "Permissions.MarketIntelligence.Payments.Review",
+        },
+        {
             to: "/wallet",
             label: "WhatsApp wallet",
             labelKey: "items.whatsAppWallet",

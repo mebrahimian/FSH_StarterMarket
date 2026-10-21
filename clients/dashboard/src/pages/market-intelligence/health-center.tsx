@@ -32,6 +32,7 @@ import {
     rebuildMissingSalesPerformanceSnapshots,
     getSalesPerformanceRebuildStatus,
     updateCodalIncrementalSchedule,
+    queueCodalInsightSymbolBackfill,
     backfillTsetmcPrices,
     getCompanyProfiles,
     getBackgroundJobStatuses,
@@ -428,8 +429,30 @@ export function MarketHealthCenterPage() {
           } = useQuery<CompanyProfile[]>({
                queryKey: ["market-intelligence", "company-profiles"],
                queryFn: getCompanyProfiles,});
+    
+const insightRepairMode = true; // TEMPORARY
 
-    const normalizeSymbolForSearch = (value: string,) =>
+const insightDateParts = new Intl.DateTimeFormat(
+    "fa-IR-u-ca-persian-nu-latn",
+    {
+        timeZone: "Asia/Tehran",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    },
+).formatToParts(new Date());
+
+const insightDatePart = (type: "year" | "month" | "day") =>
+    insightDateParts.find((part) => part.type === type)?.value ?? "";
+
+const insightToDate = [
+    insightDatePart("year"),
+    insightDatePart("month").padStart(2, "0"),
+    insightDatePart("day").padStart(2, "0"),
+].join("/");
+
+
+const normalizeSymbolForSearch = (value: string,) =>
     value
         .trim()
         .replace(/ي/g, "ی")
@@ -437,9 +460,9 @@ export function MarketHealthCenterPage() {
         .replace(/\u200c/g, "")
         .replace(/\s+/g, "");
 
-    const searchText = normalizeSymbolForSearch(debouncedBackfillSymbol, );
+const searchText = normalizeSymbolForSearch(debouncedBackfillSymbol, );
 
-    const matchingCompanyProfiles =  searchText.length >= 2 ? companyProfiles
+const matchingCompanyProfiles =  searchText.length >= 2 ? companyProfiles
             .filter((profile) => {
                 const symbol =
                     profile.normalizedSymbol ??
@@ -489,22 +512,27 @@ export function MarketHealthCenterPage() {
             .slice(0, 20)
         : [];
 
-    const latestDailyPriceRunAt = companyProfiles.reduce<string | null>((latest, profile) =>
-    
-    {
-        const current = profile.monthlyPeriodEndDate;
+    const latestDailyPriceRunAt =
+    companyProfiles
+        .map(x => x.lastDailyPriceRunAt)
+        .filter((x): x is string => !!x)
+        .sort()
+        .at(-1) ?? null;
 
-        if (!current) {
-            return latest;
-        }
+    console.log("CARD1 latestDailyPriceRunAt:", latestDailyPriceRunAt);
+    console.log(
+    "LastDailyPriceRunAt:",
+    companyProfiles.find(x => x.lastDailyPriceRunAt)?.lastDailyPriceRunAt
+);
 
-        return !latest || current > latest
-            ? current
-            : latest;
-    }, null);
-    console.log("DailyPriceRunAt:",
-        companyProfiles.find((x) => x.lastDailyPriceRunAt)?.lastDailyPriceRunAt,
-         latestDailyPriceRunAt,);
+console.log(
+    "Latest run from API:",
+    companyProfiles
+        .map(x => x.lastDailyPriceRunAt)
+        .filter(Boolean)
+        .sort()
+        .at(-1)
+);
     const activeSinceDate = new Date();
     activeSinceDate.setMonth(activeSinceDate.getMonth() - 12);
 
@@ -571,27 +599,15 @@ export function MarketHealthCenterPage() {
     },
 ).length;
 
-const inactiveCompanyCount = Math.max(
-    companyProfiles.length - activeCompanyCount,
-    0,
-);
+    const inactiveCompanyCount = Math.max(companyProfiles.length - activeCompanyCount, 0,);
 
-const openCompanyCount =
-    latestTradeDate === null
+    const openCompanyCount = latestTradeDate === null
         ? 0
         : companyProfiles.filter(
-              (profile) =>
-    dataQualityQuery.data?.historyCoverage.windowEndPeriod
-        ? profile.monthlyPeriodEndDate?.startsWith(
-              dataQualityQuery.data.historyCoverage.windowEndPeriod,
-          ) === true
-        : false,
+              (profile) => profile.tradeDate === latestTradeDate
           ).length;
 
-const closedCompanyCount = Math.max(
-    activeCompanyCount - openCompanyCount,
-    0,
-);
+    const closedCompanyCount = companyProfiles.length - openCompanyCount;
     //
 
     // Card 2 - Disclosure statistics
@@ -771,29 +787,66 @@ const latestMonthlyReportDate =
             }
         }
 
-        const backfillItems =
-            Array.from(issueRanges.entries())
-                .map(
-                    ([
-                        symbol,
-                        range,
-                    ]) => ({
-                        symbol,
-                        ...range,
-                    }),
-                );
+        
+// Preserve the original Health Center behavior.
+const legacyBackfillItems =
+    Array.from(issueRanges.entries())
+        .map(([symbol, range]) => ({
+            symbol,
+            ...range,
+        }));
 
-        if (backfillItems.length === 0) {
-            setBulkBackfillMessage(
-                tMarket(
-                    "healthCenter.backfill.noIssues",
-                ),
-            );
+// Current Persian date in Tehran.
+// Include companies even when they have no disclosures.
+const insightBackfillItems = Array.from(
+    new Set(
+        companyProfiles
+            .map((profile) => profile.symbol?.trim())
+            .filter((symbol): symbol is string => Boolean(symbol)),
+    ),
+)
+    .sort((a, b) => a.localeCompare(b, "fa"))
+    .map((symbol) => ({
+        symbol,
+        fromDate: "1400/09/01",
+        toDate: insightToDate,
+    }));
 
-            return;
-        }
+const insightSingleSymbolTest = true; // TEMPORARY
 
-        setBulkBackfillRunning(true);
+const backfillItems = insightRepairMode
+    ? insightBackfillItems.slice(
+          bulkStartIndex,
+          insightSingleSymbolTest
+              ? bulkStartIndex + 1
+              : undefined,
+      )
+    : legacyBackfillItems;
+
+
+
+if (backfillItems.length === 0) {
+    setBulkBackfillMessage(
+      tMarket("healthCenter.backfill.noIssues",),
+   );
+
+   return;
+}
+
+if (insightRepairMode) {
+    const confirmed = window.confirm(
+        `ترمیم Insight برای ${backfillItems.length.toLocaleString("fa-IR")} نماد\n` +
+        `نماد شروع: ${backfillItems[0].symbol}\n` +
+        `بازه: ۱۴۰۰/۰۹/۰۱ تا ${insightToDate}\n\n` +
+        "آیا عملیات آغاز شود؟",
+    );
+
+    if (!confirmed) {
+        return;
+    }
+}
+
+setBulkBackfillRunning(true);
 
         let queued = 0;
         let failed = 0;
@@ -815,45 +868,43 @@ const latestMonthlyReportDate =
                         ),
                     );
 
-                    const result =
-                        await queueCodalSymbolBackfill({
-                            symbol: item.symbol,
-                            fromDate:
-                                item.fromDate,
-                            toDate:
-                                item.toDate,
-                        });
+                    
+const request = {
+    symbol: item.symbol,
+    fromDate: item.fromDate,
+    toDate: item.toDate,
+};
 
-                    const succeeded =
-                        await waitForBackfillJob(
-                            result.jobId,
-                        );
+const result = insightRepairMode
+    ? await queueCodalInsightSymbolBackfill(request)
+    : await queueCodalSymbolBackfill(request);
 
-                    if (succeeded) {
-                        queued++;
-                    } else {
-                        failed++;
-                    }
-                } catch {
-                    failed++;
-                }
-            }
 
-            setBulkBackfillMessage(
-                tMarket(
-                    "healthCenter.backfill.bulkFinished",
-                    {
-                        queued,
-                        failed,
-                    },
-                ),
-            );
-        } finally {
-            setBulkBackfillRunning(false);
-        }
-    };    
+const succeeded =
+    await waitForBackfillJob(result.jobId,);
+
+if (succeeded) {
+    queued++;
+    } 
     
-    const rule0Issues: DataQualityIssue[] =
+else {
+    failed++;
+    }
+} catch {
+    failed++;
+    }
+}
+setBulkBackfillMessage(
+        tMarket("healthCenter.backfill.bulkFinished",
+                    { queued, failed, },
+               ),
+            );
+} finally {
+     setBulkBackfillRunning(false);
+     }
+};    
+    
+const rule0Issues: DataQualityIssue[] =
     dataQualityQuery.data?.historyCoverage.gaps
         .filter((gap) =>
             activeCompanySymbolSet.has(gap.symbol),
@@ -1023,7 +1074,7 @@ const latestMonthlyReportDate =
             <section className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xs">
     {/* کل شرکت‌ها */}
-    <div className="-mt-1 flex items-center justify-between gap-3 px-2 py-1">
+                      <div className="-mt-1 flex items-center justify-between gap-3 px-2 py-1">
         <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted-foreground)]">
             <Activity className="h-4 w-4" />
             <span>کل شرکت‌ها</span>
@@ -1037,7 +1088,7 @@ const latestMonthlyReportDate =
     </div>
 
     {/* فعال / غیرفعال */}
-    <div className="-mt-2 grid grid-cols-2 gap-2">
+                      <div className="-mt-2 grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-emerald-500/10 px-3 py-1.5 h-7">
             <div className="flex items-center justify-between">
                 <span className="font-black text-xs leading-none text-[var(--color-muted-foreground)]">
@@ -1064,7 +1115,7 @@ const latestMonthlyReportDate =
     </div>
 
     {/* باز / بسته */}
-    <div className="mt-1 grid grid-cols-2 gap-2">
+                      <div className="mt-1 grid grid-cols-2 gap-2">
         <div className="rounded-lg bg-emerald-500/10 px-3 py-1.5 h-7">
             <div className="flex items-center justify-between">
                 <span className="font-black text-xs text-[var(--color-muted-foreground)]">
@@ -1089,22 +1140,26 @@ const latestMonthlyReportDate =
             </div>
         </div>
     </div>
-    <div className="mt-2 flex items-center justify-between font-semibold text-xs text-[var(--color-muted-foreground)]">
+                      <div className="mt-2 flex items-center justify-between font-semibold text-xs text-[var(--color-muted-foreground)]">
                             <span>آخرین‌ تاریخ بازار</span>
 
                             <span dir="ltr" className="font-mono tabular-nums">
-    {latestDailyPriceRunAt
-    ? `${new DateObject({
-          date: `${latestDailyPriceRunAt.slice(0, 4)}/${latestDailyPriceRunAt.slice(4, 6)}/${latestDailyPriceRunAt.slice(6, 8)}:00`,
-          format: "YYYY/MM/DD",
-      })
-          .convert(persian)
-          .format("YYYY/MM/DD")} ${latestDailyPriceRunAt.slice(9)}:00`
-    : "—"}
-</span>
+                                {latestDailyPriceRunAt
+                                    ? `${new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {
+                                       year: "numeric",
+                                       month: "2-digit",
+                                       day: "2-digit",
+                                       }).format(new Date(
+                                                  Number(latestDailyPriceRunAt.slice(0, 4)),
+                                                  Number(latestDailyPriceRunAt.slice(4, 6)) - 1,
+                                                  Number(latestDailyPriceRunAt.slice(6, 8)),
+                                                ),
+                                       )} ${latestDailyPriceRunAt.slice(9, 14)}`
+                                    : "—"}
+                            </span>
                         </div>
 
-</div>
+                </div>
                 <div className="relative overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xs">
                     <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
@@ -1175,7 +1230,7 @@ const latestMonthlyReportDate =
         <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-muted-foreground)]">
                 <Activity className="h-4 w-4" />
-                <span>گزارش‌های ماهانه</span>
+                <span>گزارش‌های‌ماهانه</span>
             </div>
 
             <div className="text-2xl font-semibold tracking-tight tabular-nums">

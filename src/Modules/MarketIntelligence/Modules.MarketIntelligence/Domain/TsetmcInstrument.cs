@@ -1,7 +1,7 @@
 ﻿using FSH.Framework.Core.Domain;
 using System;
 
-namespace Modules.MarketIntelligence.Domain;
+namespace FSH.Modules.MarketIntelligence.Domain;
 
 public sealed class TsetmcInstrument
     : BaseEntity<int>, IGlobalEntity

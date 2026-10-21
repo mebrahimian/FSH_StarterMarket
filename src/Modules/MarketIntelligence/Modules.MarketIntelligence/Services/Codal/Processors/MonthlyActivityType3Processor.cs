@@ -82,6 +82,16 @@ public sealed class MonthlyActivityType3Processor(
 
             if (ResolveLayout(html, definition) is not { } selectedDefinition)
             {
+                logger.LogWarning(
+                    "Monthly sales layout not found. Marking as NoData. TracingNo: {TracingNo}, Symbol: {Symbol}",
+                    disclosure.TracingNo,
+                    disclosure.Symbol);
+
+                disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
+                disclosure.SalesParsedAt = DateTime.UtcNow;
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+
                 return;
             }
 
@@ -546,11 +556,15 @@ public sealed class MonthlyActivityType3Processor(
                 continue;
             }
 
-            CodalCellResult? periodCell =
-                CodalCellReader.FindCellValue(
-                    html,
-                    candidate.MetaTableCode,
-                    columnSequence);
+            CodalCellResult? periodCell = candidate.UseColumnSum
+                  ? CodalCellReader.SumColumnValues(
+                       html,
+                       candidate.MetaTableCode,
+                       columnSequence)
+                  : CodalCellReader.FindCellValue(
+                       html,
+                       candidate.MetaTableCode,
+                       columnSequence);
 
             if (periodCell is not null)
             {

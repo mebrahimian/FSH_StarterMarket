@@ -170,5 +170,32 @@
       "listed": "بورسی",
       "unlisted": "غیربورسی"
     }
+  },
+  "subscription": {
+    "title": "اشتراک من",
+    "description": "وضعیت اشتراک و محدودیت نمادهای انتخابی",
+    "currentPlan": "پلن فعلی",
+    "plan": "پلن",
+    "selectedSymbols": "نمادهای انتخاب‌شده",
+    "maxSelectedSymbols": "سقف نمادها",
+    "maxSymbolsPerIndustry": "سقف نماد در هر صنعت",
+    "unlimited": "نامحدود",
+    "loading": "در حال دریافت اطلاعات...",
+    "upgradeTab": "ارتقاء",
+    "renewTab": "تمدید",
+    "renewDescription": "اشتراک فعلی خود را تمدید کنید. دوره جدید پس از پایان دوره جاری آغاز می‌شود.",
+    "actualPaidAmount": "مبلغ واقعی واریزی (ریال)",
+    "upgradeDescription": "پلن‌خودرا ارتقاء دهید.اعتبار باقی‌مانده فعلی پس از کسر کارمزد،از مبلغ پلن جدید کم می‌شود.",
+    "loadError": "دریافت اطلاعات اشتراک ممکن نیست.",
+    "plans": {
+      "free": "رایگان",
+      "economic": "برنزی",
+      "professional": "نقره‌ای",
+      "premium": "طلایی"
+    },
+    "availablePlans": "پلن‌های اشتراک",
+    "durationMonths": "{{count}} ماهه",
+    "discount": "تخفیف",
+    "toman": "تومان"
   }
 }

@@ -13,7 +13,7 @@ public sealed class CodalRequestGate : IDisposable
         _logger = logger;
     }
     private static readonly TimeSpan MinimumInterval =
-        TimeSpan.FromSeconds(25);
+        TimeSpan.FromSeconds(20);
 
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 

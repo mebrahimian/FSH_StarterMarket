@@ -1,9 +1,9 @@
-﻿using Modules.MarketIntelligence.Domain.Enums;
+﻿using FSH.Modules.MarketIntelligence.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Modules.MarketIntelligence.Services.Tsetmc;
+namespace FSH.Modules.MarketIntelligence.Services.Tsetmc;
 
 public static class TsetmcYValMapper
 {

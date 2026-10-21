@@ -2,9 +2,8 @@
 
 public interface ICodalCollectorService
 {
-    //Task CollectBackfillAsync(CancellationToken cancellationToken = default);
-    Task CollectSymbolBackfillAsync(string symbol, string fromDate,  string toDate, CancellationToken cancellationToken =
-        default);
+    Task CollectSymbolBackfillAsync(string symbol, string fromDate, string toDate, CancellationToken cancellationToken = default);
+    Task CollectInsightSymbolBackfillAsync(string symbol, string fromDate, string toDate, CancellationToken cancellationToken = default);
     Task CollectHistoricalRebuildAsync(string fromDate, string toDate, bool resumeFromCheckpoint = true, CancellationToken cancellationToken = default);
     Task<bool> ParsePendingDisclosuresAsync(CancellationToken cancellationToken = default);
     Task CollectIncrementalAsync(CancellationToken cancellationToken = default);

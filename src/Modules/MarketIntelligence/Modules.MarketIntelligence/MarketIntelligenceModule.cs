@@ -4,6 +4,7 @@ using FSH.Framework.Persistence;
 using FSH.Framework.Shared.Constants;
 using FSH.Framework.Shared.Identity.Authorization;
 using FSH.Framework.Web.Modules;
+using FSH.Modules.Files.Contracts;
 using FSH.Modules.MarketIntelligence.Contracts.Authorization;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
@@ -13,6 +14,7 @@ using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
+using FSH.Modules.MarketIntelligence.Features.v1.UserSubscriptions;
 using FSH.Modules.MarketIntelligence.Services.Benchmark;
 using FSH.Modules.MarketIntelligence.Services.Benchmark.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal;
@@ -32,6 +34,7 @@ using FSH.Modules.MarketIntelligence.Services.MarketData;
 using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc.Jobs;
+
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -43,6 +46,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Modules.MarketIntelligence.Authorization;
 using Modules.MarketIntelligence.Services.Codal.Processors;
 
 
@@ -60,7 +64,7 @@ namespace FSH.Modules.MarketIntelligence
             PermissionConstants.Register(MarketIntelligencePermissions.All);
 
             builder.Services.Configure<CodalOptions>(
-                    builder.Configuration.GetSection(CodalOptions.SectionName));
+            builder.Configuration.GetSection(CodalOptions.SectionName));
             builder.Services.AddHeroDbContext<MarketIntelligenceDbContext>();
             builder.Services.AddScoped<IDbInitializer, MarketIntelligenceDbInitializer>();
             builder.Services.AddSingleton<CodalRequestGate>();
@@ -110,6 +114,8 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<CodalCompanyReferenceSyncService>();
             builder.Services.AddScoped<TsetmcPriceReader>();
             builder.Services.AddScoped<PriceHistoryCollectorService>();
+            builder.Services.AddScoped<TsetmcShareChangeCollectorService>();
+            builder.Services.AddScoped<IFileAccessPolicy, UserPaymentRequestFileAccessPolicy>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
         {
@@ -136,6 +142,14 @@ namespace FSH.Modules.MarketIntelligence
 
             group.MapSearchDisclosuresEndpoint();
             group.MapGetFiscalYearSalesEndpoint();
+            group.MapGetMySubscriptionEndpoint();
+            group.MapGetSubscriptionPlansEndpoint();
+            group.MapCreateUserPaymentRequestEndpoint();
+            group.MapGetMyPendingPaymentRequestEndpoint();
+            group.MapGetPaymentRequestsEndpoint();
+            group.MapAttachPaymentReceiptEndpoint();
+            group.MapCancelUserPaymentRequestEndpoint();
+            group.MapApproveUserPaymentEndpoint();
             group.MapGetPortfolioByDisclosureIdEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
             group.MapGetCodalIncrementalScheduleEndpoint();
@@ -144,12 +158,10 @@ namespace FSH.Modules.MarketIntelligence
             group.MapGetPortfolioCompanyUsageEndpoint();
             group.MapSearchPortfolioCompaniesEndpoint();
             group.MapCreateUnlistedPortfolioCompanyEndpoint();
-
             group.MapMatchPortfolioCompanyEndpoint();
             group.MapUnmatchPortfolioCompanyEndpoint();
-
             group.MapGetMatchedPortfolioCompaniesEndpoint();
-
+            
 
             group.MapGet("/jobs/status",
                 async (MarketIntelligenceDbContext dbContext,
@@ -299,6 +311,57 @@ namespace FSH.Modules.MarketIntelligence
                   .RequirePermission(MarketIntelligencePermissions
                           .CodalOperations
                           .Execute);
+
+            group.MapPost("/codal/insight-symbol-backfill",
+                (CodalSymbolBackfillRequest request,
+                 IJobService jobService) =>
+                {
+                    if (string.IsNullOrWhiteSpace(request.Symbol) ||
+                        string.IsNullOrWhiteSpace(request.FromDate) ||
+                        string.IsNullOrWhiteSpace(request.ToDate))
+                    {
+                        return Results.BadRequest(new
+                        {
+                            message = "Symbol, fromDate and toDate are required."
+                        });
+                    }
+
+                    string symbol = request.Symbol.Trim();
+                    string fromDate = request.FromDate.Trim();
+                    string toDate = request.ToDate.Trim();
+
+                    if (string.Compare(
+                            fromDate,
+                            toDate,
+                            StringComparison.Ordinal) > 0)
+                    {
+                        return Results.BadRequest(new
+                        {
+                            message = "fromDate cannot be after toDate."
+                        });
+                    }
+
+                    string jobId =
+                        jobService.Enqueue<CodalBackgroundJob>(
+                            job => job.RunInsightSymbolBackfillAsync(
+                                symbol,
+                                fromDate,
+                                toDate));
+
+                    return Results.Accepted(value: new
+                    {
+                        jobId,
+                        message = "Insight Codal backfill queued."
+                    });
+                })
+                .WithName("QueueCodalInsightSymbolBackfill")
+                .WithSummary(
+                    "Queues monthly activity and investment financial statement backfill")
+                .RequirePermission(
+                    MarketIntelligencePermissions
+                        .CodalOperations
+                        .Execute);
+
             group.MapPost("/codal/historical-rebuild", 
                   IResult (IJobService jobService) =>    {
                       string jobId = jobService.Enqueue<CodalBackgroundJob>(
@@ -310,7 +373,7 @@ namespace FSH.Modules.MarketIntelligence
                             jobId,
                             message = "Codal historical rebuild queued.",});
                   }).WithName("QueueCodalHistoricalRebuild")
-                    .WithSummary("Queues full Codal historical rebuild from 1399/08/11 to current date")
+                    .WithSummary("Queues full Codal historical rebuild from 1400/08/08 to current date")
                     .RequirePermission(MarketIntelligencePermissions
                             .CodalOperations
                             .Execute);
@@ -734,7 +797,7 @@ namespace FSH.Modules.MarketIntelligence
 
                 decimal progressPercent = total == 0
                       ? 100m
-                      : Math.Round(completed * 100m / total, 2);
+                      : Math.Round(completed * 100m / total, 0);
 
             return Results.Ok(new
                  {

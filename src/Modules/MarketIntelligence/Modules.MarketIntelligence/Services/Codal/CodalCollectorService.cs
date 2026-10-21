@@ -17,8 +17,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Net;
 using System.Text.Json;
-using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
-using static FSH.Modules.MarketIntelligence.Contracts.Authorization.MarketIntelligencePermissions;
+
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
 
 public sealed class CodalCollectorService : ICodalCollectorService
@@ -55,6 +54,37 @@ public sealed class CodalCollectorService : ICodalCollectorService
     public async Task CollectIncrementalAsync(
     CancellationToken cancellationToken = default)
     {
+#if DEBUG
+        const long debugTracingNo = 1599894;
+
+        Disclosure testDisclosure =
+            await _dbContext.Disclosures
+                .SingleAsync(
+                    x => x.TracingNo == debugTracingNo,
+                    cancellationToken);
+
+        var testProcessors = _processors
+            .Where(x => x.CanProcess(testDisclosure))
+            .ToList();
+
+        foreach (var processor in testProcessors)
+        {
+            _logger.LogInformation(
+                "Incremental DEBUG: {Processor}, TracingNo={TracingNo}",
+                processor.GetType().Name,
+                testDisclosure.TracingNo);
+
+            await processor.ProcessAsync(
+                testDisclosure,
+                cancellationToken);
+        }
+
+        await _insightPipeline.ProcessAsync(
+            testDisclosure,
+            cancellationToken);
+
+        return;
+#endif
         // آخرین تاریخ ذخیره‌شده به همان فرمت فارسی کدال
         string? lastPublishDateStr = await _dbContext.Disclosures
             .OrderByDescending(x => x.PublishDateTimeRaw)
@@ -360,7 +390,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
            // bool hasFailedPages = false;
             for (int pageNumber = firstPage.TotalPages; pageNumber >= 2; pageNumber--)
             {
-              await Task.Delay(TimeSpan.FromSeconds(25), cancellationToken);
+              await Task.Delay(TimeSpan.FromSeconds(20), cancellationToken);
 
               CodalSearchResponse? page = await SearchHistoricalPageAsync(
                     windowFromDate,
@@ -756,9 +786,39 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
 
     }
-    public async Task CollectSymbolBackfillAsync(string symbol, string fromDate, string toDate,
-                                             CancellationToken cancellationToken = default)
+
+    public Task CollectSymbolBackfillAsync(
+        string symbol,
+        string fromDate,
+        string toDate,
+        CancellationToken cancellationToken = default)
     {
+        return CollectSymbolBackfillCoreAsync(
+            symbol, fromDate, toDate,
+            insightOnly: false,
+            cancellationToken);
+    }
+
+    public Task CollectInsightSymbolBackfillAsync(
+        string symbol,
+        string fromDate,
+        string toDate,
+        CancellationToken cancellationToken = default)
+    {
+        return CollectSymbolBackfillCoreAsync(
+            symbol, fromDate, toDate,
+            insightOnly: true,
+            cancellationToken);
+    }
+
+    private async Task CollectSymbolBackfillCoreAsync(
+        string symbol,
+        string fromDate,
+        string toDate,
+        bool insightOnly,
+        CancellationToken cancellationToken)
+    {
+
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
 
         ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
@@ -799,13 +859,33 @@ public sealed class CodalCollectorService : ICodalCollectorService
        
         TimeSpan requestDelay = TimeSpan.FromSeconds(5);
 
-        List<CodalLetterDto> letters = [];
+
+        List<CodalLetterDto> letters;
+
+        if (insightOnly)
+        {
+            letters = await SearchInsightDisclosuresAsync(
+                normalizedSymbol,
+                normalizedFromDate,
+                normalizedToDate,
+                cancellationToken);
+        }
+        else
+        {
+            letters = [];
+
+            // کل حلقه جست‌وجوی فعلی
+            // از string windowFromDate = searchFromDate
+            // تا انتهای while بدون تغییر اینجا باقی می‌ماند.
+        }
+
 
         string windowFromDate = searchFromDate;
 
         bool isFirstRequest = true;
 
         while (
+            !insightOnly &&
             string.CompareOrdinal(
                 windowFromDate,
                 searchToDate) <= 0)
@@ -1054,6 +1134,70 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
 
     }
+
+    private async Task<List<CodalLetterDto>> SearchInsightDisclosuresAsync(
+        string symbol,
+        string fromDate,
+        string toDate,
+        CancellationToken cancellationToken)
+    {
+        var results = new Dictionary<long, CodalLetterDto>();
+
+        foreach (int category in new[] { 3, 1 })
+        {
+            int pageNumber = 1;
+
+            while (true)
+            {
+                CodalSearchResponse response =
+                    await _codalClient.SearchAsync(
+                        new CodalSearchRequest
+                        {
+                            Symbol = symbol,
+                            Category = category,
+                            FromDate = fromDate,
+                            ToDate = toDate,
+                            PageNumber = pageNumber
+                        },
+                        cancellationToken);
+
+                foreach (CodalLetterDto letter in response.Letters)
+                {
+                    var (let, rt, _, _) =
+                        ParseUrlParameters(letter.Url, letter.Title);
+
+                    bool selected =
+                            (category == 3 && let == 58) ||
+                            (category == 3 && rt == 2 && let == 8) ||
+                            (category == 1 && rt == 2 && let == 6);
+
+                    if (selected)
+                    {
+                        results.TryAdd(letter.TracingNo, letter);
+                    }
+                }
+
+                if (pageNumber >= response.TotalPages ||
+                    response.Letters.Count == 0)
+                {
+                    break;
+                }
+
+                pageNumber++;
+
+                await Task.Delay(
+                    TimeSpan.FromSeconds(5),
+                    cancellationToken);
+            }
+        }
+
+        return results.Values
+            .OrderBy(x =>
+                PersianDateHelper.ToGregorian(x.PublishDateTimeRaw))
+            .ThenBy(x => x.TracingNo)
+            .ToList();
+    }
+
     private static (short? let, byte? rt, byte? ct, short? ft) ParseUrlParameters(string? url, string? title)
     {
         short? let =
@@ -1116,7 +1260,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
     CancellationToken cancellationToken = default)
     {
         const int batchSize = 20;
-        const int maxDisclosuresPerRun = 200;
+        const int maxDisclosuresPerRun = 20;
         TimeSpan delayBetweenRequests = TimeSpan.FromSeconds(5);
 
         DateTime lastPublishDate = DateTime.MinValue;
@@ -1135,7 +1279,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
             }
                         
             IQueryable<Disclosure> query = _dbContext.Disclosures
-                 .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending && x.TracingNo == 1575452);
+                 .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending &&
+                             x.Let == 58 &&
+                             x.Symbol == "وسپه");
             if (!firstBatch)
             {
                 DateTime cursorDate = lastPublishDate;
@@ -1187,9 +1333,18 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 {
                     try
                     {
-                        await processor.ProcessAsync(
-                            disclosure,
-                            cancellationToken);
+                        if (processor is InvestmentPortfolioProcessor portfolioProcessor)
+                        {
+                            await portfolioProcessor.ProcessBackfillAsync(
+                                disclosure,
+                                cancellationToken);
+                        }
+                        else
+                        {
+                            await processor.ProcessAsync(
+                                disclosure,
+                                cancellationToken);
+                        }
 
                         await Task.Delay(
                             delayBetweenRequests,
@@ -1248,12 +1403,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                     disclosure.SalesParsedAt = DateTime.UtcNow;
                     await _dbContext.SaveChangesAsync(cancellationToken);
                 }
-                else if (disclosure.SalesParseStatus == DisclosureParseStatus.Pending)
-                {
-                    disclosure.SalesParseStatus = DisclosureParseStatus.Success;
-                    disclosure.SalesParsedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                }
+                
                 if (!processorFailed)
                 {
                     await _insightPipeline.ProcessAsync(disclosure, cancellationToken);

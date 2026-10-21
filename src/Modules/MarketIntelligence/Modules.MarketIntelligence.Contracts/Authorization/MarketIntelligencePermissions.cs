@@ -25,6 +25,12 @@ public static class MarketIntelligencePermissions
 
         public const string Execute = $"Permissions.{Resource}.Execute";
     }
+    public static class Payments
+    {
+        public const string Resource = "MarketIntelligence.Payments";
+
+        public const string Review = $"Permissions.{Resource}.Review";
+    }
 
     public static IReadOnlyList<FshPermission> All { get; } =
     [
@@ -57,6 +63,11 @@ public static class MarketIntelligencePermissions
         new(
             "Execute Codal operations",
             "Execute",
-            CodalOperations.Resource)
+            CodalOperations.Resource),
+
+        new(
+            "Review subscription payments",
+            "Review",
+            Payments.Resource)
     ];
 }

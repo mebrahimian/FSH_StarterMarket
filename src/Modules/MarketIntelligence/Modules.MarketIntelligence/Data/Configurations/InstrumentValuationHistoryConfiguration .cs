@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Modules.MarketIntelligence.Domain;
+using FSH.Modules.MarketIntelligence.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 

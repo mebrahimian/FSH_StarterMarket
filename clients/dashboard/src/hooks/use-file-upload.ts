@@ -164,7 +164,11 @@ export function useFileUpload(options: UploadOptions): UseFileUploadResult {
 
       // ── Step 2 — PUT bytes via XHR for progress events ──────────
       try {
-        await xhrPut(presigned.uploadUrl, file, presigned.requiredHeaders, (loaded, total) => {
+        const uploadUrl = presigned.uploadUrl.startsWith("local://upload/")
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1/files/local-upload/${presigned.uploadUrl.split("/").pop()}`
+  : presigned.uploadUrl;
+
+await xhrPut(uploadUrl, file, presigned.requiredHeaders, (loaded, total) => {
           const t = total || file.size;
           setProgress((p) =>
             p

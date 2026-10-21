@@ -1030,7 +1030,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         });
                 });
 
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkAsset", b =>
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkAsset", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1069,7 +1069,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("BenchmarkAssets", "marketintelligence");
                 });
 
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1107,7 +1107,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("BenchmarkDailyPrices", "marketintelligence");
                 });
 
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.DailyPrice", b =>
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.DailyPrice", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1156,7 +1156,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("DailyPrices", "marketintelligence");
                 });
 
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.TsetmcInstrument", b =>
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.TsetmcInstrument", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -1230,9 +1230,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
-            modelBuilder.Entity("Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>
                 {
-                    b.HasOne("Modules.MarketIntelligence.Domain.BenchmarkAsset", null)
+                    b.HasOne("FSH.Modules.MarketIntelligence.Domain.BenchmarkAsset", null)
                         .WithMany()
                         .HasForeignKey("BenchmarkAssetId")
                         .OnDelete(DeleteBehavior.Restrict)

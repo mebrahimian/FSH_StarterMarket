@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Modules.MarketIntelligence.Services.Tsetmc;
+namespace FSH.Modules.MarketIntelligence.Services.Tsetmc;
 
 public sealed class ClientTypeAllResponseDto
 {

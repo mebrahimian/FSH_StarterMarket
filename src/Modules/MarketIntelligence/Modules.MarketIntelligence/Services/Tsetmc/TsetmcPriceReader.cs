@@ -1,6 +1,6 @@
 ﻿
 using Microsoft.Extensions.Options;
-using Modules.MarketIntelligence.Services.Tsetmc;
+using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using System.Globalization;
 using System.Net.Http.Json;
 
@@ -51,7 +51,9 @@ public sealed class TsetmcPriceReader(HttpClient httpClient, IOptions<TsetmcOpti
         return response?.Items ?? [];
     }
     internal async Task<IReadOnlyCollection<InstrumentShareChangeDto>>
-    GetShareChangesAsync(string insCode, CancellationToken cancellationToken)
+    GetShareChangesAsync(
+        string insCode,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(insCode);
 
@@ -67,7 +69,13 @@ public sealed class TsetmcPriceReader(HttpClient httpClient, IOptions<TsetmcOpti
                     cancellationToken)
                 .ConfigureAwait(false);
 
-        return response?.Items ?? [];
+        if (response?.Items is null)
+        {
+            throw new InvalidOperationException(
+                $"TSETMC ShareChanges returned an invalid response. InsCode={insCode}");
+        }
+
+        return response.Items;
     }
     internal async Task<IReadOnlyCollection<MarketWatchItemDto>>
     GetMarketWatchAsync(CancellationToken cancellationToken)
@@ -156,8 +164,12 @@ public sealed class TsetmcPriceReader(HttpClient httpClient, IOptions<TsetmcOpti
 
             return response?.Item;
         }
-        catch (HttpRequestException ex)
-            when (ex.StatusCode == System.Net.HttpStatusCode.InternalServerError)
+        catch (HttpRequestException ex) 
+             when (ex.StatusCode is
+                 System.Net.HttpStatusCode.InternalServerError or
+                 System.Net.HttpStatusCode.BadGateway or
+                 System.Net.HttpStatusCode.ServiceUnavailable or
+                 System.Net.HttpStatusCode.GatewayTimeout)
         {
             return null;
         }
