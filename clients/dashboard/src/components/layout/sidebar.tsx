@@ -82,7 +82,7 @@ export function Sidebar() {
         "hidden shrink-0 flex-col border-r border-[var(--color-border)]",
         "bg-[oklch(from_var(--color-card)_l_c_h_/_0.85)] backdrop-blur-xl backdrop-saturate-150 md:flex",
         "transition-[width] duration-[var(--duration-default)] ease-[var(--ease-out-cubic)]",
-        collapsed ? "w-[52px]" : "w-[220px]",
+        collapsed ? "w-[52px]" : "w-[240px]",
       )}
     >
       {/* Brand row. */}

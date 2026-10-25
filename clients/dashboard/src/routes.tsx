@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ComponentType } from "react";
+﻿import { lazy, Suspense, type ComponentType } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProtectedRoute } from "@/auth/protected-route";
@@ -65,10 +65,25 @@ const DisclosuresPage = lazyNamed(
 );
 const MarketHealthCenterPage = lazyNamed(
     () =>
-        import(
-            "@/pages/market-intelligence/health-center"
-        ),
+    import("@/pages/market-intelligence/health-center"),
     "MarketHealthCenterPage",
+);
+
+const OwnershipNetworkPage = lazy(
+  () => import("@/pages/portfolio-intelligence/ownership")
+);
+
+const CapitalFlowPage = lazy(
+  () => import("@/pages/portfolio-intelligence/capital-flow")
+);
+const PortfolioValuationPage = lazy(
+  () => import("@/pages/portfolio-intelligence/valuation")
+);
+const PriceDivergencePage = lazy(
+  () => import("@/pages/portfolio-intelligence/price-divergence")
+);
+const PortfolioInsightsPage = lazy(
+  () => import("@/pages/portfolio-intelligence/insights")
 );
 
 import { PaymentManagementPage } from "@/pages/market-intelligence/payment-management";
@@ -259,19 +274,40 @@ export const router = createBrowserRouter([
             {
                 path: "market-intelligence/health-center",
                 element: withSuspense(<MarketHealthCenterPage />),
-            },
+            },            
             {
                 path: "market-intelligence/payment-management",
                 element: withSuspense(<PaymentManagementPage />),
             },
-
             {
                 path: "market-intelligence/portfolio-matching",
                 element: withSuspense(<PortfolioMatchingPage />),
             },
-          {
-            path: "settings",
-            element: withSuspense(<SettingsLayout />),
+            // Portfolio Intelligence
+            {
+                path: "portfolio-intelligence/valuation",
+                element: withSuspense(<PortfolioValuationPage />),
+            },
+            {
+                path: "portfolio-intelligence/ownership",
+                element: withSuspense(<OwnershipNetworkPage />),
+            },
+            {
+                path: "portfolio-intelligence/capital-flow",
+                element: withSuspense(<CapitalFlowPage />),
+            },
+            {
+                path: "portfolio-intelligence/price-divergence",
+                element: withSuspense(<PriceDivergencePage />),
+            },
+
+{
+    path: "portfolio-intelligence/insights",
+    element: withSuspense(<PortfolioInsightsPage />),
+},
+            {
+                path: "settings",
+                element: withSuspense(<SettingsLayout />),
             children: [
               { index: true, element: <Navigate to="profile" replace /> },
               { path: "profile", element: withSuspense(<ProfileSettings />) },
@@ -287,3 +323,5 @@ export const router = createBrowserRouter([
   },
   { path: "*", element: withSuspense(<NotFoundPage />) },
 ]);
+
+

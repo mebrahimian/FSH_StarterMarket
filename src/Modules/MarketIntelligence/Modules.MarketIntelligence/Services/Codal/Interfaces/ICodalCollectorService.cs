@@ -7,6 +7,8 @@ public interface ICodalCollectorService
     Task CollectHistoricalRebuildAsync(string fromDate, string toDate, bool resumeFromCheckpoint = true, CancellationToken cancellationToken = default);
     Task<bool> ParsePendingDisclosuresAsync(CancellationToken cancellationToken = default);
     Task CollectIncrementalAsync(CancellationToken cancellationToken = default);
-    Task CollectBackfillChunkAsync(int startPage,  int endPage, 
+    Task CollectBackfillChunkAsync(int startPage, int endPage, CancellationToken cancellationToken = default);
+    Task CollectDisclosuresOnlyAsync(string fromDate, string toDate,
         CancellationToken cancellationToken = default);
+
 }

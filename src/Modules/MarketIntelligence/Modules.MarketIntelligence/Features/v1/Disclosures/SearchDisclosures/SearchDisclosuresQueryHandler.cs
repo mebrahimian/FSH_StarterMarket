@@ -20,14 +20,12 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
         int page = query.PageNumber < 1 ? 1 : query.PageNumber;
         int size = query.PageSize is < 1 or > 200 ? 20 : query.PageSize;
 
-        IQueryable<Disclosure> q =
-    dbContext.Disclosures.AsNoTracking();
-
-
+        IQueryable<Disclosure> q = dbContext.Disclosures.AsNoTracking();
+        string? relevanceTerm = null;
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             string term = query.Search.Trim();
-
+            relevanceTerm = term;
             string englishTerm = term;
 
             for (int i = 0; i < 10; i++)
@@ -122,7 +120,41 @@ public sealed class SearchDisclosuresQueryHandler(MarketIntelligenceDbContext db
                 disclosure.SalesParseStatus == parseStatus);
         }
 
-        q = ApplySort(q, query.SortBy, query.SortDir);
+        string? selectedSort = Convert.ToString(query.SortBy);
+
+        bool isDateSort =
+            string.IsNullOrWhiteSpace(selectedSort) ||
+            selectedSort.Equals(
+                "publishDateTime",
+                StringComparison.OrdinalIgnoreCase);
+
+        if (relevanceTerm is not null && isDateSort)
+        {
+            string term = relevanceTerm;
+
+            IOrderedQueryable<Disclosure> ordered = q
+               .OrderByDescending(d => d.Symbol == term)
+               .ThenByDescending(d => d.Symbol.StartsWith(term))
+               .ThenByDescending(d => d.Symbol.Contains(term))
+               .ThenByDescending(d => d.CompanyName.Contains(term));
+
+            bool ascending = string.Equals(
+                Convert.ToString(query.SortDir),
+                "asc",
+                StringComparison.OrdinalIgnoreCase);
+
+            q = ascending
+                ? ordered
+                    .ThenBy(d => d.PublishDateTime)
+                    .ThenByDescending(d => d.TracingNo)
+                : ordered
+                    .ThenByDescending(d => d.PublishDateTime)
+                    .ThenByDescending(d => d.TracingNo);
+        }
+        else
+        {
+            q = ApplySort(q, query.SortBy, query.SortDir);
+        }
 
         long total = await q.LongCountAsync(cancellationToken).ConfigureAwait(false);
         var disclosures = await q

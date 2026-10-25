@@ -98,6 +98,14 @@ public sealed class CodalBackgroundJob(
                 toDate,
                 CancellationToken.None);
     }
+    [AutomaticRetry(Attempts = 0)]
+    public Task RunDisclosuresOnlyAsync(string fromDate, string toDate)
+    {
+        return collectorService.CollectDisclosuresOnlyAsync(
+            fromDate,
+            toDate,
+            CancellationToken.None);
+    }
 
     [AutomaticRetry(Attempts = 0)]
     public Task RunHistoricalRebuildAsync()
@@ -195,6 +203,7 @@ public sealed class CodalBackgroundJob(
 
         return now.Minute % intervalMinutes == 0;
     }
+
     [AutomaticRetry(Attempts = 0)]
     public async Task RunBackfillChunkAsync(
     int startPage,
@@ -220,5 +229,6 @@ public sealed class CodalBackgroundJob(
                 nextEndPage,
                 CancellationToken.None));
     }
-   
+
+
 }

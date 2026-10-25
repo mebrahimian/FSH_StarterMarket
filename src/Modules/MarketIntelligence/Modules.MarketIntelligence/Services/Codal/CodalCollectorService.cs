@@ -1,4 +1,5 @@
-﻿using FSH.Framework.Shared.Dates;
+﻿using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
+using FSH.Framework.Shared.Dates;
 using FSH.Modules.MarketIntelligence.Contracts.Dtos;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
@@ -29,16 +30,17 @@ public sealed class CodalCollectorService : ICodalCollectorService
     private readonly ICompanyRegistry _companyRegistry;
     private readonly DisclosureInsightPipeline _insightPipeline;
     private readonly CodalProcessingLogService _processingLogService;
+    private readonly IConfiguration _configuration;
     public CodalCollectorService(
-    ICodalClient codalClient,
-    MarketIntelligenceDbContext dbContext,
-    HttpClient httpClient,
-    ILogger<CodalCollectorService> logger,
-    IConfiguration configuration,
-    IEnumerable<ICodalDisclosureProcessor> processors,
-    ICompanyRegistry companyRegistry,
-    CodalProcessingLogService processingLogService,
-    DisclosureInsightPipeline insightPipeline)
+        ICodalClient codalClient, 
+        MarketIntelligenceDbContext dbContext,
+        HttpClient httpClient,
+        ILogger<CodalCollectorService> logger,
+        IConfiguration configuration,
+        IEnumerable<ICodalDisclosureProcessor> processors,
+        ICompanyRegistry companyRegistry,
+        CodalProcessingLogService processingLogService,
+        DisclosureInsightPipeline insightPipeline)
     {
         _codalClient = codalClient;
         _dbContext = dbContext;
@@ -47,44 +49,14 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _companyRegistry = companyRegistry;
         _insightPipeline = insightPipeline;
         _processingLogService = processingLogService;
-        
+        _configuration = configuration;
+
     }
 
 #pragma warning disable S4144 // Temporary copy; will use ascending persistence order
     public async Task CollectIncrementalAsync(
     CancellationToken cancellationToken = default)
     {
-#if DEBUG
-        const long debugTracingNo = 1599894;
-
-        Disclosure testDisclosure =
-            await _dbContext.Disclosures
-                .SingleAsync(
-                    x => x.TracingNo == debugTracingNo,
-                    cancellationToken);
-
-        var testProcessors = _processors
-            .Where(x => x.CanProcess(testDisclosure))
-            .ToList();
-
-        foreach (var processor in testProcessors)
-        {
-            _logger.LogInformation(
-                "Incremental DEBUG: {Processor}, TracingNo={TracingNo}",
-                processor.GetType().Name,
-                testDisclosure.TracingNo);
-
-            await processor.ProcessAsync(
-                testDisclosure,
-                cancellationToken);
-        }
-
-        await _insightPipeline.ProcessAsync(
-            testDisclosure,
-            cancellationToken);
-
-        return;
-#endif
         // آخرین تاریخ ذخیره‌شده به همان فرمت فارسی کدال
         string? lastPublishDateStr = await _dbContext.Disclosures
             .OrderByDescending(x => x.PublishDateTimeRaw)
@@ -294,6 +266,221 @@ public sealed class CodalCollectorService : ICodalCollectorService
             
         }
         _logger.LogInformation("Disclosure Reading is completed.");
+    }
+    public async Task CollectDisclosuresOnlyAsync(
+    string fromDate,
+    string toDate,
+    CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
+        ArgumentException.ThrowIfNullOrWhiteSpace(toDate);
+
+        fromDate = NormalizeDigits(fromDate.Trim());
+        toDate = NormalizeDigits(toDate.Trim());
+
+        if (!IsValidPersianDate(fromDate) ||
+            !IsValidPersianDate(toDate) ||
+            string.CompareOrdinal(fromDate, toDate) > 0)
+        {
+            throw new ArgumentException("Invalid Persian date range.");
+        }
+
+        var companies = await _dbContext.CompanyMaster
+            .AsNoTracking()
+            .Where(x => x.IsListed && x.FSortSymbol != null)
+            .Select(x => new { x.CompanyId, x.FSortSymbol })
+            .ToListAsync(cancellationToken);
+
+        Dictionary<string, int> listedSymbols = companies
+            .GroupBy(x => x.FSortSymbol!, StringComparer.Ordinal)
+            .ToDictionary(
+                x => x.Key,
+                x => x.First().CompanyId,
+                StringComparer.Ordinal);
+
+        int createdCount = 0;
+
+        for (
+            string windowFrom = fromDate;
+            string.CompareOrdinal(windowFrom, toDate) <= 0;
+            windowFrom = GetNextPersianMonthStart(windowFrom))
+        {
+            string windowTo = GetPersianMonthEnd(windowFrom);
+
+            if (string.CompareOrdinal(windowTo, toDate) > 0)
+            {
+                windowTo = toDate;
+            }
+
+            int pageNumber = 1;
+            int totalPages;
+
+            do
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                CodalSearchResponse result =
+                    await _codalClient.SearchAsync(
+                        new CodalSearchRequest
+                        {
+                            FromDate = windowFrom,
+                            ToDate = windowTo,
+                            PageNumber = pageNumber
+                        },
+                        cancellationToken);
+
+                totalPages = result.TotalPages;
+
+                var selected = result.Letters
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Symbol)
+                                && x.Symbol.Length <= 64)
+                    .Select(letter =>
+                    {
+                        var (let, rt, ct, ft) =
+                            ParseUrlParameters(letter.Url, letter.Title);
+
+                        string title = (letter.Title ?? string.Empty)
+                            .Replace("(اصلاحیه)", "", StringComparison.Ordinal);
+
+                        bool isMainFinancialReport =
+                            title.Count(x => x == '(') == 1 &&
+                            title.Count(x => x == ')') == 1;
+
+                        return new
+                        {
+                            Letter = letter,
+                            Let = let,
+                            Rt = rt,
+                            Ct = ct,
+                            Ft = ft,
+                            IsSelected =
+                                let == 58 ||
+                                (let == 6 &&
+                                 rt == 2 &&
+                                 letter.HasHtml &&
+                                 isMainFinancialReport)
+                        };
+                    })
+                    .Where(x => x.IsSelected)
+                    .Select(x => new
+                    {
+                        x.Letter,
+                        x.Let,
+                        x.Rt,
+                        x.Ct,
+                        x.Ft,
+                        NormalizedSymbol =
+                            NormalizeForMatch(x.Letter.Symbol!)
+                    })
+                    .Where(x =>
+                        !string.IsNullOrWhiteSpace(x.NormalizedSymbol) &&
+                        listedSymbols.ContainsKey(x.NormalizedSymbol))
+                    .ToList();
+
+                long[] tracingNos = selected
+                    .Select(x => x.Letter.TracingNo)
+                    .Distinct()
+                    .ToArray();
+
+                HashSet<long> existing = await _dbContext.Disclosures
+                    .AsNoTracking()
+                    .Where(x => tracingNos.Contains(x.TracingNo))
+                    .Select(x => x.TracingNo)
+                    .ToHashSetAsync(cancellationToken);
+
+                int pageCreated = 0;
+
+                foreach (var item in selected)
+                {
+                    CodalLetterDto letter = item.Letter;
+
+                    if (!existing.Add(letter.TracingNo))
+                    {
+                        continue;
+                    }
+
+                    DateTime? published =
+                        PersianDateHelper.ToGregorian(
+                            letter.PublishDateTimeRaw);
+
+                    if (!published.HasValue)
+                    {
+                        continue;
+                    }
+
+                    DateTime? sent =
+                        PersianDateHelper.ToGregorian(
+                            letter.SentDateTimeRaw);
+
+                    int? reportingTypeCode =
+                        item.Rt is >= 0 and <= 9
+                            ? 1000000 + item.Rt
+                            : null;
+
+                    var disclosure = new Disclosure(
+                        letter.TracingNo,
+                        letter.Symbol!,
+                        letter.CompanyName ?? string.Empty,
+                        letter.Title ?? string.Empty,
+                        letter.LetterCode ?? string.Empty,
+                        letter.SentDateTimeRaw ?? string.Empty,
+                        letter.PublishDateTimeRaw ?? string.Empty,
+                        sent,
+                        published,
+                        letter.Url ?? string.Empty,
+                        letter.HasHtml,
+                        false,
+                        letter.HasExcel,
+                        letter.HasPdf,
+                        letter.HasXbrl,
+                        letter.HasAttachment,
+                        letter.AttachmentUrl ?? string.Empty,
+                        letter.PdfUrl ?? string.Empty,
+                        letter.ExcelUrl ?? string.Empty,
+                        letter.XbrlUrl ?? string.Empty,
+                        letter.TedanUrl ?? string.Empty,
+                        item.Let,
+                        item.Rt,
+                        item.Ct,
+                        item.Ft,
+                        reportingTypeCode);
+
+                    disclosure.AssignCompanyId(
+                        listedSymbols[item.NormalizedSymbol]);
+
+                    _dbContext.Disclosures.Add(disclosure);
+
+                    pageCreated++;
+                }
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                _dbContext.ChangeTracker.Clear();
+
+                createdCount += pageCreated;
+                if (_logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation(
+                    "DisclosuresOnly: {FromDate} - {ToDate}, Page {Page}/{TotalPages}, Created {Created}",
+                    windowFrom,
+                    windowTo,
+                    pageNumber,
+                    totalPages,
+                    pageCreated);
+                }
+
+                pageNumber++;
+            }
+            while (pageNumber <= totalPages);
+        }
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+            "DisclosuresOnly completed. From={FromDate}, To={ToDate}, Created={Created}",
+            fromDate,
+            toDate,
+            createdCount);
+        }
     }
     public async Task CollectHistoricalRebuildAsync(
     string fromDate,
@@ -1435,23 +1622,33 @@ public sealed class CodalCollectorService : ICodalCollectorService
         var definitions = CodalDefinitionsProvider.Load();
 
         int pageNumber = startPage;
+        string backfillFromDate = _configuration["MarketIntelligence:Codal:BackfillFromDate"]
+            ?? throw new InvalidOperationException("BackfillFromDate is missing.");
+
+        string backfillToDate = _configuration["MarketIntelligence:Codal:BackfillToDate"]
+            ?? throw new InvalidOperationException("BackfillToDate is missing.");
+
+        var (progressId, _) =
+            await _processingLogService.GetOrCreateBackfillProgressAsync(
+                backfillFromDate,
+                backfillToDate,
+                cancellationToken);
         int totalPagesInChunk = startPage - endPage + 1;
         var stop = false;
 
         while (!stop)
         {
             var result = await _codalClient.SearchAsync(
-                new()
-                {                            // 1000000:تولیدی 
-                                             // 1000001:ساختمانی     
-                                             // 1000002:سرمایه گذاری  
-                    PageNumber = pageNumber, // 1000003:بانک            
-                                             // 1000004:لیزینگ   
-                                             // 1000005:خدماتی 
-                                                              // 1000006:بیمه               
-                                                              // 1000007:حمل ونقل دریایی
-                },                           // 1000008:کشاورزی          
-                cancellationToken);          // 1000009:تامین سرمایه         
+               new()
+                {
+                  PageNumber = pageNumber,
+                  FromDate = _configuration["MarketIntelligence:Codal:BackfillFromDate"]
+                     ?? throw new InvalidOperationException("BackfillFromDate is missing."),
+
+                  ToDate = _configuration["MarketIntelligence:Codal:BackfillToDate"]
+                     ?? throw new InvalidOperationException("BackfillToDate is missing.")
+                },
+                cancellationToken);
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
@@ -1477,10 +1674,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
             // رکوردهایی که قبلاً ذخیره شده‌اند
-            var existingTracingNos = await _dbContext.Disclosures
+            var existingDisclosures = await _dbContext.Disclosures
                 .Where(x => tracingNos.Contains(x.TracingNo))
-                .Select(x => x.TracingNo)
-                .ToHashSetAsync(cancellationToken);
+                .ToDictionaryAsync(x => x.TracingNo, cancellationToken);
 
 
             // جلوگیری از Duplicate داخل همین صفحه
@@ -1494,14 +1690,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             foreach (var letter in result.Letters)
             {
-                if (string.IsNullOrWhiteSpace(letter.Symbol)
-                    || letter.Symbol.Length > 64
-                    || existingTracingNos.Contains(letter.TracingNo)
-                    || !pageTracingNos.Add(letter.TracingNo))
+                if (string.IsNullOrWhiteSpace(letter.Symbol) || 
+                    letter.Symbol.Length > 64 || 
+                    !pageTracingNos.Add(letter.TracingNo))
                 {
                     continue;
                 }
-
                 string? sentRaw = letter.SentDateTimeRaw;
                 string? pubRaw = letter.PublishDateTimeRaw;
 
@@ -1511,50 +1705,115 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
 
                 currentPubDate = pub;
-                                            
-                var (let, rt, ct, ft) = ParseUrlParameters(letter.Url, letter.Title);
-                if (rt is null)
+
+
+                var (let, rt, ct, ft) =
+                    ParseUrlParameters(letter.Url, letter.Title);
+
+                // حذف اصلاحیه از عنوان
+                string title = (letter.Title ?? string.Empty)
+                    .Replace("(اصلاحیه)", "", StringComparison.Ordinal);
+
+                // گزارش فعالیت ماهانه
+                bool isMonthlyActivity = let == 58;
+
+                // صورت مالی اصلی شرکت سرمایه‌گذاری
+                bool isMainFinancialStatement =
+                    let == 6 &&
+                    rt == 2 &&
+                    title.Count(c => c == '(') == 2 &&
+                    title.Count(c => c == ')') == 2;
+
+                // رد کردن تمام اطلاعیه‌های غیرمرتبط
+                if (rt is null ||
+                    (!isMonthlyActivity && !isMainFinancialStatement))
                 {
                     continue;
                 }
+
                 int? RepTypCode =
                 rt is >= 0 and <= 9
                    ? 1000000 + rt
                    : null;
 
-                var disclosure = new Disclosure(
+                bool isNew = !existingDisclosures.TryGetValue(
                     letter.TracingNo,
-                    letter.Symbol ?? "",
-                    letter.CompanyName ?? "",
-                    letter.Title ?? "",
-                    letter.LetterCode ?? "",
-                    sentRaw ?? "",
-                    pubRaw ?? "",
-                    sent,
-                    pub,
-                    letter.Url ?? "",
-                    letter.HasHtml,
-                    false,
-                    letter.HasExcel,
-                    letter.HasPdf,
-                    letter.HasXbrl,
-                    letter.HasAttachment,
-                    letter.AttachmentUrl ?? "",  // AttachmentUrl
-                    letter.PdfUrl ?? "",  // PdfUrl
-                    letter.ExcelUrl ?? "",  // ExcelUrl
-                    letter.XbrlUrl ?? "",  // XbrlUrl
-                    letter.TedanUrl ?? "",  // TedanUrl
-                    let,  // Let
-                    rt,  // Rt
-                    ct,  // Ct
-                    ft, RepTypCode); // Ft
-                disclosures.Add(disclosure);
-                _dbContext.Disclosures.Add(disclosure);
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                    out Disclosure? storedDisclosure);
+
+                Disclosure disclosure;
+                bool needsSales = false;
+                bool needsPortfolio = false;
+
+                if (isNew)
+                {
+                    disclosure = new Disclosure(
+                        letter.TracingNo,
+                        letter.Symbol ?? "",
+                        letter.CompanyName ?? "",
+                        letter.Title ?? "",
+                        letter.LetterCode ?? "",
+                        sentRaw ?? "",
+                        pubRaw ?? "",
+                        sent,
+                        pub,
+                        letter.Url ?? "",
+                        letter.HasHtml,
+                        false,
+                        letter.HasExcel,
+                        letter.HasPdf,
+                        letter.HasXbrl,
+                        letter.HasAttachment,
+                        letter.AttachmentUrl ?? "",
+                        letter.PdfUrl ?? "",
+                        letter.ExcelUrl ?? "",
+                        letter.XbrlUrl ?? "",
+                        letter.TedanUrl ?? "",
+                        let,
+                        rt,
+                        ct,
+                        ft,
+                        RepTypCode);
+
+                    disclosures.Add(disclosure);
+                    _dbContext.Disclosures.Add(disclosure);
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+                else
+                {
+                    disclosure = storedDisclosure!;
+
+                    needsSales =
+                        disclosure.Let == 58 &&
+                        disclosure.SalesParseStatus is
+                            DisclosureParseStatus.Pending or
+                            DisclosureParseStatus.Failed;
+
+                    if (disclosure.Rt == 2 &&
+                        disclosure.Let is 58 or 6)
+                    {
+                        needsPortfolio =
+                            !await _dbContext.InvestmentPortfolioReportMetadata
+                                .AnyAsync(
+                                    x => x.TracingNo == disclosure.TracingNo,
+                                    cancellationToken);
+                    }
+
+                    if (!needsSales && !needsPortfolio)
+                    {
+                        continue;
+                    }
+                }
                 IReadOnlyList<ICodalDisclosureProcessor> processors =
-                       _processors
-                          .Where(x => x.CanProcess(disclosure))
-                          .ToList();
+                   _processors.Where(x =>
+                                     x.CanProcess(disclosure) &&
+                                     (isNew ||
+                                      (x is InvestmentPortfolioProcessor
+                                          ? needsPortfolio
+                                          : needsSales)))
+                   .ToList();
+
+
 
                 foreach (ICodalDisclosureProcessor processor in processors)
                 {
@@ -1573,24 +1832,32 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                 cancellationToken);
                         }
                     }
-                    
-                    catch (HttpRequestException ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        _logger.LogError(
-                            ex,
-                            "Processor HTTP error. TracingNo: {TracingNo}, Processor: {Processor}",
-                            disclosure.TracingNo,
-                            processor.GetType().Name);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        _logger.LogError(
-                            ex,
-                            "Processor error. TracingNo: {TracingNo}, Processor: {Processor}",
-                            disclosure.TracingNo,
-                            processor.GetType().Name);
+                        bool logged = await _processingLogService.TryLogAsync(
+                            operation: "Backfill",
+                            stage: processor.GetType().Name,
+                            level: 3,
+                            exception: ex,
+                            status: "Failed",
+                            fromDate: _configuration["MarketIntelligence:Codal:BackfillFromDate"],
+                            toDate: _configuration["MarketIntelligence:Codal:BackfillToDate"],
+                            pageNumber: pageNumber,
+                            tracingNo: disclosure.TracingNo,
+                            cancellationToken: cancellationToken);
+
+                        if (!logged)
+                        {
+                            _logger.LogError(
+                                  ex,
+                                  "Failed to save processor error. TracingNo: {TracingNo}, Processor: {Processor}",
+                                  disclosure.TracingNo,
+                                  processor.GetType().Name);
+                        }
                     }
                 }
+
+
 
                 try
                 {
@@ -1608,7 +1875,12 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 }
             }
             // ذخیره یکجای صفحه
-
+            await _processingLogService.UpdateProgressAsync(
+                progressId,
+                backfillFromDate,
+                backfillToDate,
+                pageNumber,
+                cancellationToken);
             // اگر به رکوردهای قدیمی رسیدیم، توقف
             if (stop)
                 break;
@@ -1620,11 +1892,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
             pageNumber--;
 
-
             var delay = result.TotalPages > 10
                 ? TimeSpan.FromSeconds(5)
                 : TimeSpan.FromSeconds(0.2);
-
 
             await Task.Delay(delay, cancellationToken);
         }
@@ -1885,4 +2155,5 @@ public sealed class CodalCollectorService : ICodalCollectorService
             return null;
         }
     }
+    
 }

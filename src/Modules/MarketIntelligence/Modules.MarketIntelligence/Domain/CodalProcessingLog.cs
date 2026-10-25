@@ -78,10 +78,11 @@ public sealed class CodalProcessingLog
     string toDate,
     int pageNumber)
     {
-        if (Operation != "Historical" || Stage != "Progress")
+        if ((Operation != "Historical" && Operation != "Backfill") ||
+            Stage != "Progress")
         {
             throw new InvalidOperationException(
-                "This record is not a Historical progress record.");
+                "This record is not a progress record.");
         }
 
         FromDate = fromDate;
@@ -101,4 +102,5 @@ public sealed class CodalProcessingLog
         Status = "Completed";
         OccurredAt = DateTimeOffset.UtcNow;
     }
+
 }

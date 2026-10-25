@@ -55,6 +55,9 @@ using Modules.MarketIntelligence.Services.Codal.Processors;
 namespace FSH.Modules.MarketIntelligence
 {
 #pragma warning disable S2094 // Empty classes should not be used
+    public sealed record CodalDisclosuresOnlyRequest(
+    string FromDate,
+    string ToDate);
     public class MarketIntelligenceModule : IModule
     {
         public void ConfigureServices(IHostApplicationBuilder builder)
@@ -70,7 +73,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddSingleton<CodalRequestGate>();
             builder.Services.AddHttpClient<ICodalClient, CodalClient>(client =>
             {
-                client.Timeout = TimeSpan.FromMinutes(3);
+                client.Timeout = TimeSpan.FromMinutes(5);
             });
             //    builder.Services.AddScoped<ICodalDisclosureProcessor, ManufacturingMonthlyActivityProcessor>();
             //    builder.Services.AddScoped<ICodalDisclosureProcessor, RealEstateMonthlyActivityProcessor>();
@@ -228,11 +231,55 @@ namespace FSH.Modules.MarketIntelligence
                   }).RequirePermission(MarketIntelligencePermissions.Disclosures.View);
             ////////////////////////////
             group.MapPost("/codal/backfill",
-                    IResult (IJobService jobService,
-                             IConfiguration configuration) =>
-               {
-                   int startPage =
-                     configuration.GetValue<int?>("MarketIntelligence:Codal:BackfillStartPage") ?? 4000;
+                   async Task<IResult> (
+                      IJobService jobService,
+                      IConfiguration configuration,
+                      MarketIntelligenceDbContext dbContext,
+                      CancellationToken cancellationToken) =>
+                   {
+                   int startPage = 
+                        configuration.GetValue<int?>("MarketIntelligence:Codal:BackfillStartPage") ?? 4000;
+
+
+                   string? fromDate = configuration[
+                            "MarketIntelligence:Codal:BackfillFromDate"];
+
+                   string? toDate = configuration[
+                            "MarketIntelligence:Codal:BackfillToDate"];
+
+                   if (string.IsNullOrWhiteSpace(fromDate) ||
+                            string.IsNullOrWhiteSpace(toDate))
+                        {
+                            return Results.BadRequest(
+                                "Backfill date range is not configured.");
+                        }
+
+                        // آخرین صفحه تکمیل‌شده در همین بازه تاریخی
+                   int? lastCompletedPage = await dbContext.CodalProcessingLogs
+                            .AsNoTracking()
+                            .Where(x =>
+                                x.Operation == "Backfill" &&
+                                x.Stage == "Page" &&
+                                x.Status == "Completed" &&
+                                x.FromDate == fromDate &&
+                                x.ToDate == toDate)
+                            .MinAsync(
+                                x => x.PageNumber,
+                                cancellationToken);
+
+                        // ادامه از صفحه بعدی در مسیر نزولی
+                   if (lastCompletedPage.HasValue)
+                        {
+                            startPage = Math.Min(
+                                startPage,
+                                lastCompletedPage.Value - 1);
+                        }
+
+                   if (startPage < 1)
+                        {
+                            return Results.Conflict(
+                                "Backfill already completed or invalid start page.");
+                        }
 
                    int endPage = Math.Max(1, startPage - 199);
 
@@ -377,7 +424,34 @@ namespace FSH.Modules.MarketIntelligence
                     .RequirePermission(MarketIntelligencePermissions
                             .CodalOperations
                             .Execute);
+            group.MapPost("/codal/disclosures-only",
+                    (CodalDisclosuresOnlyRequest request, IJobService jobService) =>
+                  {
+                    if (string.IsNullOrWhiteSpace(request.FromDate) ||
+                        string.IsNullOrWhiteSpace(request.ToDate))
+                    {
+                        return Results.BadRequest(new
+                          {
+                             message = "FromDate and ToDate are required."
+                          });
+                    }
 
+                    string fromDate = request.FromDate.Trim();
+                    string toDate = request.ToDate.Trim();
+
+                    string jobId = jobService.Enqueue<CodalBackgroundJob>(
+                       job => job.RunDisclosuresOnlyAsync(fromDate, toDate));
+
+                    return Results.Accepted(value: new
+                       {
+                         jobId,
+                         message = "Disclosures-only job queued."
+                       });
+               })
+                 .WithName("QueueCodalDisclosuresOnly")
+                 .WithSummary("Collects selected Codal disclosures without processing reports")
+                 .RequirePermission(
+                MarketIntelligencePermissions.CodalOperations.Execute);
             group.MapPost("/codal/symbol-backfill/direct", async Task<IResult> (
                   CodalSymbolBackfillRequest request,
                   [FromServices] ICodalCollectorService codalCollectorService,

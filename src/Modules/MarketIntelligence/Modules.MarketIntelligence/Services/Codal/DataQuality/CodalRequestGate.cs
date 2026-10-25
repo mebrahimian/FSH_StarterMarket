@@ -93,7 +93,7 @@ public sealed class CodalRequestGate : IDisposable
                        _requestHistory.Count(x =>
                                        x >= now.AddHours(-1)));
                     await Task.Delay(
-                            TimeSpan.FromMinutes(10),
+                            TimeSpan.FromSeconds(30),
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -108,7 +108,7 @@ public sealed class CodalRequestGate : IDisposable
                         "Codal HTTP connection error. Retrying after 2 minutes.");
 
                     await Task.Delay(
-                        TimeSpan.FromMinutes(2),
+                        TimeSpan.FromSeconds(30),
                         cancellationToken).ConfigureAwait(false);
                 }
             }

@@ -133,7 +133,7 @@ export const sections: NavSection[] = [
         },
     ],
   },
-{
+  {
     id: "market-intelligence",
     caption: "Market Intelligence",
     captionKey: "sections.marketIntelligence",
@@ -154,6 +154,45 @@ export const sections: NavSection[] = [
             perm: "Permissions.MarketIntelligence.Disclosures.View",
         },
   ],
+},
+
+{
+    id: "portfolio-intelligence",
+    caption: "Portfolio Intelligence",
+    captionKey: "sections.portfolioIntelligence",
+    icon: Activity,
+    items: [
+        {
+            to: "/portfolio-intelligence/valuation",
+            label: "Portfolio Valuation",
+            labelKey: "items.portfolioValuation",
+            icon: Activity,
+        },
+        {
+            to: "/portfolio-intelligence/ownership",
+            label: "Ownership Network",
+            labelKey: "items.ownershipNetwork",
+            icon: Activity,
+        },
+        {
+            to: "/portfolio-intelligence/capital-flow",
+            label: "Capital Flow",
+            labelKey: "items.capitalFlow",
+            icon: Activity,
+        },
+        {
+            to: "/portfolio-intelligence/price-divergence",
+            label: "Price Divergence",
+            labelKey: "items.priceDivergence",
+            icon: Activity,
+        },
+        {
+            to: "/portfolio-intelligence/insights",
+            label: "Portfolio Insights",
+            labelKey: "items.portfolioInsights",
+            icon: Activity,
+        },
+    ],
 },
   {
     id: "catalog",

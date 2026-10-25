@@ -367,7 +367,7 @@ export function getCodalJobStatus(
 
 export function collectCodalBackfill(): Promise<CodalOperationResponse> {
     return apiFetch<CodalOperationResponse>(
-        "/api/v1/marketintelligence/codal/historical-rebuild",
+        "/api/v1/marketintelligence/codal/backfill",
         {
             method: "POST",
         },

@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Finbuckle.MultiTenant;
+using Finbuckle.MultiTenant.Abstractions;
+using FSH.Framework.Shared.Multitenancy;
 
 namespace FSH.Modules.Identity.Services;
 
@@ -54,20 +57,59 @@ public sealed class SessionCleanupHostedService : BackgroundService
         _logger.LogInformation("Session cleanup service stopped");
     }
 
-    private async Task CleanupExpiredSessionsAsync(CancellationToken cancellationToken)
+
+    private async Task CleanupExpiredSessionsAsync(
+        CancellationToken cancellationToken)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        using IServiceScope catalogScope = _scopeFactory.CreateScope();
 
-        // cutoffDate = now - retentionDays, so ExpiresAt < cutoffDate already implies ExpiresAt < now.
-        var cutoffDate = _timeProvider.GetUtcNow().UtcDateTime.AddDays(-_retentionDays);
-        var deleted = await db.UserSessions
-            .Where(s => s.ExpiresAt < cutoffDate)
-            .ExecuteDeleteAsync(cancellationToken);
+        var tenantStore = catalogScope.ServiceProvider
+            .GetRequiredService<IMultiTenantStore<AppTenantInfo>>();
 
-        if (deleted > 0 && _logger.IsEnabled(LogLevel.Information))
+        var tenants = await tenantStore.GetAllAsync();
+
+        DateTime cutoffDate = _timeProvider
+            .GetUtcNow()
+            .UtcDateTime
+            .AddDays(-_retentionDays);
+
+        foreach (AppTenantInfo tenant in tenants)
         {
-            _logger.LogInformation("Cleaned up {Count} expired sessions", deleted);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                using IServiceScope tenantScope =
+                    _scopeFactory.CreateScope();
+
+                tenantScope.ServiceProvider
+                    .GetRequiredService<IMultiTenantContextSetter>()
+                    .MultiTenantContext =
+                        new MultiTenantContext<AppTenantInfo>(tenant);
+
+                var db = tenantScope.ServiceProvider
+                    .GetRequiredService<IdentityDbContext>();
+
+                int deleted = await db.UserSessions
+                    .Where(s => s.ExpiresAt < cutoffDate)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                if (deleted > 0 && _logger.IsEnabled(LogLevel.Information))
+                {
+                    _logger.LogInformation(
+                        "Cleaned up {Count} expired sessions for tenant {TenantId}",
+                        deleted,
+                        tenant.Id);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogError(
+                    ex,
+                    "Session cleanup failed for tenant {TenantId}",
+                    tenant.Id);
+            }
         }
     }
+
 }

@@ -132,4 +132,55 @@ public sealed class CodalProcessingLogService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<(long ProgressId, int? LastCompletedPage)>
+        GetOrCreateBackfillProgressAsync(
+            string fromDate,
+            string toDate,
+            CancellationToken cancellationToken = default)
+    {
+        using IServiceScope scope = scopeFactory.CreateScope();
+
+        var dbContext = scope.ServiceProvider
+            .GetRequiredService<MarketIntelligenceDbContext>();
+
+        var progress = await dbContext.CodalProcessingLogs
+            .Where(x =>
+                x.Operation == "Backfill" &&
+                x.Stage == "Progress" &&
+                x.FromDate == fromDate &&
+                x.ToDate == toDate)
+            .OrderByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (progress is not null)
+        {
+            return (progress.Id, progress.PageNumber);
+        }
+
+        int? lastCompletedPage = await dbContext.CodalProcessingLogs
+            .Where(x =>
+                x.Operation == "Backfill" &&
+                x.Stage == "Page" &&
+                x.Status == "Completed" &&
+                x.FromDate == fromDate &&
+                x.ToDate == toDate)
+            .MinAsync(x => x.PageNumber, cancellationToken);
+
+        var newProgress = new CodalProcessingLog(
+            operation: "Backfill",
+            stage: "Progress",
+            level: 1,
+            status: "Processing",
+            fromDate: fromDate,
+            toDate: toDate,
+            pageNumber: lastCompletedPage);
+
+        dbContext.CodalProcessingLogs.Add(newProgress);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return (newProgress.Id, lastCompletedPage);
+    }
+
 }
