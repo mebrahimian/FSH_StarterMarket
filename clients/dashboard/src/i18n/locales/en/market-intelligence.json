@@ -169,6 +169,55 @@
       "unlisted": "Unlisted"
     }
   },
+  "portfolioValuation": {
+    "title": "Portfolio Valuation",
+    "description": "Compare investment companies' current portfolio values with their market share prices",
+    "searchLabel": "Search Companies",
+    "searchPlaceholder": "Symbol or company name",
+    "searchButton": "Search",
+    "sortLabel": "Sort By",
+    "sortDirection": "Order",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "sortOptions": {
+      "discount": "Discount Percentage",
+      "symbol": "Symbol",
+      "portfolioValue": "Portfolio Value",
+      "valuePerShare": "Value per Share",
+      "sharePrice": "Market Price"
+    },
+    "resultsTitle": "Investment Companies",
+    "totalCount": "Total",
+    "columns": {
+      "symbol": "Symbol",
+      "period": "Portfolio Period",
+      "portfolioValue": "Current Portfolio Value",
+      "valuePerShare": "Value per Share",
+      "sharePrice": "Market Price",
+      "discount": "Discount / Premium",
+      "coverage": "Current Price Coverage",
+      "details": "Details"
+    },
+    "units": {
+      "millionIrr": "Million IRR",
+      "irr": "IRR"
+    },
+    "discount": "Discount",
+    "premium": "Premium",
+    "incompletePricing": "Incomplete Pricing",
+    "viewPortfolio": "View Portfolio",
+    "loadingDetails": "Loading...",
+    "detailsNotFound": "Portfolio details were not found.",
+    "detailsError": "Failed to load portfolio details",
+    "loading": "Loading data...",
+    "loadError": "Failed to load portfolio valuations",
+    "loadFailed": "Data could not be retrieved.",
+    "empty": "No companies found within your search or access scope.",
+    "pageStatus": "Page {{page}} of {{total}}",
+    "previous": "Previous",
+    "next": "Next",
+    "disclaimer": "Listed holdings without current market prices use their last reported market values when available. Unlisted holdings are valued at cost. This report estimates portfolio value and does not represent the company's net asset value (NAV)."
+  },
   "subscription": {
     "title": "My Subscription",
     "description": "Subscription status and selected symbol limits",

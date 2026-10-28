@@ -27,7 +27,7 @@ public static class Extensions
             services.AddHangfireServer(options =>
             {
                 options.HeartbeatInterval = TimeSpan.FromSeconds(30);
-                options.Queues = ["default", "email"];
+                options.Queues = ["portfolio", "default", "email"];
                 options.WorkerCount = 5;
                 options.SchedulePollingInterval = TimeSpan.FromSeconds(30);
             });

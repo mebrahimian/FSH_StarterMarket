@@ -287,6 +287,63 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable("BenchmarkDailyPrices", "marketintelligence");
                 });
 
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CalculationWorkItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("ChangeVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("ClaimedVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<long>("CompletedVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTimeOffset?>("LastSuccessAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("LeaseToken")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("LeaseUntilUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("RetryAfterUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("TaskType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RetryAfterUtc");
+
+                    b.HasIndex("CompanyId", "TaskType")
+                        .IsUnique();
+
+                    b.ToTable("CalculationWorkItems", "marketintelligence");
+                });
+
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.CodalCompanyImport", b =>
                 {
                     b.Property<int>("Id")
@@ -1735,6 +1792,139 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToTable((string)null);
 
                     b.ToView("vw_DisclosureStats", "marketintelligence");
+                });
+
+            modelBuilder.Entity("Modules.MarketIntelligence.Domain.PortfolioValuationSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("CurrentCalculatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CurrentDisclosureId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CurrentListedPositionCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CurrentListedValue")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("CurrentPortfolioValue")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("CurrentPriceToPortfolioValuePercent")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<string>("CurrentPriceTradeDate")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("CurrentPricedPositionCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CurrentRegisteredCapital")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("CurrentSharePrice")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("CurrentUnlistedValue")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<DateOnly?>("CurrentValuationAsOfDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("CurrentValuePerShare")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<DateTimeOffset?>("FrozenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("PeriodEndDate")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTimeOffset?>("PreviousCalculatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("PreviousDisclosureId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("PreviousListedPositionCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PreviousListedValue")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<string>("PreviousPeriodEndDate")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal?>("PreviousPortfolioValue")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("PreviousPriceToPortfolioValuePercent")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<string>("PreviousPriceTradeDate")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int?>("PreviousPricedPositionCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PreviousRegisteredCapital")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("PreviousSharePrice")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("PreviousUnlistedValue")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<DateOnly?>("PreviousValuationAsOfDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("PreviousValuePerShare")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PeriodEndDate");
+
+                    b.HasIndex("CompanyId", "PeriodEndDate")
+                        .IsUnique();
+
+                    b.ToTable("PortfolioValuationSnapshots", "marketintelligence");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.BenchmarkDailyPrice", b =>

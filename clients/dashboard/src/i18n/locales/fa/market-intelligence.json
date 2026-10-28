@@ -171,6 +171,55 @@
       "unlisted": "غیربورسی"
     }
   },
+  "portfolioValuation": {
+    "title": "ارزش‌گذاری پرتفوی",
+    "description": "مقایسه ارزش روز پرتفوی شرکت‌های سرمایه‌گذاری با قیمت بازار سهام",
+    "searchLabel": "جست‌وجوی شرکت",
+    "searchPlaceholder": "نماد یا نام شرکت",
+    "searchButton": "جست‌وجو",
+    "sortLabel": "مرتب‌سازی",
+    "sortDirection": "ترتیب",
+    "ascending": "صعودی",
+    "descending": "نزولی",
+    "sortOptions": {
+      "discount": "درصد تخفیف",
+      "symbol": "نماد",
+      "portfolioValue": "ارزش پرتفوی",
+      "valuePerShare": "ارزش هر سهم",
+      "sharePrice": "قیمت بازار"
+    },
+    "resultsTitle": "شرکت‌های سرمایه‌گذاری",
+    "totalCount": "تعداد",
+    "columns": {
+      "symbol": "نماد",
+      "period": "دوره پرتفوی",
+      "portfolioValue": "ارزش روز پرتفوی",
+      "valuePerShare": "ارزش هر سهم",
+      "sharePrice": "قیمت بازار",
+      "discount": "تخفیف / حباب",
+      "coverage": "پوشش قیمت روز",
+      "details": "جزئیات"
+    },
+    "units": {
+      "millionIrr": "میلیون ریال",
+      "irr": "ریال"
+    },
+    "discount": "تخفیف",
+    "premium": "حباب",
+    "incompletePricing": "قیمت‌گذاری ناقص",
+    "viewPortfolio": "مشاهده پرتفوی",
+    "loadingDetails": "در حال دریافت...",
+    "detailsNotFound": "گزارش تفصیلی این شرکت پیدا نشد.",
+    "detailsError": "خطا در دریافت گزارش تفصیلی",
+    "loading": "در حال دریافت اطلاعات...",
+    "loadError": "خطا در دریافت اطلاعات ارزش‌گذاری",
+    "loadFailed": "دریافت اطلاعات ناموفق بود.",
+    "empty": "شرکتی در محدوده جست‌وجو یا دسترسی شما یافت نشد.",
+    "pageStatus": "صفحه {{page}} از {{total}}",
+    "previous": "قبلی",
+    "next": "بعدی",
+    "disclaimer": "ارزش دارایی‌های بورسی فاقد قیمت روز، در صورت وجود، بر اساس ارزش ثبت‌شده در آخرین گزارش کدال محاسبه می‌شود. ارزش دارایی‌های غیربورسی بر مبنای بهای تمام‌شده است. این گزارش برآورد ارزش پرتفوی است، نه NAV خالص شرکت."
+  },
   "subscription": {
     "title": "اشتراک من",
     "description": "وضعیت اشتراک و محدودیت نمادهای انتخابی",

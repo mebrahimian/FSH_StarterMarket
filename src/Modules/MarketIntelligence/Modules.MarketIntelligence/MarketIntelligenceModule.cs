@@ -13,6 +13,7 @@ using FSH.Modules.MarketIntelligence.Features.v1.DataQualityIssues;
 using FSH.Modules.MarketIntelligence.Features.v1.Disclosures.SearchDisclosures;
 using FSH.Modules.MarketIntelligence.Features.v1.FiscalYearSales;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
+using FSH.Modules.MarketIntelligence.Features.v1.PortfolioValuation;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 using FSH.Modules.MarketIntelligence.Features.v1.UserSubscriptions;
 using FSH.Modules.MarketIntelligence.Services.Benchmark;
@@ -32,9 +33,9 @@ using FSH.Modules.MarketIntelligence.Services.Insights.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Jobs;
 using FSH.Modules.MarketIntelligence.Services.MarketData;
 using FSH.Modules.MarketIntelligence.Services.Portfolio;
+using FSH.Modules.MarketIntelligence.Services.Subscriptions;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc.Jobs;
-
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -48,7 +49,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Modules.MarketIntelligence.Authorization;
 using Modules.MarketIntelligence.Services.Codal.Processors;
-
+using FSH.Modules.MarketIntelligence.Services.Calculations;
 
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
@@ -84,9 +85,19 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityBankProcessor>();
             builder.Services.AddScoped<InvestmentPortfolioReader>();
             builder.Services.AddScoped<PortfolioHistoryRebuildService>();
+            builder.Services.AddScoped<PortfolioValuationReportCalculatorService>();
+            builder.Services.AddScoped<PortfolioValuationBackfillService>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, InvestmentPortfolioProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
-            builder.Services.AddScoped<IMarketPriceProvider, DailyPriceMarketPriceProvider>();
+            builder.Services.AddScoped<DailyPriceMarketPriceProvider>();
+            builder.Services.AddScoped<PortfolioValuationEligibilityService>();
+            builder.Services.AddScoped<PortfolioValuationSnapshotService>();
+            builder.Services.AddScoped<PortfolioValuationIncrementalService>();
+            builder.Services.AddScoped<PortfolioValuationBatchIncrementalService>();
+            builder.Services.AddTransient<PortfolioValuationIncrementalBackgroundJob>();
+            builder.Services.AddScoped<PortfolioValuationBackgroundJob>();
+            builder.Services.AddScoped<IMarketPriceProvider>(sp => sp.GetRequiredService<DailyPriceMarketPriceProvider>());
+            builder.Services.AddScoped<LatestDataAccessService>();
             builder.Services.AddScoped<ICompanyRegistry, BorsCompanyRegistry>();
             builder.Services.AddScoped<CompanyIdBackfillService>();
             builder.Services.AddScoped<SalesPerformanceAnalyzer>();
@@ -109,6 +120,19 @@ namespace FSH.Modules.MarketIntelligence
                     name: "db:marketintellience",
                     failureStatus: HealthStatus.Unhealthy);
             builder.Services.AddScoped<ICodalCollectorService, CodalCollectorService>();
+            builder.Services.AddScoped<CalculationChangeService>();
+            builder.Services.AddScoped<CalculationWorkClaimService>();
+            builder.Services.AddScoped<CalculationWorkCompletionService>();
+            builder.Services.AddScoped<CalculationWorkLeaseService>();
+            builder.Services.AddScoped<CalculationLeaseHeartbeat>();
+            builder.Services.AddScoped<ICalculationTaskHandler,
+                    PortfolioValuationCalculationHandler>();
+            builder.Services.AddScoped<CalculationTaskExecutor>();
+            builder.Services.AddScoped<CalculationWorkProcessor>();
+            if (builder.Configuration.GetValue<bool>("MarketIntelligence:Calculations:EnableWorker"))
+            {
+                builder.Services.AddHostedService<CalculationWorker>();
+            }
             builder.Services.AddScoped<SalesRecordBrokenDetector>();
             builder.Services.AddScoped<CodalProcessingLogService>();
             builder.Services.AddTransient<CodalBackgroundJob>();
@@ -154,6 +178,7 @@ namespace FSH.Modules.MarketIntelligence
             group.MapCancelUserPaymentRequestEndpoint();
             group.MapApproveUserPaymentEndpoint();
             group.MapGetPortfolioByDisclosureIdEndpoint();
+            group.MapGetPortfolioValuationEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
             group.MapGetCodalIncrementalScheduleEndpoint();
             group.MapUpdateCodalIncrementalScheduleEndpoint();
@@ -703,66 +728,68 @@ namespace FSH.Modules.MarketIntelligence
                         .CodalOperations
                         .Execute);
             group.MapGet("/portfolio/rebuild/plan",
-       async (
-           PortfolioHistoryRebuildService rebuildService,
-           CancellationToken cancellationToken) =>
-       {
-           PortfolioHistoryRebuildPlan plan =
-               await rebuildService.BuildPlanAsync(
-                   cancellationToken);
+                async (
+                    PortfolioHistoryRebuildService rebuildService,
+                    CancellationToken cancellationToken) =>
+                {
+                    PortfolioHistoryRebuildPlan plan =
+                        await rebuildService.BuildPlanAsync(
+                            cancellationToken);
 
-           return Results.Ok(plan);
-       })
-       .WithName("GetPortfolioRebuildPlan")
-       .WithSummary("Builds a dry-run plan for portfolio history rebuild")
-       .RequirePermission(
-           MarketIntelligencePermissions
-               .CodalOperations
-               .Execute);
-            group.MapPost(
-         "/portfolio/rebuild",
-         async Task<IResult> (
-             PortfolioHistoryRebuildService rebuildService,
-             IJobService jobService,
-             CancellationToken cancellationToken) =>
-         {
-             PortfolioHistoryRebuildCompany[] companies =
-                 await rebuildService.BuildUniverseAsync(
-                     cancellationToken);
+                    return Results.Ok(plan);
+                })
+                .WithName("GetPortfolioRebuildPlan")
+                .WithSummary("Builds a dry-run plan for portfolio history rebuild")
+                .RequirePermission(
+                    MarketIntelligencePermissions
+                        .CodalOperations
+                        .Execute);
+            group.MapPost("/portfolio/rebuild",
+                async Task<IResult> (
+                    PortfolioHistoryRebuildService rebuildService,
+                    IJobService jobService,
+                    CancellationToken cancellationToken) =>
+                {
+                    PortfolioHistoryRebuildCompany[] companies =
+                        await rebuildService.BuildUniverseAsync(
+                            cancellationToken);
 
-             if (companies.Length == 0)
-             {
-                 return Results.BadRequest(
-                     new
-                     {
-                         message =
-                             "Portfolio rebuild universe is empty."
-                     });
-             }
+                    if (companies.Length == 0)
+                    {
+                        return Results.BadRequest(
+                            new
+                            {
+                                message =
+                                    "Portfolio rebuild universe is empty."
+                            });
+                    }
 
-             string jobId =
-                 jobService.Enqueue<PortfolioHistoryRebuildService>(
-                     service =>
-                         service.RebuildAsync(
-                             companies,
-                             CancellationToken.None));
+                    string jobId =
+                        jobService.Enqueue<PortfolioHistoryRebuildService>(
+                            service =>
+                                service.RebuildAsync(
+                                    companies,
+                                    CancellationToken.None));
 
-             return Results.Accepted(
-                 value: new
-                 {
-                     jobId,
-                     companyCount = companies.Length,
-                     message =
-                         "Portfolio history rebuild queued."
-                 });
-         })
-         .WithName("RebuildPortfolioHistory")
-         .WithSummary(
-             "Queues a company-by-company portfolio history rebuild")
-         .RequirePermission(
-             MarketIntelligencePermissions
-                 .CodalOperations
-                 .Execute);
+                    return Results.Accepted(
+                        value: new
+                        {
+                            jobId,
+                            companyCount = companies.Length,
+                            message =
+                                "Portfolio history rebuild queued."
+                        });
+                })
+                .WithName("RebuildPortfolioHistory")
+                .WithSummary(
+                    "Queues a company-by-company portfolio history rebuild")
+                .RequirePermission(
+                    MarketIntelligencePermissions
+                        .CodalOperations
+                        .Execute);
+
+            
+
 
             //////////////////////////////
             // End of To do Remove
@@ -843,7 +870,83 @@ namespace FSH.Modules.MarketIntelligence
                                      .CodalOperations
                                      .Execute);
             //////////////
+            group.MapPost("/portfolio-valuation/backfill-test/{companyId:int}",
+                async Task<IResult> (
+                    int companyId,
+                    PortfolioValuationBackfillService backfillService,
+                    CancellationToken cancellationToken) =>
+                {
+                    if (companyId <= 0)
+                    {
+                        return Results.BadRequest("Invalid companyId.");
+                    }
+
+                    int processed = await backfillService.RunAsync(
+                        DateOnly.FromDateTime(DateTime.Today),
+                        companyId,
+                        cancellationToken);
+
+                    return Results.Ok(new
+                    {
+                        CompanyId = companyId,
+                        Processed = processed
+                    });
+                })
+                .WithName("BackfillPortfolioValuationTest")
+                .WithSummary("Test portfolio valuation backfill for one company")
+                .RequirePermission(
+                    MarketIntelligencePermissions.CodalOperations.Execute);
             /////////////
+
+            group.MapPost("/portfolio-valuation/backfill-all",
+                (IJobService jobService) =>
+                {
+                    string jobId =
+                        jobService.Enqueue<PortfolioValuationBackgroundJob>(
+                            job => job.RunAllAsync(CancellationToken.None));
+
+                    return Results.Accepted(
+                        value: new
+                        {
+                            JobId = jobId,
+                            Message = "Portfolio valuation backfill queued."
+                        });
+                })
+                .WithName("BackfillAllPortfolioValuations")
+                .WithSummary("Queues portfolio valuation backfill for all eligible companies")
+                .RequirePermission(
+                    MarketIntelligencePermissions.CodalOperations.Execute);
+
+            ////////////////
+            group.MapPost("/portfolio-valuation/incremental-test/{companyId:int}",
+                async (
+                    int companyId,
+                    PortfolioValuationIncrementalService service,
+                    CancellationToken cancellationToken) =>
+                {
+                    DateTimeOffset iranNow =
+                        TimeZoneInfo.ConvertTimeBySystemTimeZoneId(
+                            DateTimeOffset.UtcNow,
+                            "Iran Standard Time");
+
+                    DateOnly evaluationDate =
+                        DateOnly.FromDateTime(iranNow.DateTime);
+
+                    int processed = await service.RunAsync(
+                        evaluationDate,
+                        companyId,
+                        cancellationToken);
+
+                    return Results.Ok(new
+                    {
+                        companyId,
+                        evaluationDate,
+                        processed
+                    });
+                })
+                .RequirePermission(
+                    MarketIntelligencePermissions.CodalOperations.Execute);
+            ///////////////
             group.MapGet("/insights/sales-performance/rebuild-status",  async (
                   MarketIntelligenceDbContext dbContext,
                   CancellationToken cancellationToken) =>
@@ -886,7 +989,20 @@ namespace FSH.Modules.MarketIntelligence
                .RequirePermission(MarketIntelligencePermissions
                                   .CodalOperations
                                   .Execute);
+            group.MapPost("/portfolio-valuation/incremental-all",
+               (IJobService jobService) =>
+               {
+                   string jobId =
+                    jobService.Enqueue<PortfolioValuationIncrementalBackgroundJob>(
+                        job => job.RunAllAsync(CancellationToken.None));
 
+                return Results.Accepted(value: new
+                {
+                    jobId,
+                    message = "Portfolio valuation incremental queued."
+                });
+            })
+               .RequirePermission(MarketIntelligencePermissions.CodalOperations.Execute);
             group.MapGet("/codal/data-quality", async (
                                               int? coverageYears,
                                               CodalDataQualityAuditService auditService,

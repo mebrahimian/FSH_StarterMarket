@@ -893,3 +893,64 @@ export function createUserPaymentRequest(
         }
     );
 }
+
+export type PortfolioValuationItem = {
+    companyId: number;
+    symbol: string | null;
+    companyName: string | null;
+    disclosureId: string;
+    periodEndDate: string;
+    registeredCapital: number | null;
+    currentListedValue: number | null;
+    unlistedReportedValue: number | null;
+    currentPortfolioValue: number | null;
+    currentPortfolioValuePerShare: number | null;
+    currentSharePrice: number | null;
+    currentSharePriceTradeDate: string | null;
+    discountToPortfolioValuePercent: number | null;
+    listedPositionCount: number;
+    pricedListedPositionCount: number;
+};
+
+export type PortfolioValuationResponse = {
+    items: PortfolioValuationItem[];
+    totalCount: number;
+    pageNumber: number;
+    pageSize: number;
+};
+
+export type PortfolioValuationParams = {
+    search?: string;
+    pageNumber?: number;
+    pageSize?: number;
+    sortBy?: string;
+    sortDir?: "asc" | "desc";
+};
+
+export function getPortfolioValuation(
+    params: PortfolioValuationParams = {},
+): Promise<PortfolioValuationResponse> {
+    const query = new URLSearchParams();
+
+    if (params.search?.trim()) {
+        query.set("search", params.search.trim());
+    }
+
+    query.set("pageNumber", String(params.pageNumber ?? 1));
+    query.set("pageSize", String(params.pageSize ?? 20));
+
+    if (params.sortBy) {
+        query.set("sortBy", params.sortBy);
+    }
+
+    if (params.sortDir) {
+        query.set("sortDir", params.sortDir);
+    }
+
+    return apiFetch<PortfolioValuationResponse>(
+    `/api/v1/marketintelligence/portfolio-valuation?${query.toString()}`,
+    {
+        timeoutMs: 120_000,
+    },
+);
+}

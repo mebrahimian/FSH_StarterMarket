@@ -4,14 +4,26 @@ using System.Globalization;
 
 namespace FSH.Modules.MarketIntelligence.Services.MarketData;
 
+
 public sealed class DailyPriceMarketPriceProvider(
     MarketIntelligenceDbContext dbContext)
     : IMarketPriceProvider
 {
+    public Task<IReadOnlyDictionary<int, MarketPriceSnapshot>>
+    GetLatestPricesAsync(
+        IReadOnlyCollection<int> companyIds,
+        CancellationToken cancellationToken = default)
+    {
+        return GetPricesAsOfAsync(
+            companyIds,
+            null,
+            cancellationToken);
+    }
     public async Task<IReadOnlyDictionary<int, MarketPriceSnapshot>>
-        GetLatestPricesAsync(
-            IReadOnlyCollection<int> companyIds,
-            CancellationToken cancellationToken = default)
+    GetPricesAsOfAsync(
+        IReadOnlyCollection<int> companyIds,
+        DateOnly? asOfDate,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(companyIds);
 
@@ -102,8 +114,9 @@ public sealed class DailyPriceMarketPriceProvider(
         var latestPrices =
             await dbContext.DailyPrices
                 .AsNoTracking()
-                .Where(price =>
-                    instrumentIds.Contains(price.InstrumentId))
+                .Where(price => instrumentIds.Contains(price.InstrumentId) &&
+                    (!asOfDate.HasValue ||
+                    price.TradeDate <= asOfDate.Value))
                 .GroupBy(price => price.InstrumentId)
                 .Select(group =>
                     group

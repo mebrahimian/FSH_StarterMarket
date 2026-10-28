@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Modules.MarketIntelligence.Data.Views;
+using Modules.MarketIntelligence.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Data;
 
@@ -32,6 +33,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<Insight> Insights => Set<Insight>();
     public DbSet<SalesPerformanceSnapshot> SalesPerformanceSnapshots => Set<SalesPerformanceSnapshot>();
     public DbSet<CompanyMasterView> CompanyMaster => Set<CompanyMasterView>();
+    public DbSet<CalculationWorkItem> CalculationWorkItems => Set<CalculationWorkItem>();
     public DbSet<DisclosureStats> DisclosureStats => Set<DisclosureStats>();
     public DbSet<CodalCompanyImport> CodalCompanyImports => Set<CodalCompanyImport>();
     public DbSet<Industry> Industries => Set<Industry>();
@@ -45,6 +47,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<BenchmarkDailyPrice> BenchmarkDailyPrices => Set<BenchmarkDailyPrice>();
     public DbSet<InstrumentShareChange> InstrumentShareChanges => Set<InstrumentShareChange>();
     public DbSet<InstrumentValuationHistory> InstrumentValuationHistory => Set<InstrumentValuationHistory>();
+    public DbSet<PortfolioValuationSnapshot> PortfolioValuationSnapshots => Set<PortfolioValuationSnapshot>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<UserSelectedSymbol> UserSelectedSymbols => Set<UserSelectedSymbol>();
     public DbSet<UserPlanLimit> UserPlanLimits => Set<UserPlanLimit>();

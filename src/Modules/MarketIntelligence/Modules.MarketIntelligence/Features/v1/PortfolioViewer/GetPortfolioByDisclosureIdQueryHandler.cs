@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Services.MarketData;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using FSH.Modules.MarketIntelligence.Services.Portfolio;
 
 namespace Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 
@@ -224,45 +225,29 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
                         symbol = company.Symbol;
                         companyName = company.CompanyName;
                     }
-                    if (isLatestPortfolio)
+                    MarketPriceSnapshot? marketPrice = null;
+
+                    if (position.IsListed &&
+                        position.ChildCompanyId.HasValue)
                     {
-                        if (position.IsListed)
-                        {
-                            if (
-                                position.ChildCompanyId.HasValue &&
-                                currentPrices.TryGetValue(
-                                    position.ChildCompanyId.Value,
-                                    out var marketPrice))
-                            {
-                                currentPrice =
-                                    marketPrice.LastPrice ??
-                                    marketPrice.ClosingPrice;
-
-                                currentPriceTradeDate =
-                                    marketPrice.TradeDate;
-                            }
-
-                            if (
-                                currentPrice.HasValue &&
-                                position.EndingQuantity.HasValue)
-                            {
-                                currentValue =
-                                    position.EndingQuantity.Value *
-                                    currentPrice.Value /
-                                    1_000_000m;
-
-                                usesCurrentMarketPrice = true;
-                            }
-                            else
-                            {
-                                currentValue = position.EndingMarketValue;
-                            }
-                        }
-                        else
-                        {
-                            currentValue = position.EndingCost;
-                        }
+                        currentPrices.TryGetValue(
+                            position.ChildCompanyId.Value,
+                            out marketPrice);
                     }
+
+                    var valuation =
+                        PortfolioPositionValuationCalculator.Calculate(
+                            isLatestPortfolio,
+                            position.IsListed,
+                            position.EndingQuantity,
+                            position.EndingMarketValue,
+                            position.EndingCost,
+                            marketPrice);
+
+                    currentPrice = valuation.CurrentPrice;
+                    currentValue = valuation.CurrentValue;
+                    currentPriceTradeDate = valuation.CurrentPriceTradeDate;
+                    usesCurrentMarketPrice = valuation.UsesCurrentMarketPrice;
                     return new PortfolioPositionDto(
                         position.Id,
                         position.RowSequence,
