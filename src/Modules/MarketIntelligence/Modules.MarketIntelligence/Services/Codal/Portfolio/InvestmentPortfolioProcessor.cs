@@ -3,7 +3,7 @@ using FSH.Framework.Shared.Utilities;
 using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Domain.Enums;
-using FSH.Modules.MarketIntelligence.Services.Codal;
+using FSH.Modules.MarketIntelligence.Services.Calculations;
 using FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -15,7 +15,8 @@ public sealed class InvestmentPortfolioProcessor(
     InvestmentPortfolioReader reader,
     MarketIntelligenceDbContext dbContext,
     ILogger<InvestmentPortfolioProcessor> logger,
-    IPortfolioChildCompanyResolver childCompanyResolver)
+    IPortfolioChildCompanyResolver childCompanyResolver,
+    CalculationChangeService calculationChangeService)
     : ICodalDisclosureProcessor
 {
     public bool CanProcess(Disclosure disclosure)
@@ -333,7 +334,30 @@ public sealed class InvestmentPortfolioProcessor(
                 cancellationToken);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (updateHoldingPeriods && sourceType == PortfolioSourceType.MonthlyActivity)
+        {
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction =
+                    await dbContext.Database.BeginTransactionAsync(
+                        cancellationToken);
+
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                await calculationChangeService.MarkChangedAsync(
+                    parentCompanyId.Value,
+                    "PortfolioValuation",
+                    cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+            });
+        }
+        else
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         if (logger.IsEnabled(LogLevel.Information))
         {

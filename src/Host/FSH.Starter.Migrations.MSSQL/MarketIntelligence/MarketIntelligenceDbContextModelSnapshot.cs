@@ -595,6 +595,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.Property<long>("LastPrice")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTimeOffset?>("LastPriceChangedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset?>("LastUpdatedAt")
                         .HasColumnType("datetimeoffset");
 

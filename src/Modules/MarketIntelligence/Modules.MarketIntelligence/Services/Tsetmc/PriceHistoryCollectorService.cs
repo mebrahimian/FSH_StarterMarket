@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
+using FSH.Modules.MarketIntelligence.Services.Calculations;
 using System.Globalization;
 
 
@@ -13,7 +14,8 @@ namespace FSH.Modules.MarketIntelligence.Services.Tsetmc;
 public sealed class PriceHistoryCollectorService(
     MarketIntelligenceDbContext dbContext,
     TsetmcPriceReader priceReader,
-    ILogger<PriceHistoryCollectorService> logger)
+    ILogger<PriceHistoryCollectorService> logger,
+    CalculationChangeService calculationChangeService)
 {
     //private readonly TsetmcOptions _tsetmcOptions = tsetmcOptions.Value;
     public async Task<(int Inserted, int? LastDEven)> BackfillInstrumentAsync(int instrumentId, CancellationToken cancellationToken, string? insCode = null)
@@ -443,7 +445,7 @@ public sealed class PriceHistoryCollectorService(
                             .Select(x => x.EffectiveDate)
                             .ToHashSet());
         }
-
+        HashSet<int> changedPriceInstrumentIds = [];
         foreach (MarketWatchItemDto item in matchedMarketWatch)
         {
             int instrumentId =
@@ -544,10 +546,17 @@ public sealed class PriceHistoryCollectorService(
 
             if (hasTrade)
             {
+                long newLastPrice = ToLong(item.PDrCotVal ?? 0);
+                long newClosingPrice = ToLong(item.PClosing ?? 0);
                 if (existingDailyPrices.TryGetValue(
                         instrumentId,
                         out DailyPrice? existingDailyPrice))
                 {
+                    if (existingDailyPrice.LastPrice != newLastPrice ||
+                        existingDailyPrice.ClosingPrice != newClosingPrice)
+                    {
+                        changedPriceInstrumentIds.Add(instrumentId);
+                    }
                     existingDailyPrice.UpdateMarketSnapshot(
                         ToLong(item.PriceFirst ?? 0),
                         ToLong(item.PriceMin ?? 0),
@@ -573,6 +582,13 @@ public sealed class PriceHistoryCollectorService(
                 }
                 else
                 {
+                    if (!previousDailyPrices.TryGetValue(instrumentId,
+                          out DailyPrice? previousPrice) ||
+                              previousPrice.LastPrice != newLastPrice ||
+                              previousPrice.ClosingPrice != newClosingPrice)
+                    {
+                        changedPriceInstrumentIds.Add(instrumentId);
+                    }
                     DailyPrice newDailyPrice = new(
                         instrumentId,
                         tradeDate,
@@ -699,10 +715,32 @@ public sealed class PriceHistoryCollectorService(
             }
         }
 
+        HashSet<int> changedPriceCompanyIds = universe
+               .Where(x => x.TsetmcInstrumentId.HasValue &&
+                           changedPriceInstrumentIds.Contains(x.TsetmcInstrumentId.Value))
+               .Select(x => x.CompanyId)
+               .ToHashSet();
+
+        HashSet<int> affectedPortfolioCompanyIds =
+            await dbContext.PortfolioValuationSnapshots
+                  .AsNoTracking()
+                  .Where(snapshot => snapshot.FrozenAt == null && (
+                       changedPriceCompanyIds.Contains(snapshot.CompanyId) ||
+                       dbContext.InvestmentPortfolioPositions
+                                 .Any(position =>
+                                     position.ParentCompanyId == snapshot.CompanyId &&
+                                     position.DisclosureId == snapshot.CurrentDisclosureId &&
+                                     position.ChildCompanyId.HasValue &&
+                                     changedPriceCompanyIds.Contains(position.ChildCompanyId.Value) &&
+                                     position.EndingQuantity > 0)
+                  ))
+                  .Select(snapshot => snapshot.CompanyId)
+                  .ToHashSetAsync(cancellationToken);
+
         if (newDailyPrices.Count > 0)
         {
             dbContext.DailyPrices.AddRange(
-                newDailyPrices);
+                newDailyPrices);            
         }
 
         if (newValuations.Count > 0)
@@ -716,10 +754,37 @@ public sealed class PriceHistoryCollectorService(
             dbContext.InstrumentShareChanges.AddRange(
                 newShareChanges);
         }
-            
-        await dbContext
-            .SaveChangesAsync(cancellationToken)
-            .ConfigureAwait(false);
+
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction =
+                await dbContext.Database.BeginTransactionAsync(
+                    cancellationToken);
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            try
+            {
+                foreach (int companyId in affectedPortfolioCompanyIds)
+                {
+                    await calculationChangeService.MarkChangedAsync(
+                        companyId,
+                        "PortfolioValuation",
+                        cancellationToken);
+                }
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(
+                    ex,
+                    "Failed to mark portfolio valuations after TSETMC price update. AffectedCompanies={Count}",
+                    affectedPortfolioCompanyIds.Count);
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+        });
         if (matchedCompanyIds.Length > 0)
         {
             DateTimeOffset iranNow =
@@ -750,13 +815,16 @@ public sealed class PriceHistoryCollectorService(
         if (logger.IsEnabled(LogLevel.Information))
         {
             logger.LogInformation(
-                "TSETMC incremental snapshot loaded. TradeDate={TradeDate}, MarketWatchCount={MarketWatchCount}, MatchedCount={MatchedCount}, ExistingDailyPrices={ExistingDailyPrices}, IncludeShareChanges={IncludeShareChanges}, NewShareChanges={NewShareChanges}",
+                "TSETMC incremental snapshot loaded. TradeDate={TradeDate}, MarketWatchCount={MarketWatchCount}, MatchedCount={MatchedCount}, ExistingDailyPrices={ExistingDailyPrices}, IncludeShareChanges={IncludeShareChanges}, NewShareChanges={NewShareChanges}, ChangedPriceInstruments={ChangedPriceInstruments}, ChangedPriceCompanies={ChangedPriceCompanies}, AffectedPortfolioCompanies={AffectedPortfolioCompanies}",
                 tradeDate,
                 marketWatch.Count,
                 matchedMarketWatch.Count,
                 existingDailyPrices.Count,
                 includeShareChanges,
-                newShareChanges.Count);
+                newShareChanges.Count,                
+                changedPriceInstrumentIds.Count, 
+                changedPriceCompanyIds.Count,
+                affectedPortfolioCompanyIds.Count);
         }
 
         return matchedMarketWatch.Count;

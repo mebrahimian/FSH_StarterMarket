@@ -74,25 +74,19 @@ public sealed class CalculationWorkProcessor(
                 await heartbeatTask;
             }
         }
-        catch (InvalidOperationException ex)
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
         {
-            await RecordFailureAsync(claim, ex, cancellationToken);
-            return true;
+            throw;
         }
-        catch (DbUpdateException ex)
+        catch (Exception ex)
         {
-            await RecordFailureAsync(claim, ex, cancellationToken);
-            return true;
-        }
-        catch (DbException ex)
-        {
-            await RecordFailureAsync(claim, ex, cancellationToken);
-            return true;
-        }
-        catch (TimeoutException ex)
-        {
-            await RecordFailureAsync(claim, ex, cancellationToken);
-            return true;
+            await RecordFailureAsync(
+                claim,
+                ex,
+                cancellationToken);
+
+            throw;
         }
 
         await completionService.MarkSucceededAsync(
