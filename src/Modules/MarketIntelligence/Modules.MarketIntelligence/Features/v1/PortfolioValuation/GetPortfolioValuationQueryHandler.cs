@@ -7,6 +7,7 @@ using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Subscriptions;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 
 namespace FSH.Modules.MarketIntelligence.Features.v1.PortfolioValuation;
 
@@ -84,7 +85,9 @@ public sealed class GetPortfolioValuationQueryHandler(
 
         var companies = companyRows.ToDictionary(c => c.CompanyId);
 
-        string? search = query.Search?.Trim();
+        string? search = string.IsNullOrWhiteSpace(query.Search)
+            ? null
+            : NormalizeForMatch(query.Search);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

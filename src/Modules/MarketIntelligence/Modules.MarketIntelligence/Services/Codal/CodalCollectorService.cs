@@ -1812,9 +1812,6 @@ public sealed class CodalCollectorService : ICodalCollectorService
                                           ? needsPortfolio
                                           : needsSales)))
                    .ToList();
-
-
-
                 foreach (ICodalDisclosureProcessor processor in processors)
                 {
                     try

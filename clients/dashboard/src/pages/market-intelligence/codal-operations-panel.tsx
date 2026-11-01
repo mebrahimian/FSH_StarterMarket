@@ -180,10 +180,13 @@ export function CodalOperationsPanel({
                 query.state.data?.status;
 
             if (
-                status === "Succeeded" ||
-                status === "Failed" ||
-                status === "Deleted"
-            ) {
+                  status === "Succeeded" ||
+                  status === "Failed" ||
+                  status === "Deleted" ||
+                  status === "Unknown"
+               ) 
+               
+            {
                 return false;
             }
 
@@ -192,8 +195,10 @@ export function CodalOperationsPanel({
     });
 
     const jobStatus =
-        jobStatusQuery.data?.status ??
-        (activeJob ? "Enqueued" : null);
+    jobStatusQuery.data?.status ??
+    (jobStatusQuery.isError
+        ? "Unknown"
+        : activeJob ? "Enqueued" : null);
 
     const isJobRunning =
         jobStatus === "Enqueued" ||
@@ -228,7 +233,8 @@ export function CodalOperationsPanel({
         const isFinished =
             jobStatus === "Succeeded" ||
             jobStatus === "Failed" ||
-            jobStatus === "Deleted";
+            jobStatus === "Deleted" ||
+            jobStatus === "Unknown" ;
 
         if (!isFinished || !activeJob) {
             return;

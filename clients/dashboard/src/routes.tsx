@@ -68,16 +68,20 @@ const MarketHealthCenterPage = lazyNamed(
     import("@/pages/market-intelligence/health-center"),
     "MarketHealthCenterPage",
 );
-
 const OwnershipNetworkPage = lazy(
   () => import("@/pages/portfolio-intelligence/ownership")
 );
-
 const CapitalFlowPage = lazy(
   () => import("@/pages/portfolio-intelligence/capital-flow")
 );
+// گزارش قدیمی — محاسبات لحظه‌ای
 const PortfolioValuationPage = lazy(
-  () => import("@/pages/portfolio-intelligence/valuation")
+    () => import("@/pages/portfolio-intelligence/valuation")
+);
+
+// گزارش جدید — Snapshot
+const PortfolioValuationSnapshotsPage = lazy(
+    () => import("@/pages/portfolio-intelligence/valuation-snapshots")
 );
 const PriceDivergencePage = lazy(
   () => import("@/pages/portfolio-intelligence/price-divergence")
@@ -85,7 +89,6 @@ const PriceDivergencePage = lazy(
 const PortfolioInsightsPage = lazy(
   () => import("@/pages/portfolio-intelligence/insights")
 );
-
 import { PaymentManagementPage } from "@/pages/market-intelligence/payment-management";
 const PortfolioMatchingPage = lazyNamed(
     () =>
@@ -283,10 +286,13 @@ export const router = createBrowserRouter([
                 path: "market-intelligence/portfolio-matching",
                 element: withSuspense(<PortfolioMatchingPage />),
             },
-            // Portfolio Intelligence
             {
                 path: "portfolio-intelligence/valuation",
                 element: withSuspense(<PortfolioValuationPage />),
+            },
+            {
+                path: "portfolio-intelligence/valuations",
+                element: withSuspense(<PortfolioValuationSnapshotsPage />),
             },
             {
                 path: "portfolio-intelligence/ownership",

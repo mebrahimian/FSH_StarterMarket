@@ -194,7 +194,7 @@
       "portfolioValue": "Current Portfolio Value",
       "valuePerShare": "Value per Share",
       "sharePrice": "Market Price",
-      "discount": "Discount / Premium",
+      "scale": "Price/Portfolio",
       "coverage": "Current Price Coverage",
       "details": "Details"
     },
@@ -213,9 +213,11 @@
     "loadError": "Failed to load portfolio valuations",
     "loadFailed": "Data could not be retrieved.",
     "empty": "No companies found within your search or access scope.",
-    "pageStatus": "Page {{page}} of {{total}}",
+    "pageStatus": "{{page}} of {{total}}",
+    "first": "First",
     "previous": "Previous",
     "next": "Next",
+    "last": "Last",
     "disclaimer": "Listed holdings without current market prices use their last reported market values when available. Unlisted holdings are valued at cost. This report estimates portfolio value and does not represent the company's net asset value (NAV)."
   },
   "subscription": {

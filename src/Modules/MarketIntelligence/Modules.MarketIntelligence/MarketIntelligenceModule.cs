@@ -179,6 +179,7 @@ namespace FSH.Modules.MarketIntelligence
             group.MapApproveUserPaymentEndpoint();
             group.MapGetPortfolioByDisclosureIdEndpoint();
             group.MapGetPortfolioValuationEndpoint();
+            group.MapGetPortfolioValuationSnapshotsEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
             group.MapGetCodalIncrementalScheduleEndpoint();
             group.MapUpdateCodalIncrementalScheduleEndpoint();
@@ -188,8 +189,7 @@ namespace FSH.Modules.MarketIntelligence
             group.MapCreateUnlistedPortfolioCompanyEndpoint();
             group.MapMatchPortfolioCompanyEndpoint();
             group.MapUnmatchPortfolioCompanyEndpoint();
-            group.MapGetMatchedPortfolioCompaniesEndpoint();
-            
+            group.MapGetMatchedPortfolioCompaniesEndpoint();            
 
             group.MapGet("/jobs/status",
                 async (MarketIntelligenceDbContext dbContext,

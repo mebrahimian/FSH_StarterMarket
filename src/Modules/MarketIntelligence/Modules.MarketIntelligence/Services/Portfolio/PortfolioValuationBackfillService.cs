@@ -102,103 +102,129 @@ public sealed class PortfolioValuationBackfillService(
                         Revisions = g.ToArray()
                     })
                     .ToList();
+                    // Skip reports superseded before their publication.
+                    periods = periods
+                        .Where(current => !periods.Any(later =>
+                            string.CompareOrdinal(
+                                later.PeriodEndDate,
+                                current.PeriodEndDate) > 0 &&
+                            later.FirstPublishedAt <= current.FirstPublishedAt))
+                        .ToList();
+                    
 
-                if (periods.Count > 0)
-                {
-                    int firstIndex = periods.FindIndex(p =>
-                        string.CompareOrdinal(
-                            p.PeriodEndDate,
-                            startPeriod) >= 0);
+                    if (periods.Count > 0)
+                    {
+                       int firstIndex = periods.FindIndex(p => 
+                             string.CompareOrdinal(
+                                 p.PeriodEndDate,
+                                 startPeriod) >= 0);
 
-                    int beginIndex = firstIndex < 0
+                       int beginIndex = firstIndex < 0
                         ? periods.Count - 1
                         : Math.Max(0, firstIndex - 1);
 
-                    for (int i = beginIndex; i < periods.Count; i++)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        var period = periods[i];
-
-                        DateOnly valuationDate =
-                            i + 1 < periods.Count
-                                ? DateOnly.FromDateTime(
-                                    periods[i + 1].FirstPublishedAt)
-                                    .AddDays(-1)
-                                : evaluationDate;
-
-                        if (valuationDate <
-                            DateOnly.FromDateTime(
-                                period.FirstPublishedAt))
+                       for (int i = beginIndex; i < periods.Count; i++)
                         {
-                            throw new InvalidOperationException(
-                                $"Invalid publication chronology: " +
-                                $"CompanyId={companyGroup.Key}, " +
-                                $"Period={period.PeriodEndDate}");
-                        }
+                            cancellationToken.ThrowIfCancellationRequested();
 
-                        var report = period.Revisions
-                            .Where(r =>
+                            var period = periods[i];
+
+                                DateOnly publishedDate = DateOnly.FromDateTime(period.FirstPublishedAt);
+                                DateOnly valuationDate = evaluationDate;
+
+                                if (i + 1 < periods.Count)
+                                {
+                                    DateTime nextPublishedAt =
+                                        periods[i + 1].FirstPublishedAt;
+
+                                    if (nextPublishedAt < period.FirstPublishedAt)
+                                    {
+                                        throw new InvalidOperationException(
+                                            $"Invalid publication chronology: " +
+                                            $"CompanyId={companyGroup.Key}, " +
+                                            $"Period={period.PeriodEndDate}");
+                                    }
+
+                                    DateOnly nextPublishedDate =
+                                        DateOnly.FromDateTime(nextPublishedAt);
+
+                                    valuationDate = nextPublishedDate == publishedDate
+                                        ? publishedDate
+                                        : nextPublishedDate.AddDays(-1);
+                                }
+
+                                if (valuationDate <
                                 DateOnly.FromDateTime(
-                                    r.PublishDateTime!.Value) <= valuationDate)
-                            .OrderByDescending(r => r.PublishDateTime)
-                            .ThenByDescending(r => r.TracingNo)
-                            .FirstOrDefault();
-
-                        if (report is null)
-                        {
-                            throw new InvalidOperationException(
-                                $"No valid revision: " +
-                                $"CompanyId={companyGroup.Key}, " +
-                                $"Period={period.PeriodEndDate}");
-                        }
-
-                        var existing = await dbContext
-                            .PortfolioValuationSnapshots
-                            .AsNoTracking()
-                            .Where(x =>
-                                x.CompanyId == report.CompanyId &&
-                                x.PeriodEndDate == report.PeriodEndDate)
-                            .Select(x => new
-                            {
-                                x.CurrentDisclosureId,
-                                x.FrozenAt
-                            })
-                            .FirstOrDefaultAsync(cancellationToken);
-
-                        if (existing?.FrozenAt is not null)
-                        {
-                            if (existing.CurrentDisclosureId !=
-                                report.DisclosureId)
+                                    period.FirstPublishedAt))
                             {
                                 throw new InvalidOperationException(
-                                    $"Historical revision requires rebuild: " +
-                                    $"CompanyId={report.CompanyId}, " +
-                                    $"Period={report.PeriodEndDate}");
+                                    $"Invalid publication chronology: " +
+                                    $"CompanyId={companyGroup.Key}, " +
+                                    $"Period={period.PeriodEndDate}");
                             }
 
-                            continue;
-                        }
+                            var report = period.Revisions
+                                .Where(r =>
+                                    DateOnly.FromDateTime(
+                                        r.PublishDateTime!.Value) <= valuationDate)
+                                .OrderByDescending(r => r.PublishDateTime)
+                                .ThenByDescending(r => r.TracingNo)
+                                .FirstOrDefault();
 
-                        var valuation =
-                            await calculatorService.CalculateAsync(
+                            if (report is null)
+                            {
+                                throw new InvalidOperationException(
+                                    $"No valid revision: " +
+                                    $"CompanyId={companyGroup.Key}, " +
+                                    $"Period={period.PeriodEndDate}");
+                            }
+
+                            var existing = await dbContext
+                                .PortfolioValuationSnapshots
+                                .AsNoTracking()
+                                .Where(x =>
+                                    x.CompanyId == report.CompanyId &&
+                                    x.PeriodEndDate == report.PeriodEndDate)
+                                .Select(x => new
+                                {
+                                    x.CurrentDisclosureId,
+                                    x.FrozenAt
+                                })
+                                .FirstOrDefaultAsync(cancellationToken);
+
+                            if (existing?.FrozenAt is not null)
+                            {
+                                if (existing.CurrentDisclosureId !=
+                                    report.DisclosureId)
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Historical revision requires rebuild: " +
+                                        $"CompanyId={report.CompanyId}, " +
+                                        $"Period={report.PeriodEndDate}");
+                                }
+
+                                continue;
+                            }
+
+                            var valuation =
+                                await calculatorService.CalculateAsync(
+                                    report.CompanyId,
+                                    report.PeriodEndDate,
+                                    report.DisclosureId,
+                                    valuationDate,
+                                    cancellationToken);
+
+                            await snapshotService.UpsertAsync(
                                 report.CompanyId,
                                 report.PeriodEndDate,
                                 report.DisclosureId,
+                                valuation,
                                 valuationDate,
                                 cancellationToken);
 
-                        await snapshotService.UpsertAsync(
-                            report.CompanyId,
-                            report.PeriodEndDate,
-                            report.DisclosureId,
-                            valuation,
-                            valuationDate,
-                            cancellationToken);
-
-                        companyProcessed++;
+                            companyProcessed++;
+                        }
                     }
-                }
 
                     await transaction.CommitAsync(cancellationToken);
 

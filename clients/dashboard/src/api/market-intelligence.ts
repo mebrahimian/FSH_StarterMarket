@@ -954,3 +954,31 @@ export function getPortfolioValuation(
     },
 );
 }
+
+export function getPortfolioValuationSnapshots(
+    params: PortfolioValuationParams = {},
+): Promise<PortfolioValuationResponse> {
+    const query = new URLSearchParams();
+
+    if (params.search?.trim()) {
+        query.set("search", params.search.trim());
+    }
+
+    query.set("pageNumber", String(params.pageNumber ?? 1));
+    query.set("pageSize", String(params.pageSize ?? 20));
+
+    if (params.sortBy) {
+        query.set("sortBy", params.sortBy);
+    }
+
+    if (params.sortDir) {
+        query.set("sortDir", params.sortDir);
+    }
+
+    return apiFetch<PortfolioValuationResponse>(
+        `/api/v1/marketintelligence/portfolio-valuations?${query.toString()}`,
+        {
+            timeoutMs: 30_000,
+        },
+    );
+}

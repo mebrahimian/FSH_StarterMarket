@@ -14,8 +14,7 @@ public static class GetPortfolioValuationEndpoint
         this IEndpointRouteBuilder endpoints)
     {
         return endpoints
-            .MapGet(
-                "/portfolio-valuation",
+            .MapGet("/portfolio-valuation",
                 (
                     string? search,
                     int? pageNumber,

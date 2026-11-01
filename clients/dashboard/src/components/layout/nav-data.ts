@@ -169,6 +169,13 @@ export const sections: NavSection[] = [
             icon: Activity,
         },
         {
+            to: "/portfolio-intelligence/valuations",
+            label: "Portfolio Valuations (Snapshots)",
+            labelKey: "items.portfolioValuationSnapshots",
+            icon: Activity,
+            perm: "Permissions.MarketIntelligence.Disclosures.View",
+        },
+        {
             to: "/portfolio-intelligence/ownership",
             label: "Ownership Network",
             labelKey: "items.ownershipNetwork",
