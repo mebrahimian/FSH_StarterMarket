@@ -147,10 +147,10 @@ public class IdentityModule : IModule
         services.AddIdentity<FshUser, FshRole>(options =>
         {
             options.Password.RequiredLength = IdentityModuleConstants.PasswordLength;
-            options.Password.RequireDigit = true;
-            options.Password.RequireLowercase = true;
+            options.Password.RequireDigit = false;
+            options.Password.RequireLowercase = false;
             options.Password.RequireNonAlphanumeric = false;
-            options.Password.RequireUppercase = true;
+            options.Password.RequireUppercase = false;
             options.User.RequireUniqueEmail = true;
 
             // Account lockout: 5 consecutive failed logins → 15-minute lockout (applies to new users by default).

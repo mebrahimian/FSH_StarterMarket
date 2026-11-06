@@ -50,6 +50,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<PortfolioValuationSnapshot> PortfolioValuationSnapshots => Set<PortfolioValuationSnapshot>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
     public DbSet<UserSelectedSymbol> UserSelectedSymbols => Set<UserSelectedSymbol>();
+    public DbSet<UserSelectedPortfolioValuationSymbol> UserSelectedPortfolioValuationSymbols => Set<UserSelectedPortfolioValuationSymbol>();
     public DbSet<UserPlanLimit> UserPlanLimits => Set<UserPlanLimit>();
     public DbSet<UserPaymentRequest> UserPaymentRequests => Set<UserPaymentRequest>();
     public DbSet<UserSubscriptionTerm> UserSubscriptionTerms => Set<UserSubscriptionTerm>();
@@ -62,4 +63,9 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
         // fully-configured entities (including HasMany child types like ProductImage).
         base.OnModelCreating(modelBuilder);
     }
+    [DbFunction(
+    Name = "NormalizeForMatch",
+    Schema = "dbo")]
+    public static string NormalizeForMatchSql(string value)
+    => throw new NotSupportedException();
 }

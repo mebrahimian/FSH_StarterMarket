@@ -14,6 +14,7 @@ public sealed record PortfolioValuationItemDto(
     decimal? CurrentSharePrice,
     string? CurrentSharePriceTradeDate,
     decimal? DiscountToPortfolioValuePercent,
-    int ListedPositionCount,
-    int PricedListedPositionCount,
-    bool IsHistorical);
+    int? ListedPositionCount,
+    int? PricedListedPositionCount,
+    bool IsHistorical,
+    bool IsLocked = false);

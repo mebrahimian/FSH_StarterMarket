@@ -16,7 +16,8 @@ public sealed class UserPlanLimit : BaseEntity<Guid>, IGlobalEntity
 
     // -1 = Unlimited
     public int MaxSymbolsPerIndustry { get; private set; }
-
+    // -1 = Unlimited, 0 = No access
+    public int MaxPortfolioValuationSymbols { get; private set; }
     public static UserPlanLimit Create(
         string planKey,
         int maxSelectedSymbols,
@@ -41,7 +42,6 @@ public sealed class UserPlanLimit : BaseEntity<Guid>, IGlobalEntity
             MaxSymbolsPerIndustry = maxSymbolsPerIndustry
         };
     }
-
     public void UpdateLimits(
         int maxSelectedSymbols,
         int maxSymbolsPerIndustry)
@@ -55,5 +55,15 @@ public sealed class UserPlanLimit : BaseEntity<Guid>, IGlobalEntity
 
         MaxSelectedSymbols = maxSelectedSymbols;
         MaxSymbolsPerIndustry = maxSymbolsPerIndustry;
+    }
+    public void UpdatePortfolioValuationLimit(int maxSymbols)
+    {
+        if (maxSymbols < -1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxSymbols),
+                "Limit must be -1 (unlimited) or non-negative.");
+        }
+        MaxPortfolioValuationSymbols = maxSymbols;
     }
 }

@@ -908,10 +908,11 @@ export type PortfolioValuationItem = {
     currentSharePrice: number | null;
     currentSharePriceTradeDate: string | null;
     discountToPortfolioValuePercent: number | null;
-    listedPositionCount: number;
-    pricedListedPositionCount: number;
+    listedPositionCount: number | null;
+    pricedListedPositionCount: number | null;
+    isHistorical: boolean;
+    isLocked: boolean;
 };
-
 export type PortfolioValuationResponse = {
     items: PortfolioValuationItem[];
     totalCount: number;
@@ -980,5 +981,62 @@ export function getPortfolioValuationSnapshots(
         {
             timeoutMs: 30_000,
         },
+    );
+}
+export type SubscriptionSelectedSymbolDto = {
+    companyId: number;
+    symbol: string | null;
+    companyName: string | null;
+};
+
+export type MySubscriptionSelectionsResponse = {
+    planKey: string;
+    maxSelectedSymbols: number;
+    maxPortfolioValuationSymbols: number;
+    selectedCompanyIds: SubscriptionSelectedSymbolDto[];
+    selectedPortfolioValuationCompanyIds: SubscriptionSelectedSymbolDto[];
+};
+
+export function getMySubscriptionSelections():
+    Promise<MySubscriptionSelectionsResponse> {
+    return apiFetch<MySubscriptionSelectionsResponse>(
+        "/api/v1/marketintelligence/subscriptions/me/selections"
+    );
+}
+export type SubscriptionSymbolPurpose = 1 | 2;
+
+export type SelectSubscriptionSymbolInput = {
+    companyId: number;
+    purpose: SubscriptionSymbolPurpose;
+};
+export function selectSubscriptionSymbol(
+    input: SelectSubscriptionSymbolInput
+): Promise<{ companyId: number }> {
+    return apiFetch<{ companyId: number }>(
+        "/api/v1/marketintelligence/subscriptions/me/selections",
+        {
+            method: "POST",
+            body: JSON.stringify(input),
+        }
+    );
+}
+
+export type SubscriptionCompany = {
+    companyId: number;
+    symbol: string;
+    companyName: string | null;
+};
+
+export function searchSubscriptionCompanies(
+    search: string,
+    purpose: SubscriptionSymbolPurpose
+): Promise<SubscriptionCompany[]> {
+    const params = new URLSearchParams({
+        search,
+        purpose: String(purpose),
+    });
+
+    return apiFetch<SubscriptionCompany[]>(
+        `/api/v1/marketintelligence/subscriptions/companies?${params}`
     );
 }

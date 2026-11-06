@@ -3,12 +3,12 @@ import { useTranslation } from "react-i18next";
 import { forwardRef } from "react";
 import { CreditCard, type LucideProps } from "lucide-react";
 import { useState } from "react";
-
 import {
     getMyMarketSubscription,
     getMyPendingPaymentRequest,
     attachPaymentReceipt,
     cancelUserPaymentRequest,
+    getMySubscriptionSelections,
 } from "@/api/market-intelligence";
 import {
     EntityPageHeader,
@@ -16,15 +16,34 @@ import {
 } from "@/components/list";
 import { SubscriptionPlans } from "./subscription-plans";
 import { FileDropzone } from "@/components/file/file-dropzone";
-
+import { SubscriptionSymbolSlots } from "@/components/subscriptions/SubscriptionSymbolSlots";
+import { SubscriptionSymbolPicker } from "@/components/subscriptions/SubscriptionSymbolPicker";
+import type { SubscriptionSymbolPurpose } from "@/api/market-intelligence";
+import { SubscriptionCollapsibleSection } from
+    "@/components/subscriptions/SubscriptionCollapsibleSection";
 export function MarketSubscriptionPage() {
     const { t, i18n } = useTranslation("marketIntelligence");
     const queryClient = useQueryClient();
+    const [pickerPurpose, setPickerPurpose] = useState<SubscriptionSymbolPurpose | null>(null);
+
     const [subscriptionTab, setSubscriptionTab] = useState<"renew" | "upgrade">("renew");
     const { data, isLoading, isError } = useQuery({
         queryKey: ["market-intelligence", "subscription", "me"],
         queryFn: getMyMarketSubscription,
     });
+    const {
+    data: selections,
+    isLoading: selectionsLoading,
+} = useQuery({
+    queryKey: [
+        "market-intelligence",
+        "subscription",
+        "me",
+        "selections",
+    ],
+    queryFn: getMySubscriptionSelections,
+});
+
 
     const numberFormatter = new Intl.NumberFormat(
         i18n.language.startsWith("fa") ? "fa-IR" : "en-US"
@@ -96,8 +115,8 @@ const canPurchase =
                 width="48"
                 height="48"
             />
-        </svg>
-      );
+        </svg>    
+    );
     });
 
     
@@ -132,7 +151,9 @@ return (
 
                         <div>
                             {t("subscription.selectedSymbols")}:{" "}
-                            {numberFormatter.format(data.selectedSymbolsCount)}
+                            {numberFormatter.format(                            
+                                  selections?.selectedCompanyIds.length ?? data.selectedSymbolsCount)                                  
+                            }
                         </div>
 
                         <div>
@@ -200,7 +221,56 @@ return (
                 </div>
             )}
         </EntityDetailSection>
+        {selectionsLoading && (
+            <p className="text-sm text-muted-foreground">
+                  در حال دریافت سهام منتخب...
+    </p>
+)}
 
+{selections && (
+    <div className="space-y-4">
+        <SubscriptionCollapsibleSection
+            title={t("subscription.selectedStocks")}
+            summary={t("subscription.selectionUsage", {
+            selected: numberFormatter.format(selections?.selectedCompanyIds.length ?? 0),
+            limit: selections?.maxSelectedSymbols === -1
+                ? t("subscription.unlimited")
+                : numberFormatter.format(selections?.maxSelectedSymbols ?? 0 ), })}>
+            <SubscriptionSymbolSlots
+               title="سهام منتخب"
+               description="انتخاب‌ها دائمی و غیرقابل تغییر هستند."
+               limit={selections.maxSelectedSymbols}
+               onAdd={() => setPickerPurpose(1)}
+               selected={selections.selectedCompanyIds.map(x => ({
+                   ...x,
+                   symbol: x.symbol ?? String(x.companyId),
+                 }))} />
+        </SubscriptionCollapsibleSection>
+        <SubscriptionCollapsibleSection
+            title={t("subscription.portfolioValuationStocks")}
+            summary={t("subscription.valuationSelectionUsage", {
+            fixed: numberFormatter.format(3),
+            selected: numberFormatter.format(
+                selections?.selectedPortfolioValuationCompanyIds.length ?? 0),
+            limit: selections?.maxPortfolioValuationSymbols === -1
+                ? t("subscription.unlimited")
+                : numberFormatter.format(
+                    selections?.maxPortfolioValuationSymbols ?? 0),
+            })}>
+            <SubscriptionSymbolSlots
+                title="سهام منتخب ارزش‌گذاری پرتفوی"
+                description="جایگاه‌های اختصاصی ارزش‌گذاری سهام"
+                limit={selections.maxPortfolioValuationSymbols}
+                onAdd={() => setPickerPurpose(2)}
+                selected={
+                selections.selectedPortfolioValuationCompanyIds.map(x => ({
+                    ...x,
+                    symbol: x.symbol ?? String(x.companyId),
+                })) }
+                systemFixed={selections.planKey === "free"} />
+        </SubscriptionCollapsibleSection>        
+    </div>
+)}
         {hasActivePaidSubscription &&
             !pendingLoading &&
             !pendingError &&
@@ -319,8 +389,30 @@ return (
                 </div>
             </EntityDetailSection>
         )}
-
         {canPurchase && <SubscriptionPlans />}
+        {pickerPurpose !== null && (
+    <SubscriptionSymbolPicker
+        open
+        purpose={pickerPurpose}
+        selectedCompanyIds={
+            pickerPurpose === 1
+                ? selections?.selectedCompanyIds.map(x => x.companyId) ?? []
+                : selections?.selectedPortfolioValuationCompanyIds.map(x => x.companyId) ?? []
+        }
+        onClose={() => setPickerPurpose(null)}
+        onSelected={async () => {
+            await queryClient.invalidateQueries({
+                queryKey: [
+                    "market-intelligence",
+                    "subscription",
+                    "me",
+                    "selections",
+                ],
+            });
+        }}
+    />
+)}
+
     </div>
 );
 

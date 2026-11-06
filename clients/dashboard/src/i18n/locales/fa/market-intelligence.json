@@ -182,7 +182,7 @@
     "ascending": "صعودی",
     "descending": "نزولی",
     "sortOptions": {
-      "discount": "درصد تخفیف",
+      "discount": "قیمت/پرتفوی",
       "symbol": "نماد",
       "portfolioValue": "ارزش پرتفوی",
       "valuePerShare": "ارزش هر سهم",
@@ -247,6 +247,21 @@
     "availablePlans": "پلن‌های اشتراک",
     "durationMonths": "{{count}} ماهه",
     "discount": "تخفیف",
-    "toman": "تومان"
+    "toman": "تومان",
+    "selectedStocks": "سهام منتخب",
+    "portfolioValuationStocks": "سهام منتخب ارزش‌گذاری پرتفوی",
+    "selectionUsage": "{{selected}} انتخاب از {{limit}} ظرفیت",
+    "valuationSelectionUsage": "{{fixed}} نماد ثابت + {{selected}} انتخاب از {{limit}} ظرفیت",
+    "symbolSlots": {
+      "unlimited": "دسترسی نامحدود",
+      "fixedCount": "{{count}} نماد ثابت",
+      "remaining": "{{count}} جایگاه باقی‌مانده",
+      "allAvailable": "تمام نمادها بدون نیاز به انتخاب در دسترس هستند.",
+      "unavailable": "انتخاب سهم در این پلن فعال نیست.",
+      "locked": "انتخاب دائمی و غیرقابل تغییر",
+      "choose": "انتخاب سهم",
+      "chooseSlot": "انتخاب سهم برای جایگاه {{index}}",
+      "permanentNotice": "انتخاب‌های ثبت‌شده دائمی هستند و امکان حذف یا تعویض ندارند."
+    }
   }
 }

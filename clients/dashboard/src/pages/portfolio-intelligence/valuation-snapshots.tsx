@@ -1,8 +1,8 @@
-
+import { useAuth } from "@/auth/use-auth";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-
+import { LockKeyhole } from "lucide-react";
 import {
     getPortfolioValuationSnapshots,
     getPortfolioByDisclosureId,
@@ -23,7 +23,8 @@ const REFRESH_INTERVAL_MS = 60_000;
 export default function PortfolioValuationSnapshotsPage() {
     const { t: tMarket, i18n } =
         useTranslation("marketIntelligence");
-
+    const { user } = useAuth();
+    const isAdmin = user?.isAdmin === true;
     const isPersian = (i18n.resolvedLanguage ?? i18n.language)
         .toLowerCase()
         .startsWith("fa");
@@ -41,26 +42,18 @@ export default function PortfolioValuationSnapshotsPage() {
 
     const [refreshVersion, setRefreshVersion] = useState(0);
 
-    const [data, setData] =
-        useState<PortfolioValuationResponse | null>(null);
-
+    const [data, setData] = useState<PortfolioValuationResponse | null>(null);
+    const previousPricesRef = useRef<Map<number, number>>(new Map());
+    const [priceChanges, setPriceChanges] = useState<Record<number, "up" | "down">>({});
+    const previousPortfolioValuesRef = useRef<Map<number, number>>(new Map());
+    const [portfolioChanges, setPortfolioChanges] = useState<Record<number, "up" | "down">>({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    const [selectedReport, setSelectedReport] =
-        useState<PortfolioReport | null>(null);
-
-    const [selectedCompanyName, setSelectedCompanyName] =
-        useState("");
-
-    const [detailsLoadingId, setDetailsLoadingId] =
-        useState<string | null>(null);
-
-    const [detailsError, setDetailsError] =
-        useState<string | null>(null);
-
+    const [selectedReport, setSelectedReport] = useState<PortfolioReport | null>(null);
+    const [selectedCompanyName, setSelectedCompanyName] = useState("");
+    const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
+    const [detailsError, setDetailsError] = useState<string | null>(null);
     const detailRequestId = useRef(0);
-
     const formatNumber = (
         value: number | null | undefined,
         decimals = 0,
@@ -81,55 +74,98 @@ export default function PortfolioValuationSnapshotsPage() {
 
         return () => window.clearInterval(timer);
     }, []);
-
+    //
     // Read persisted PortfolioValuationSnapshots.
     useEffect(() => {
-        let active = true;
+    if (!data) return;
 
-        setLoading(true);
-        setError(null);
+    const changes: Record<number, "up" | "down"> = {};
 
-        getPortfolioValuationSnapshots({
-            search,
-            pageNumber,
-            pageSize: PAGE_SIZE,
-            sortBy,
-            sortDir,
+    for (const item of data.items ?? []) {
+        if (
+            item.isLocked ||
+            item.currentPortfolioValue == null
+        ) {
+            continue;
+        }
+
+        const previousValue =
+            previousPortfolioValuesRef.current.get(item.companyId);
+
+        const currentValue = item.currentPortfolioValue;
+
+        if (previousValue !== undefined) {
+            if (currentValue > previousValue) {
+                changes[item.companyId] = "up";
+            } else if (currentValue < previousValue) {
+                changes[item.companyId] = "down";
+            }
+        }
+
+        previousPortfolioValuesRef.current.set(
+            item.companyId,
+            currentValue,
+        );
+    }
+
+    setPortfolioChanges(changes);
+
+    if (Object.keys(changes).length === 0) {
+        return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+        setPortfolioChanges({});
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+}, [data]);
+
+// Read persisted PortfolioValuationSnapshots.
+useEffect(() => {
+    let active = true;
+
+    setLoading(true);
+    setError(null);
+
+    getPortfolioValuationSnapshots({
+        search,
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        sortBy,
+        sortDir,
+    })
+        .then(result => {
+            if (active) {
+                setData(result);
+            }
         })
-            .then(result => {
-                if (active) {
-                    setData(result);
-                }
-            })
-            .catch((err: unknown) => {
-                if (active) {
-                    setError(
-                        err instanceof Error
-                            ? err.message
-                            : "LOAD_ERROR",
-                    );
-                }
-            })
-            .finally(() => {
-                if (active) {
-                    setLoading(false);
-                }
-            });
+        .catch((err: unknown) => {
+            if (active) {
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "LOAD_ERROR",
+                );
+            }
+        })
+        .finally(() => {
+            if (active) {
+                setLoading(false);
+            }
+        });
 
-        return () => {
-            active = false;
-        };
-    }, [search, pageNumber, sortBy, sortDir, refreshVersion]);
+    return () => {
+        active = false;
+    };
+}, [search, pageNumber, sortBy, sortDir, refreshVersion]);
 
-    const totalCount = data?.totalCount ?? 0;
-
+const totalCount = data?.totalCount ?? 0;
     const totalPages = Math.max(
         1,
         Math.ceil(totalCount / PAGE_SIZE),
     );
-
     const items = data?.items ?? [];
-
     const openDetails = async (
         item: PortfolioValuationItem,
     ) => {
@@ -169,21 +205,63 @@ export default function PortfolioValuationSnapshotsPage() {
             }
         }
     };
+    //
+    useEffect(() => { if (!data) return;
+
+    const changes: Record<number, "up" | "down"> = {};
+
+    for (const item of data.items ?? []) {
+        if (
+            item.isLocked ||
+            item.currentSharePrice == null
+        ) {
+            continue;
+        }
+
+        const previousPrice =
+            previousPricesRef.current.get(item.companyId);
+
+        const currentPrice = item.currentSharePrice;
+
+        if (previousPrice !== undefined) {
+            if (currentPrice > previousPrice) {
+                changes[item.companyId] = "up";
+            } else if (currentPrice < previousPrice) {
+                changes[item.companyId] = "down";
+            }
+        }
+
+        previousPricesRef.current.set(
+            item.companyId,
+            currentPrice,
+        );
+    }
+
+    setPriceChanges(changes);
+
+    if (Object.keys(changes).length === 0) {
+        return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+        setPriceChanges({});
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+    }, [data]);
+    //
+    //
 
     return (
         <div className="space-y-6 p-6" dir={direction}>
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">
-                        {isPersian
-                            ? "ارزش‌گذاری پرتفوی — محاسبات آماده"
-                            : "Portfolio Valuation — Snapshots"}
+                        {tMarket("portfolioValuation.title")}
                     </h1>
 
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        {isPersian
-                            ? "ارزش‌گذاری شرکت‌ها بر اساس نتایج ذخیره‌شده CalculationWorker"
-                            : "Portfolio valuations from persisted CalculationWorker results"}
+                    <p className="mt-2 text-muted-foreground">
+                        {tMarket("portfolioValuation.description")}
                     </p>
                 </div>
 
@@ -356,13 +434,16 @@ export default function PortfolioValuationSnapshotsPage() {
                                 </th>
                                 <th className="p-3 text-start">
                                     {tMarket("portfolioValuation.columns.sharePrice")}
-                                </th>
-                                <th className="p-3 text-start">
+                                </th>                                
+                                                             
+                                <th className="p-3">                                
                                     {tMarket("portfolioValuation.columns.scale")}
                                 </th>
-                                <th className="p-3 text-start">
-                                    {tMarket("portfolioValuation.columns.coverage")}
-                                </th>
+                                {isAdmin && (   
+                                   <th className="p-3 text-start">
+                                       {tMarket("portfolioValuation.columns.coverage")}
+                                   </th>)
+                                }
                                 <th className="p-3 text-start">
                                     {tMarket("portfolioValuation.columns.details")}
                                 </th>
@@ -379,84 +460,105 @@ export default function PortfolioValuationSnapshotsPage() {
                                 const complete =
                                     item.pricedListedPositionCount ===
                                     item.listedPositionCount;
-
+                                const lockedValue = (
+                                     <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                                         <LockKeyhole
+                                             className="size-3.5"
+                                             aria-hidden="true"
+                                         />
+                                         <span>••••</span>
+                                     </span>
+);
                                 return (
-                                    <tr
-                                        key={item.companyId}
-                                        className="border-b hover:bg-muted/30"
-                                    >
+                                    <tr key={item.companyId} className="border-b hover:bg-muted/30">
                                         <td className="p-3">
-                                            <div className="font-semibold">
-                                                {item.symbol ?? "—"}
+                                            <div className="flex items-center gap-1.5 font-semibold">
+                                               {item.isLocked && (
+                                               <LockKeyhole className="size-3.5 text-amber-500"
+                                                            aria-hidden="true"
+                                               />
+                                               )}
+                                               <span>{item.symbol ?? "—"}</span>
                                             </div>
                                             <div className="mt-1 text-xs text-muted-foreground">
                                                 {item.companyName}
                                             </div>
                                         </td>
-
                                         <td className="p-3">
                                             {item.periodEndDate}
                                         </td>
-
+                                       <td className={[                                       
+                                          "p-3 tabular-nums",                                          
+                                          "transition-colors duration-700 ease-out",                                          
+                                          "motion-reduce:transition-none",
+                                          !item.isLocked && portfolioChanges[item.companyId] === "up"                                          
+                                             ? "bg-emerald-500/20"                                             
+                                             : !item.isLocked && portfolioChanges[item.companyId] === "down"                                            
+                                                 ? "bg-rose-500/20"                                                 
+                                                 : "",    ].join(" ")}>                                                 
+                                          {item.isLocked                                          
+                                             ? lockedValue                                             
+                                             : formatNumber(item.currentPortfolioValue)}                                             
+                                        </td>
                                         <td className="p-3 tabular-nums">
-                                            {formatNumber(
-                                                item.currentPortfolioValue,
-                                            )}
+                                            {item.isLocked                                            
+                                               ? lockedValue                                               
+                                               : formatNumber(item.currentPortfolioValuePerShare)}
                                         </td>
-
-                                        <td className="p-3 tabular-nums">
-                                            {formatNumber(
-                                                item.currentPortfolioValuePerShare,
-                                            )}
+                                        <td className={["p-3 tabular-nums",                                        
+                                                        "transition-colors duration-700 ease-out",
+                                                        "motion-reduce:transition-none",
+                                                        !item.isLocked && priceChanges[item.companyId] === "up"
+                                                            ? "bg-emerald-500/20"
+                                                            : !item.isLocked && priceChanges[item.companyId] === "down"
+                                                              ? "bg-rose-500/20"
+                                                              : "",].join(" ")}>
+                                                 {item.isLocked                                                  
+                                                    ? (lockedValue)                                                     
+                                                    : (<>
+                                                         {formatNumber(item.currentSharePrice)}
+                                                         <div className="mt-1 text-xs text-muted-foreground">
+                                                             {item.currentSharePriceTradeDate}
+                                                         </div>
+                                                         </>
+                                                      )                                                      
+                                                 }
                                         </td>
-
-                                        <td className="p-3 tabular-nums">
-                                            {formatNumber(
-                                                item.currentSharePrice,
-                                            )}
-                                            <div className="mt-1 text-xs text-muted-foreground">
-                                                {item.currentSharePriceTradeDate}
-                                            </div>
+                                        <td className="p-3">                                        
+                                            {item.isLocked                                             
+                                                ? (lockedValue)                                        
+                                                : priceToPortfolioValuePercent == null                                                            
+                                                    ? ("—")                                                                
+                                                    : ( <span className=                                                               
+                                                           {priceToPortfolioValuePercent < 100                                                               
+                                                               ? "font-semibold text-emerald-600"                                                                   
+                                                               : priceToPortfolioValuePercent > 100                                                                   
+                                                                    ? "font-semibold text-rose-600"                                                                       
+                                                                    : "font-semibold"                                                                             
+                                                           }                                                           
+                                                        >
+                                                           {formatNumber(priceToPortfolioValuePercent, 2)}%
+                                                        </span>
+                                                      )}
                                         </td>
-
-                                        <td className="p-3">
-                                            {priceToPortfolioValuePercent == null
-                                                ? "—"
-                                                : (
-                                                    <span className={                                                    
-                                                      priceToPortfolioValuePercent < 100                                                      
-                                                         ? "font-semibold text-emerald-600"                                                         
-                                                         : priceToPortfolioValuePercent > 100                                                         
-                                                           ? "font-semibold text-rose-600"                                                           
-                                                           : "font-semibold"}                                                           
-                                                    >                                                    
-                                                      {formatNumber(priceToPortfolioValuePercent, 2)}%                                                      
-                                                    </span>
-                                                )}
-                                        </td>
-
-                                        <td className="p-3">
-                                            {formatNumber(
-                                                item.pricedListedPositionCount,
-                                            )}
-                                            {" / "}
-                                            {formatNumber(
-                                                item.listedPositionCount,
-                                            )}
-                                            {!complete && (
-                                                <div className="text-xs text-amber-600">
-                                                    {tMarket(
-                                                        "portfolioValuation.incompletePricing",
-                                                    )}
-                                                </div>
-                                            )}
-                                        </td>
-
+                                        {isAdmin &&                                         
+                                           (<td className="p-3">                                           
+                                               {item.isLocked                                                
+                                                  ? (lockedValue)                                                  
+                                                  : (<> {formatNumber(item.pricedListedPositionCount)}
+                                               {" / "}
+                                               {formatNumber(item.listedPositionCount)}
+                                               {!complete && (<div className="text-xs text-amber-600">
+                                                                {tMarket("portfolioValuation.incompletePricing")}
+                                                              </div>)}                                                              
+                                               </>                                               
+                                           )}
+                                            </td>)}
                                         <td className="p-3">
                                             <button
                                                 type="button"
                                                 className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
-                                                disabled={detailsLoadingId !== null}
+                                                disabled={item.isLocked || detailsLoadingId !== null}
                                                 onClick={() =>
                                                     void openDetails(item)
                                                 }
@@ -478,7 +580,7 @@ export default function PortfolioValuationSnapshotsPage() {
                             {items.length === 0 && (
                                 <tr>
                                     <td
-                                        colSpan={8}
+                                        colSpan={isAdmin ? 8 : 7}
                                         className="p-8 text-center text-muted-foreground"
                                     >
                                         {loading

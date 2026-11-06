@@ -29,6 +29,12 @@ function lazyNamed<T extends Record<string, unknown>, K extends keyof T>(
 }
 
 const LoginPage = lazyNamed(() => import("@/pages/login"), "LoginPage");
+const RegisterPage = lazy(() =>
+    import("@/pages/register").then((module) => ({
+        default: module.RegisterPage,
+    })),
+);
+
 const ForgotPasswordPage = lazyNamed(
   () => import("@/pages/auth/forgot-password"),
   "ForgotPasswordPage",
@@ -192,6 +198,11 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: withSuspense(<LoginPage />),
+    errorElement: <RouteError />,
+  },
+  {
+    path: "/register",
+    element: withSuspense(<RegisterPage />),
     errorElement: <RouteError />,
   },
   {

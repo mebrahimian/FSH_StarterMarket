@@ -169,9 +169,18 @@ export function PortfolioReportDialog({
                 (a.endingCost ?? 0),
         );
     const totalPositions = listedPositions.length + unlistedPositions.length;
+    const listedDisplayMarketValue = report.positions
+    .filter((position) => position.isListed)
+    .reduce(
+        (total, position) =>
+            total + (getDisplayMarketValue(position) ?? 0),
+        0,
+    );
+
     const totalReportedPortfolioValue =
-        (report.listedReportedMarketValue ?? 0) +
-        (report.unlistedReportedValue ?? 0);
+    listedDisplayMarketValue +
+    (report.unlistedReportedValue ?? 0);
+
     const financialTarget =
         isFinancial
             ? (
@@ -443,7 +452,7 @@ export function PortfolioReportDialog({
                         label={tMarket(
                             "portfolioViewer.summary.listedReportedMarketValue",
                         )}
-                        value={report.listedReportedMarketValue}
+                        value={listedDisplayMarketValue}
                         locale={numberLocale}
                     />
 
@@ -755,7 +764,7 @@ function PortfolioRow({
             />
 
             <NumberCell
-                value={position.endingMarketValue}
+                value={getDisplayMarketValue(position)}
                 locale={locale}
             />
 
@@ -801,4 +810,31 @@ function formatTradeDate(
     }
 
     return `${value.slice(0, 4)}/${value.slice(4, 6)}/${value.slice(6, 8)}`;
+}
+function getDisplayMarketValue(position: {
+    isListed: boolean;
+    endingMarketValue?: number | null;
+    endingQuantity?: number | null;
+    endingCost?: number | null;
+    currentPrice?: number | null;
+}): number | null {
+    const reported = position.endingMarketValue ?? null;
+
+    if (!position.isListed || (reported !== null && reported > 0)) {
+        return reported;
+    }
+
+    const quantity = position.endingQuantity ?? 0;
+
+    if (quantity <= 0) {
+        return reported;
+    }
+
+    const price = position.currentPrice;
+
+    if (price != null && price > 0) {
+        return quantity * price / 1_000_000;
+    }
+
+    return position.endingCost ?? reported;
 }

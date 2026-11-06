@@ -158,7 +158,6 @@ export default function PortfolioValuationPage() {
             }
         }
     };
-
     return (
         <div
             className="space-y-6 p-6"

@@ -180,7 +180,7 @@
     "ascending": "Ascending",
     "descending": "Descending",
     "sortOptions": {
-      "discount": "Discount Percentage",
+      "discount": "Price/Portfolio",
       "symbol": "Symbol",
       "portfolioValue": "Portfolio Value",
       "valuePerShare": "Value per Share",
@@ -245,6 +245,21 @@
     "availablePlans": "Subscription Plans",
     "durationMonths": "{{count}} months",
     "discount": "Discount",
-    "toman": "toman"
+    "toman": "toman",
+    "selectedStocks": "Selected Stocks",
+    "portfolioValuationStocks": "Portfolio Valuation Stocks",
+    "selectionUsage": "{{selected}} of {{limit}} selections used",
+    "valuationSelectionUsage": "{{fixed}} fixed stocks + {{selected}} of {{limit}} available selections used",
+    "symbolSlots": {
+      "unlimited": "Unlimited access",
+      "fixedCount": "{{count}} fixed stocks",
+      "remaining": "{{count}} slots remaining",
+      "allAvailable": "All stocks are available without selection.",
+      "unavailable": "Stock selection is not available on this plan.",
+      "locked": "Permanent selection, cannot be changed",
+      "choose": "Select stock",
+      "chooseSlot": "Select stock for slot {{index}}",
+      "permanentNotice": "Saved selections are permanent and cannot be removed or changed."
+    }
   }
 }

@@ -7,7 +7,8 @@ namespace FSH.Modules.MarketIntelligence.Services.Tsetmc.Jobs;
 public sealed class TsetmcBackgroundJob(
     PriceHistoryCollectorService priceHistoryCollector,
     TsetmcShareChangeCollectorService shareChangeCollector,
-    BackgroundJobStatusService jobStatusService)
+    BackgroundJobStatusService jobStatusService,
+    ILogger<TsetmcBackgroundJob> logger)
 {
     public async Task RunIncrementalAsync(CancellationToken cancellationToken)
     {
@@ -39,9 +40,22 @@ public sealed class TsetmcBackgroundJob(
                     .ConfigureAwait(false);
 
                 // 2. Collect historical share changes
-                await shareChangeCollector
-                    .CollectAsync(cancellationToken)
-                    .ConfigureAwait(false);
+                try
+                {
+                    await shareChangeCollector
+                        .CollectAsync(cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (InvalidOperationException ex)
+                    when (ex.Message.StartsWith(
+                        "TSETMC share changes incomplete.",
+                        StringComparison.Ordinal))
+                {
+
+                    logger.LogWarning(ex,
+                        "DailyPrice and valuations completed, but ShareChanges was partially unsuccessful: {Details}",
+                        ex.Message);
+                }
             },
             cancellationToken)
             .ConfigureAwait(false);

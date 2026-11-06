@@ -9,20 +9,44 @@ using Microsoft.AspNetCore.Routing;
 
 namespace FSH.Modules.Identity.Features.v1.Users.SelfRegistration;
 
+public sealed record SelfRegisterRequest(
+    string Email,
+    string Password);
 public static class SelfRegisterUserEndpoint
 {
     internal static RouteHandlerBuilder MapSelfRegisterUserEndpoint(this IEndpointRouteBuilder endpoints)
     {
-        return endpoints.MapPost("/self-register", async (RegisterUserCommand command,
+        return endpoints.MapPost("/self-register", async (SelfRegisterRequest request,
             [FromHeader(Name = MultitenancyConstants.Identifier)] string tenant,
             HttpContext context,
             IMediator mediator,
             CancellationToken cancellationToken) =>
         {
-            var origin = $"{context.Request.Scheme}://{context.Request.Host.Value}{context.Request.PathBase.Value}";
-            command.Origin = origin;
-            var result = await mediator.Send(command, cancellationToken);
-            return TypedResults.Created($"/api/v1/identity/users/{result.UserId}", result);
+            var origin =
+    $"{context.Request.Scheme}://{context.Request.Host.Value}{context.Request.PathBase.Value}";
+
+            var command = new RegisterUserCommand
+            {
+                Email = request.Email.Trim(),
+                Password = request.Password,
+                ConfirmPassword = request.Password,
+
+                FirstName = "User",
+                LastName = "New",
+
+                UserName = $"user_{Guid.NewGuid():N}",
+                PhoneNumber = string.Empty,
+
+                Origin = origin
+            };
+
+            var result = await mediator.Send(
+                command,
+                cancellationToken);
+
+            return TypedResults.Created(
+                $"/api/v1/identity/users/{result.UserId}",
+                result);
         })
         .WithName("SelfRegisterUser")
         .WithSummary("Self register user")

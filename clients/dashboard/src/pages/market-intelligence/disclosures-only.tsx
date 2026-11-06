@@ -1,5 +1,4 @@
-
-import { useState, type FormEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { apiFetch } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 
@@ -9,7 +8,7 @@ export function DisclosuresOnlyPage() {
     const [running, setRunning] = useState(false);
     const [message, setMessage] = useState("");
 
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
         event.preventDefault();
 
         const datePattern = /^\d{4}\/\d{2}\/\d{2}$/;

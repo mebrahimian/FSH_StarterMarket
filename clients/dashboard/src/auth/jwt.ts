@@ -10,6 +10,10 @@ export type JwtClaims = {
    */
   unique_name?: string;
   tenant?: string;
+  role?: string | string[];
+  roles?: string | string[];
+  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"?: string | string[];
+
   permissions?: string[] | string;
   exp?: number;
   /**
@@ -52,3 +56,23 @@ export function isTokenExpired(claims: JwtClaims | null, skewMs = 10_000): boole
   if (!claims || typeof claims.exp !== "number") return false;
   return claims.exp * 1000 <= Date.now() + skewMs;
 }
+export function hasAdminRole(claims: JwtClaims | null): boolean {
+    if (!claims) return false;
+
+    const values = [
+        claims.role,
+        claims.roles,
+        claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
+    ];
+
+    return values.some(value => {
+        const roles = Array.isArray(value)
+            ? value
+            : value ? [value] : [];
+
+        return roles.some(role =>
+            role.toLowerCase() === "admin"
+        );
+    });
+}
+

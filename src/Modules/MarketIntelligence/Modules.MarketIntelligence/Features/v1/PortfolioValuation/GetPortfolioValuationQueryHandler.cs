@@ -7,6 +7,7 @@ using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Subscriptions;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using FSH.Modules.MarketIntelligence.Features.v1.UserSubscriptions;
 using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 
 namespace FSH.Modules.MarketIntelligence.Features.v1.PortfolioValuation;
@@ -14,7 +15,7 @@ namespace FSH.Modules.MarketIntelligence.Features.v1.PortfolioValuation;
 public sealed class GetPortfolioValuationQueryHandler(
     MarketIntelligenceDbContext dbContext,
     IMarketPriceProvider marketPriceProvider,
-    LatestDataAccessService latestDataAccessService)
+    IMediator mediator)
     : IQueryHandler<
         GetPortfolioValuationQuery,
         PagedResponse<PortfolioValuationItemDto>>
@@ -30,8 +31,45 @@ public sealed class GetPortfolioValuationQueryHandler(
             ? 20
             : query.PageSize;
 
-        var accessScope = await latestDataAccessService
-    .GetScopeAsync(cancellationToken);
+        var selections = await mediator.Send(
+    new GetMySubscriptionSelectionsQuery(),
+    cancellationToken);
+
+        bool allValuations =
+            selections.PlanKey == "premium" &&
+            selections.MaxPortfolioValuationSymbols == -1;
+
+        int selectionLimit =
+            selections.PlanKey == "free"
+                ? 0
+                : Math.Max(0, selections.MaxPortfolioValuationSymbols);
+
+        HashSet<int> selectedValuationIds = selections
+            .SelectedPortfolioValuationCompanyIds
+            .Take(selectionLimit)
+            .Select(x => x.CompanyId)
+            .ToHashSet();
+        var companyRows = await dbContext.CompanyMaster
+    .AsNoTracking()
+    .Select(c => new
+    {
+        c.CompanyId,
+        c.Symbol,
+        c.CompanyName
+    })
+    .ToListAsync(cancellationToken);
+
+        var companies = companyRows.ToDictionary(c => c.CompanyId);
+
+        var fixedCompanyIds = companyRows
+            .Where(c => c.Symbol is "شستا" or "وغدیر" or "وبانک")
+            .Select(c => c.CompanyId)
+            .ToHashSet();
+
+        bool CanAccessLatestValuation(int companyId) =>
+              allValuations ||
+              fixedCompanyIds.Contains(companyId) ||
+              selectedValuationIds.Contains(companyId);
 
         var reportHeaders = await dbContext.InvestmentPortfolioPositions
             .AsNoTracking()
@@ -46,45 +84,30 @@ public sealed class GetPortfolioValuationQueryHandler(
             .ToListAsync(cancellationToken);
 
         var latestReports = reportHeaders
-            .GroupBy(p => p.ParentCompanyId)
-            .Select(group =>
-            {
-                var ordered = group
-                    .OrderByDescending(p => p.PeriodEndDate)
-                    .ThenByDescending(p => p.PublishDateTime)
-                    .ToList();
-
-                var latest = ordered[0];
-
-                bool canAccessLatest =
-                    accessScope.AllCompanies ||
-                    accessScope.CanAccessLatest(group.Key);
-
-                if (canAccessLatest)
-                {
-                    return latest;
-                }
-
-                // Exclude the entire latest reporting period.
-                // Use the newest older period available.
-                return ordered.FirstOrDefault(p =>
-                    p.PeriodEndDate != latest.PeriodEndDate);
-            })
-            .Where(p => p is not null)
-            .Select(p => p!)
+    .GroupBy(p => p.ParentCompanyId)
+    .Select(group =>
+    {
+        var ordered = group
+            .OrderByDescending(p => p.PeriodEndDate)
+            .ThenByDescending(p => p.PublishDateTime)
             .ToList();
-        var companyRows = await dbContext.CompanyMaster
-            .AsNoTracking()
-            .Select(c => new
-            {
-                c.CompanyId,
-                c.Symbol,
-                c.CompanyName
-            })
-            .ToListAsync(cancellationToken);
 
-        var companies = companyRows.ToDictionary(c => c.CompanyId);
+        var latest = ordered[0];
 
+        bool canAccessLatest =
+            CanAccessLatestValuation(group.Key);
+
+        if (canAccessLatest)
+        {
+            return latest;
+        }
+
+        return ordered.FirstOrDefault(p =>
+            p.PeriodEndDate != latest.PeriodEndDate);
+    })
+    .Where(p => p is not null)
+    .Select(p => p!)
+    .ToList();
         string? search = string.IsNullOrWhiteSpace(query.Search)
             ? null
             : NormalizeForMatch(query.Search);
@@ -150,10 +173,8 @@ public sealed class GetPortfolioValuationQueryHandler(
                 )?.RegisteredCapital);
 
         var currentReports = latestReports
-    .Where(r =>
-        accessScope.AllCompanies ||
-        accessScope.CanAccessLatest(r.ParentCompanyId))
-    .ToList();
+            .Where(r => CanAccessLatestValuation(r.ParentCompanyId))
+            .ToList();
 
         var currentDisclosureIds = currentReports
             .Select(r => r.DisclosureId)
@@ -180,10 +201,11 @@ public sealed class GetPortfolioValuationQueryHandler(
 
         foreach (var report in latestReports)
         {
-            bool canAccessLatest =
-                accessScope.AllCompanies ||
-                accessScope.CanAccessLatest(report.ParentCompanyId);
-
+            bool canAccessLatest = CanAccessLatestValuation(report.ParentCompanyId);
+            if (!canAccessLatest)
+            {
+                continue;
+            }
             var reportPositions =
                 positionsByDisclosure[report.DisclosureId].ToList();
 

@@ -25,6 +25,8 @@ public sealed class UserPlanLimitConfiguration
 
         builder.Property(x => x.MaxSymbolsPerIndustry)
             .IsRequired();
+        builder.Property(x => x.MaxPortfolioValuationSymbols)
+            .IsRequired();
 
         // هر پلن فقط یک مجموعه محدودیت دارد.
         builder.HasIndex(x => x.PlanKey)

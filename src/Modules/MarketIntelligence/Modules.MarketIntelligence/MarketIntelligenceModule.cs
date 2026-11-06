@@ -50,7 +50,7 @@ using Microsoft.Extensions.Hosting;
 using Modules.MarketIntelligence.Authorization;
 using Modules.MarketIntelligence.Services.Codal.Processors;
 using FSH.Modules.MarketIntelligence.Services.Calculations;
-
+using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 [assembly: FshModule(typeof(FSH.Modules.MarketIntelligence.MarketIntelligenceModule), 600)]
 
 namespace FSH.Modules.MarketIntelligence
@@ -170,6 +170,8 @@ namespace FSH.Modules.MarketIntelligence
             group.MapSearchDisclosuresEndpoint();
             group.MapGetFiscalYearSalesEndpoint();
             group.MapGetMySubscriptionEndpoint();
+            group.MapGetMySubscriptionSelectionsEndpoint();
+            group.MapSelectSubscriptionSymbolEndpoint();
             group.MapGetSubscriptionPlansEndpoint();
             group.MapCreateUserPaymentRequestEndpoint();
             group.MapGetMyPendingPaymentRequestEndpoint();
@@ -557,6 +559,62 @@ namespace FSH.Modules.MarketIntelligence
 
                return Results.Ok(profiles);
             });
+            group.MapGet("/subscriptions/companies",
+                async Task<IResult> (
+                    string search,
+                    int purpose,
+                    MarketIntelligenceDbContext dbContext,
+                    CancellationToken cancellationToken) =>
+            {
+                search = search?.Trim() ?? string.Empty;
+
+                if (purpose is not (1 or 2))
+                    return Results.BadRequest("Invalid purpose.");
+
+                if (search.Length < 2)
+                    return Results.Ok(Array.Empty<object>());
+
+                // Normalize search using the existing SQL function
+                string normalizedSearch = await dbContext.Database
+                    .SqlQuery<string>(
+                        $"SELECT dbo.NormalizeForMatch({search}) AS [Value]")
+                    .SingleAsync(cancellationToken);
+
+                var companies = dbContext.Database
+                    .SqlQuery<SubscriptionCompanySearchRow>($"""
+        SELECT
+            CompanyId,
+            Symbol,
+            CompanyName,
+            NormalizedSymbol,
+            NormalizedName
+        FROM marketintelligence.MasterInfo
+        """);
+
+                var filtered = companies.Where(x =>
+                    (x.NormalizedSymbol.Contains(normalizedSearch)) ||
+                    (x.NormalizedName != null &&
+                     x.NormalizedName.Contains(normalizedSearch)));
+                if (purpose == 2)
+                {
+                    string[] fixedSymbols =[NormalizeForMatch("شستا"),
+                                            NormalizeForMatch("وغدیر"),
+                                            NormalizeForMatch("وبانک")
+                                           ];
+                    filtered = filtered.Where(x =>
+                        !fixedSymbols.Contains(x.NormalizedSymbol) &&
+                        dbContext.InvestmentPortfolioPositions
+                            .Any(p => p.ParentCompanyId == x.CompanyId));
+                }
+                var result = await filtered
+                    .OrderByDescending(x => x.Symbol == search)
+                    .ThenByDescending(x => x.Symbol.StartsWith(search))
+                    .ThenBy(x => x.Symbol)
+                    .Take(20)
+                    .ToListAsync(cancellationToken);
+                return Results.Ok(result);                
+            })
+              .RequireAuthorization();
             ////////////////////
             group.MapPost("/codal/parse-pending", (IJobService jobService) =>
                 {

@@ -23,3 +23,29 @@ export function issueToken(input: {
     skipAuth: true,
   });
 }
+
+export type SelfRegisterRequest = {
+  email: string;
+  password: string;
+};
+
+export type SelfRegisterResponse = {
+  userId: string;
+};
+
+export function selfRegister(
+  input: SelfRegisterRequest,
+): Promise<SelfRegisterResponse> {
+  return apiFetch<SelfRegisterResponse>(
+    "/api/v1/identity/self-register",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: {
+        tenant: "marketintelligence",
+        "X-FSH-App": "dashboard",
+      },
+      skipAuth: true,
+    },
+  );
+}

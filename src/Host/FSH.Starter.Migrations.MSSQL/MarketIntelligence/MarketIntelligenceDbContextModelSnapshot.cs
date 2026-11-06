@@ -1645,6 +1645,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("MaxPortfolioValuationSymbols")
+                        .HasColumnType("int");
+
                     b.Property<int>("MaxSelectedSymbols")
                         .HasColumnType("int");
 
@@ -1662,6 +1665,40 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .IsUnique();
 
                     b.ToTable("UserPlanLimits", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserSelectedPortfolioValuationSymbol", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SelectedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "UserId", "CompanyId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "UserId", "SelectedAtUtc");
+
+                    b.ToTable("UserSelectedPortfolioValuationSymbols", "marketintelligence");
+
+                    b.HasAnnotation("Finbuckle:MultiTenant", true);
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.UserSelectedSymbol", b =>

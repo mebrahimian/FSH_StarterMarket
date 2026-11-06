@@ -25,5 +25,47 @@
   },
   "combobox": {
     "all": "همه"
+  },
+  "auth": {
+    "register": {
+      "title": "ایجاد حساب کاربری",
+      "firstName": "نام",
+      "lastName": "نام خانوادگی",
+      "submit": "ثبت‌نام",
+      "success": "ثبت‌نام با موفقیت انجام شد",
+      "subtitle": "هوشمندی بازار سرمایه",
+      "email": "ایمیل",
+      "userName": "نام کاربری",
+      "phoneNumber": "شماره موبایل (اختیاری)",
+      "password": "رمز عبور",
+      "confirmPassword": "تکرار رمز عبور",
+      "submitting": "در حال ثبت‌نام...",
+      "passwordMismatch": "رمز عبور و تکرار آن یکسان نیستند.",
+      "registrationFailed": "ثبت‌نام ناموفق بود.",
+      "successDescription": "برای فعال‌سازی حساب، ایمیل خود را بررسی کرده و روی لینک تأیید کلیک کنید.",
+      "backToLogin": "بازگشت به صفحه ورود",
+      "alreadyRegistered": "قبلاً ثبت‌نام کرده‌اید؟",
+      "login": "ورود به حساب"
+    },
+    "login": {
+      "secureBadge": "ورود امن",
+      "title": "ورود به سامانه",
+      "tagline": "تحلیل، کشف، تصمیم بهتر",
+      "dragHint": "برای جابه‌جایی بکشید",
+      "email": "ایمیل",
+      "password": "رمز عبور",
+      "forgotPassword": "رمز را فراموش کرده‌اید؟",
+      "showPassword": "نمایش رمز عبور",
+      "hidePassword": "پنهان کردن رمز عبور",
+      "workspaceSettings": "تنظیمات فضای کاری",
+      "tenant": "فضای کاری",
+      "submitting": "در حال ورود...",
+      "submit": "ورود به صدف بورس",
+      "demo": "ورود با حساب آزمایشی",
+      "noAccount": "حساب کاربری ندارید؟",
+      "register": "ثبت‌نام کنید",
+      "inactivityNotice": "به دلیل عدم فعالیت، نشست قبلی شما پایان یافت.",
+      "loginFailed": "ورود به سامانه ناموفق بود."
+    }
   }
-}
+  }

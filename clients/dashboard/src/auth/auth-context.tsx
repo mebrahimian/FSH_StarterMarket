@@ -1,7 +1,7 @@
 import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { tokenStore } from "@/auth/token-store";
-import { decodeJwt, isTokenExpired, type JwtClaims } from "@/auth/jwt";
+import { decodeJwt, hasAdminRole, isTokenExpired, type JwtClaims } from "@/auth/jwt";
 import { issueToken } from "@/auth/api";
 import { refreshAccessToken } from "@/lib/api-client";
 import { endImpersonation, getMyPermissions, startImpersonation } from "@/api/identity";
@@ -12,6 +12,7 @@ export type AuthUser = {
   name?: string;
   tenant?: string;
   permissions: string[];
+  isAdmin: boolean;
 };
 
 export type ImpersonationInfo = {
@@ -80,7 +81,8 @@ function claimsToUser(claims: JwtClaims | null, permissions: string[]): AuthUser
     name,
     tenant: claims.tenant,
     permissions,
-  };
+    isAdmin: hasAdminRole(claims),
+   };
 }
 
 function claimsToImpersonation(claims: JwtClaims | null): ImpersonationInfo | null {

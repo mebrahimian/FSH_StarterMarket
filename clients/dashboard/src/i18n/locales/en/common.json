@@ -25,5 +25,47 @@
   },
   "combobox": {
     "all": "ALL"
+  },
+  "auth": {
+    "register": {
+      "title": "Create an Account",
+      "firstName": "First Name",
+      "lastName": "Last Name",
+      "submit": "Sign Up",
+      "success": "Registration completed successfully",
+      "subtitle": "Capital Market Intelligence",
+      "email": "Email",
+      "userName": "Username",
+      "phoneNumber": "Mobile Number (Optional)",
+      "password": "Password",
+      "confirmPassword": "Confirm Password",
+      "submitting": "Registering...",
+      "passwordMismatch": "Password and confirmation do not match.",
+      "registrationFailed": "Registration failed.",
+      "successDescription": "To activate your account, check your email and click the confirmation link.",
+      "backToLogin": "Back to Login",
+      "alreadyRegistered": "Already have an account?",
+      "login": "Sign In"
+    },
+    "login": {
+      "secureBadge": "Secure Login",
+      "title": "Sign In",
+      "tagline": "Analyze, Discover, Decide Better",
+      "dragHint": "Drag to move",
+      "email": "Email",
+      "password": "Password",
+      "forgotPassword": "Forgot your password?",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "workspaceSettings": "Workspace Settings",
+      "tenant": "Workspace",
+      "submitting": "Signing in...",
+      "submit": "Sign In to Sadaf Bourse",
+      "demo": "Sign In with a Demo Account",
+      "noAccount": "Don't have an account?",
+      "register": "Sign Up",
+      "inactivityNotice": "Your previous session ended due to inactivity.",
+      "loginFailed": "Sign-in failed."
+    }
   }
-}
+  }
