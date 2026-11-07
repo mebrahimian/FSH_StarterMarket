@@ -5,9 +5,7 @@ using System.Net;
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Portfolio;
 
 public sealed class InvestmentPortfolioReader(
-    HttpClient httpClient,
-    IOptions<CodalOptions> options,
-    CodalRequestGate requestGate)
+    CodalReportHtmlDownloader htmlDownloader)
 {
     internal async Task<IReadOnlyList<InvestmentPortfolioSheetData>> ReadAsync(
         string disclosureUrl,
@@ -23,8 +21,9 @@ public sealed class InvestmentPortfolioReader(
 
         foreach (PortfolioSheet sheet in sheets)
         {
-            Uri reportUri = BuildReportUri(sheet.Url);
-            string html =  await DownloadHtmlWithRetryAsync(reportUri, cancellationToken);
+            string html = await htmlDownloader.DownloadAsync(
+                sheet.Url,
+                cancellationToken);
             CodalTableData? tableData = CodalCellReader.ReadTableData(html, sheet.MetaTableCode);
             if (tableData is null)
             {
@@ -39,125 +38,9 @@ public sealed class InvestmentPortfolioReader(
                      Metadata: tableData.Metadata,
                      Rows: tableData.Rows));
         }
-
         return result;
-    }
-
-    private Uri BuildReportUri(
-        string disclosureUrl)
-    {
-        if (Uri.TryCreate(
-                disclosureUrl,
-                UriKind.Absolute,
-                out Uri? absoluteUri))
-        {
-            return absoluteUri;
-        }
-
-        return new Uri(
-            new Uri(options.Value.BaseUrl),
-            disclosureUrl);
-    }
-
-    private async Task<string> DownloadHtmlWithRetryAsync(
-        Uri reportUri,
-        CancellationToken cancellationToken)
-    {
-        const int maxAttempts = 3;
-
-        Exception? lastException = null;
-
-        for (int attempt = 1;
-             attempt <= maxAttempts;
-             attempt++)
-        {
-            try
-            {
-                using HttpResponseMessage response =
-    await requestGate.ExecuteAsync(
-        async ct =>
-        {
-            using var request =
-                new HttpRequestMessage(
-                    HttpMethod.Get,
-                    reportUri);
-
-            request.Version =
-                HttpVersion.Version11;
-
-            request.VersionPolicy =
-                HttpVersionPolicy.RequestVersionOrLower;
-
-            HttpResponseMessage result =
-                await httpClient.SendAsync(
-                    request,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    ct);
-
-            if (
-                result.StatusCode ==
-                HttpStatusCode.TooManyRequests)
-            {
-                result.Dispose();
-
-                throw new HttpRequestException(
-                    "Codal rate limit triggered (HTTP 429).",
-                    null,
-                    HttpStatusCode.TooManyRequests);
-            }
-
-            return result;
-        },
-        cancellationToken);
-
-                if ((int)response.StatusCode == 490)
-                {
-                    throw new HttpRequestException(
-                        "Codal rate limit/security verification triggered (HTTP 490).",
-                        null,
-                        response.StatusCode);
-                }
-
-                response.EnsureSuccessStatusCode();
-
-                return await response.Content
-                    .ReadAsStringAsync(
-                        cancellationToken);
-            }
-            catch (OperationCanceledException)
-                when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (HttpRequestException ex)
-            {
-                lastException = ex;
-            }
-            catch (IOException ex)
-            {
-                lastException = ex;
-            }
-            catch (OperationCanceledException ex)
-            {
-                lastException = ex;
-            }
-
-            if (attempt < maxAttempts)
-            {
-                await Task.Delay(
-                    TimeSpan.FromSeconds(
-                        attempt * 5),
-                    cancellationToken);
-            }
-        }
-
-        throw new HttpRequestException(
-            $"Downloading Codal portfolio report failed after " +
-            $"{maxAttempts} attempts. Url: {reportUri}",
-            lastException);
-    }
+    }    
 }
-
 internal sealed record InvestmentPortfolioSheetData(
     int SheetId,
     int MetaTableCode,

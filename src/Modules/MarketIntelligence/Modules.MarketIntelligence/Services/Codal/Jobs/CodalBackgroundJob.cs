@@ -229,6 +229,16 @@ public sealed class CodalBackgroundJob(
                 nextEndPage,
                 CancellationToken.None));
     }
+    public async Task RunCapitalIncreaseBackfillChunkAsync(
+    int startPage,
+    int endPage,
+    CancellationToken cancellationToken)
+    {
+        await collectorService.CollectCapitalIncreaseBackfillChunkAsync(
+            startPage,
+            endPage,
+            cancellationToken);
+    }
 
 
 }

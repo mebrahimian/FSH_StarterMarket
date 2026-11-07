@@ -25,6 +25,41 @@ public sealed class InstrumentShareChangeConfiguration :
 
         builder.Property(x => x.NewShares)
             .IsRequired();
+        // Codal registration metadata
+
+        builder.Property(x => x.CodalDisclosureId)
+            .IsRequired(false);
+
+        builder.Property(x => x.AssemblyDate)
+            .HasColumnType("date");
+
+        builder.Property(x => x.RegistrationDate)
+            .HasColumnType("date");
+
+        // Registered capital
+
+        builder.Property(x => x.PreviousCapital)
+            .HasPrecision(28, 6);
+
+        builder.Property(x => x.NewCapital)
+            .HasPrecision(28, 6);
+
+        // Capital increase sources
+
+        builder.Property(x => x.CashIncoming)
+            .HasPrecision(28, 6);
+
+        builder.Property(x => x.RetainedEarnings)
+            .HasPrecision(28, 6);
+
+        builder.Property(x => x.Reserves)
+            .HasPrecision(28, 6);
+
+        builder.Property(x => x.SharePremium)
+            .HasPrecision(28, 6);
+
+        builder.Property(x => x.RevaluationSurplus)
+            .HasPrecision(28, 6);
 
         builder.HasIndex(
                 x => new

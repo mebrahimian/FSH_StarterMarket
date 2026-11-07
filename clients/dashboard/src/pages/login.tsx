@@ -418,7 +418,7 @@ return (
                                 !password ||
                                 !tenant
                             }
-                            className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[var(--color-primary)] to-[var(--color-primary-hover)] px-4 text-[13px] font-black text-white shadow-[0_12px_28px_oklch(from_var(--color-primary)_l_c_h_/_0.24)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+                            className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-[var(--color-primary)] to-[var(--color-primary-hover)] px-4 text-[13px] font-black text-white shadow-[0_12px_28px_oklch(from_var(--color-primary)_l_c_h_/_0.24)] transition cursor-pointer hover:-translate-y-0.5 disabled:cursor-default disabled:opacity-50 disabled:hover:translate-y-0"
                         >
                             {submitting ? (
                                 <>

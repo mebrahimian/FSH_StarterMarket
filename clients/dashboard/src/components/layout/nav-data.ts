@@ -161,13 +161,7 @@ export const sections: NavSection[] = [
     caption: "Portfolio Intelligence",
     captionKey: "sections.portfolioIntelligence",
     icon: Activity,
-    items: [
-        {
-            to: "/portfolio-intelligence/valuation",
-            label: "Portfolio Valuation",
-            labelKey: "items.portfolioValuation",
-            icon: Activity,
-        },
+    items: [        
         {
             to: "/portfolio-intelligence/valuations",
             label: "Portfolio Valuations (Snapshots)",

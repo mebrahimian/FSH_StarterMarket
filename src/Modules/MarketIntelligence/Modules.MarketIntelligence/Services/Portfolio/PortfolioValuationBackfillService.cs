@@ -213,13 +213,15 @@ public sealed class PortfolioValuationBackfillService(
                                     report.DisclosureId,
                                     valuationDate,
                                     cancellationToken);
-
+                            int validCompanyId = companyId
+                               ?? throw new InvalidOperationException("CompanyId is required for portfolio valuation.");
                             await snapshotService.UpsertAsync(
-                                report.CompanyId,
-                                report.PeriodEndDate,
+                                validCompanyId,
+                                period.PeriodEndDate,
                                 report.DisclosureId,
                                 valuation,
                                 valuationDate,
+                                null,
                                 cancellationToken);
 
                             companyProcessed++;

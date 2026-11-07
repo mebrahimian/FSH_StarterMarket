@@ -267,10 +267,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
         }
         _logger.LogInformation("Disclosure Reading is completed.");
     }
-    public async Task CollectDisclosuresOnlyAsync(
-    string fromDate,
-    string toDate,
-    CancellationToken cancellationToken = default)
+    public async Task CollectDisclosuresOnlyAsync(string fromDate, string toDate, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
         ArgumentException.ThrowIfNullOrWhiteSpace(toDate);
@@ -482,10 +479,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             createdCount);
         }
     }
-    public async Task CollectHistoricalRebuildAsync(
-    string fromDate,
-    string toDate,
-    bool resumeFromCheckpoint = true, CancellationToken cancellationToken = default)
+    public async Task CollectHistoricalRebuildAsync(string fromDate, string toDate, bool resumeFromCheckpoint = true, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(fromDate);
         ArgumentException.ThrowIfNullOrWhiteSpace(toDate);
@@ -727,9 +721,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 monthlyPositions.Count);
         }
     }                  
-    private async Task ProcessHistoricalPageAsync(
-    Collection<CodalLetterDto> letters,
-    CancellationToken cancellationToken)
+    private async Task ProcessHistoricalPageAsync(Collection<CodalLetterDto> letters, CancellationToken cancellationToken)
     {
         if (letters.Count == 0)
         {
@@ -974,11 +966,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
     }
 
-    public Task CollectSymbolBackfillAsync(
-        string symbol,
-        string fromDate,
-        string toDate,
-        CancellationToken cancellationToken = default)
+    public Task CollectSymbolBackfillAsync(string symbol, string fromDate, string toDate, CancellationToken cancellationToken = default)
     {
         return CollectSymbolBackfillCoreAsync(
             symbol, fromDate, toDate,
@@ -986,11 +974,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             cancellationToken);
     }
 
-    public Task CollectInsightSymbolBackfillAsync(
-        string symbol,
-        string fromDate,
-        string toDate,
-        CancellationToken cancellationToken = default)
+    public Task CollectInsightSymbolBackfillAsync(string symbol, string fromDate, string toDate, CancellationToken cancellationToken = default)
     {
         return CollectSymbolBackfillCoreAsync(
             symbol, fromDate, toDate,
@@ -998,12 +982,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
             cancellationToken);
     }
 
-    private async Task CollectSymbolBackfillCoreAsync(
-        string symbol,
-        string fromDate,
-        string toDate,
-        bool insightOnly,
-        CancellationToken cancellationToken)
+    private async Task CollectSymbolBackfillCoreAsync(string symbol, string fromDate, string toDate, bool insightOnly, CancellationToken cancellationToken)
     {
 
         ArgumentException.ThrowIfNullOrWhiteSpace(symbol);
@@ -1322,11 +1301,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
     }
 
-    private async Task<List<CodalLetterDto>> SearchInsightDisclosuresAsync(
-        string symbol,
-        string fromDate,
-        string toDate,
-        CancellationToken cancellationToken)
+    private async Task<List<CodalLetterDto>> SearchInsightDisclosuresAsync(string symbol, string fromDate, string toDate, CancellationToken cancellationToken)
     {
         var results = new Dictionary<long, CodalLetterDto>();
 
@@ -1443,8 +1418,7 @@ public sealed class CodalCollectorService : ICodalCollectorService
 
         return (let, rt, ct, ft);
     }
-    public async Task<bool> ParsePendingDisclosuresAsync(
-    CancellationToken cancellationToken = default)
+    public async Task<bool> ParsePendingDisclosuresAsync(CancellationToken cancellationToken = default)
     {
         const int batchSize = 20;
         const int maxDisclosuresPerRun = 20;
@@ -1628,11 +1602,10 @@ public sealed class CodalCollectorService : ICodalCollectorService
         string backfillToDate = _configuration["MarketIntelligence:Codal:BackfillToDate"]
             ?? throw new InvalidOperationException("BackfillToDate is missing.");
 
-        var (progressId, _) =
-            await _processingLogService.GetOrCreateBackfillProgressAsync(
-                backfillFromDate,
-                backfillToDate,
-                cancellationToken);
+        var (progressId, _) = await _processingLogService.GetOrCreateBackfillProgressAsync(
+              backfillFromDate,
+              backfillToDate,
+              cancellationToken: cancellationToken);
         int totalPagesInChunk = startPage - endPage + 1;
         var stop = false;
 
@@ -1898,6 +1871,218 @@ public sealed class CodalCollectorService : ICodalCollectorService
         _logger.LogInformation("Backfill process completed.");
 
     }
+    public async Task CollectCapitalIncreaseBackfillChunkAsync(int startPage, int endPage, CancellationToken cancellationToken = default)
+    {
+        if (startPage < 1 || endPage < 1 || startPage < endPage)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(startPage),
+                "StartPage must be greater than or equal to EndPage.");
+        }
+
+        const string operation = "CapitalIncreaseBackfill";
+
+        string fromDate = _configuration[
+            "MarketIntelligence:Codal:CapitalIncreaseBackfillFromDate"]
+            ?? throw new InvalidOperationException(
+                "CapitalIncreaseBackfillFromDate is missing.");
+
+        string toDate = _configuration[
+            "MarketIntelligence:Codal:CapitalIncreaseBackfillToDate"]
+            ?? throw new InvalidOperationException(
+                "CapitalIncreaseBackfillToDate is missing.");
+
+        var (progressId, _) =  await _processingLogService.GetOrCreateBackfillProgressAsync(
+                fromDate,
+                toDate,
+                operation: operation,
+                cancellationToken: cancellationToken);
+
+        CapitalIncreaseRegistrationProcessor processor =
+            _processors
+                .OfType<CapitalIncreaseRegistrationProcessor>()
+                .Single();
+
+        for (int pageNumber = startPage;
+             pageNumber >= endPage;
+             pageNumber--)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await _codalClient.SearchAsync(
+                new()
+                {
+                    PageNumber = pageNumber,
+                    FromDate = fromDate,
+                    ToDate = toDate,
+                    Category = 7
+                },
+                cancellationToken);
+
+            if (result.TotalPages == 0)
+            {
+                break;
+            }
+
+            if (pageNumber > result.TotalPages)
+            {
+                throw new InvalidOperationException(
+                    $"Page {pageNumber} exceeds total pages {result.TotalPages}.");
+            }
+
+            if (_logger.IsEnabled(LogLevel.Information))
+            {
+                _logger.LogInformation(
+                    "Capital increase backfill: Page {Page}/{TotalPages}, Letters {Count}",
+                    pageNumber,
+                    result.TotalPages,
+                    result.Letters.Count);
+            }
+
+            var pageTracingNos = new HashSet<long>();
+
+            foreach (var letter in result.Letters)
+            {
+                if (string.IsNullOrWhiteSpace(letter.Symbol) ||
+                    letter.Symbol.Length > 64 ||
+                    string.IsNullOrWhiteSpace(letter.Url) ||
+                    !pageTracingNos.Add(letter.TracingNo))
+                {
+                    continue;
+                }
+
+                var (let, rt, ct, ft) =
+                    ParseUrlParameters(letter.Url, letter.Title);
+
+                if (string.IsNullOrWhiteSpace(letter.Title) ||
+                    !letter.Title.Contains("آگهی ثبت افزایش سرمایه", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Disclosure? disclosure =
+                    await _dbContext.Disclosures
+                        .FirstOrDefaultAsync(
+                            x => x.TracingNo == letter.TracingNo,
+                            cancellationToken);
+
+                if (disclosure is null)
+                {
+                    string? sentRaw = letter.SentDateTimeRaw;
+                    string? pubRaw = letter.PublishDateTimeRaw;
+
+                    var sent = PersianDateHelper.ToGregorian(sentRaw);
+                    var pub = PersianDateHelper.ToGregorian(pubRaw);
+
+                    int? repTypCode =
+                        rt is >= 0 and <= 9
+                            ? 1000000 + rt
+                            : null;
+
+                    disclosure = new Disclosure(
+                        letter.TracingNo,
+                        letter.Symbol,
+                        letter.CompanyName ?? "",
+                        letter.Title ?? "",
+                        letter.LetterCode ?? "",
+                        sentRaw ?? "",
+                        pubRaw ?? "",
+                        sent,
+                        pub,
+                        letter.Url,
+                        letter.HasHtml,
+                        false,
+                        letter.HasExcel,
+                        letter.HasPdf,
+                        letter.HasXbrl,
+                        letter.HasAttachment,
+                        letter.AttachmentUrl ?? "",
+                        letter.PdfUrl ?? "",
+                        letter.ExcelUrl ?? "",
+                        letter.XbrlUrl ?? "",
+                        letter.TedanUrl ?? "",
+                        let,
+                        rt,
+                        ct,
+                        ft,
+                        repTypCode);
+
+                    _dbContext.Disclosures.Add(disclosure);
+
+                    await _dbContext.SaveChangesAsync(
+                        cancellationToken);
+                }
+
+                bool alreadyLinked =
+                    await _dbContext.InstrumentShareChanges
+                        .AsNoTracking()
+                        .AnyAsync(
+                            x => x.CodalDisclosureId == disclosure.Id,
+                            cancellationToken);
+
+                if (alreadyLinked)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    await processor.ProcessAsync(
+                        disclosure,
+                        cancellationToken);
+                }
+                catch (Exception ex)
+                    when (ex is not OperationCanceledException)
+                {
+                    bool logged =
+                        await _processingLogService.TryLogAsync(
+                            operation: operation,
+                            stage: nameof(CapitalIncreaseRegistrationProcessor),
+                            level: 3,
+                            exception: ex,
+                            status: "Failed",
+                            fromDate: fromDate,
+                            toDate: toDate,
+                            pageNumber: pageNumber,
+                            tracingNo: disclosure.TracingNo,
+                            cancellationToken: cancellationToken);
+
+                    if (!logged && _logger.IsEnabled(LogLevel.Error))
+                    {
+                        _logger.LogError(
+                            ex,
+                            "Capital increase backfill failed. TracingNo: {TracingNo}",
+                            disclosure.TracingNo);
+                    }
+
+                    // Do not advance the checkpoint on a failed page.
+                    throw;
+                }
+            }
+
+            await _processingLogService.UpdateProgressAsync(
+                progressId,
+                fromDate,
+                toDate,
+                pageNumber,
+                cancellationToken);
+
+            if (pageNumber > endPage)
+            {
+                await Task.Delay(
+                    TimeSpan.FromSeconds(5),
+                    cancellationToken);
+            }
+        }
+
+        if (_logger.IsEnabled(LogLevel.Information))
+        {
+            _logger.LogInformation(
+                "Capital increase backfill chunk completed: {StartPage} to {EndPage}",
+                startPage,
+                endPage);
+        }
+    }
+
     private static string? ExtractPeriodDateFromTitle(string? title)
     {
         if (string.IsNullOrWhiteSpace(title))

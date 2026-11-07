@@ -8,6 +8,7 @@ public interface ICodalCollectorService
     Task<bool> ParsePendingDisclosuresAsync(CancellationToken cancellationToken = default);
     Task CollectIncrementalAsync(CancellationToken cancellationToken = default);
     Task CollectBackfillChunkAsync(int startPage, int endPage, CancellationToken cancellationToken = default);
+    Task CollectCapitalIncreaseBackfillChunkAsync(int startPage, int endPage, CancellationToken cancellationToken = default);
     Task CollectDisclosuresOnlyAsync(string fromDate, string toDate,
         CancellationToken cancellationToken = default);
 

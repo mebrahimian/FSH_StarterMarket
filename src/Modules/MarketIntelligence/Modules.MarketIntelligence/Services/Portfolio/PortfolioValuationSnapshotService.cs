@@ -13,6 +13,7 @@ public sealed class PortfolioValuationSnapshotService(
         Guid disclosureId,
         PortfolioValuationAggregate valuation,
         DateOnly valuationAsOfDate,
+        PortfolioValuationAggregate? publicationValuation = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(companyId);
@@ -91,6 +92,18 @@ public sealed class PortfolioValuationSnapshotService(
                 valuation,
                 valuationAsOfDate,
                 now);
+            if (publicationValuation is not null)
+            {
+                snapshot.PortfolioValueAtPublication =
+                    publicationValuation.PortfolioValue;
+
+                if (publicationValuation.SharePrice is decimal price &&
+                    price == decimal.Truncate(price))
+                {
+                    snapshot.SharePriceAtPublication =
+                        checked((long)price);
+                }
+            }
 
             dbContext.PortfolioValuationSnapshots.Add(snapshot);
         }

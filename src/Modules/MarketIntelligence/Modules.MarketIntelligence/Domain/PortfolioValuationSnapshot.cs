@@ -10,29 +10,21 @@ public sealed class PortfolioValuationSnapshot
     public int CompanyId { get; set; }
 
     public string PeriodEndDate { get; set; } = default!;
-
     // =========================
     // Current monthly portfolio
     // =========================
-
     public Guid CurrentDisclosureId { get; set; }
-
     public decimal? CurrentRegisteredCapital { get; set; }
-
     public decimal? CurrentListedValue { get; set; }
-
     public decimal? CurrentUnlistedValue { get; set; }
-
     public decimal? CurrentPortfolioValue { get; set; }
-
     public decimal? CurrentValuePerShare { get; set; }
-
     public decimal? CurrentSharePrice { get; set; }
-
+    // Values at the monthly disclosure publication time
+    public decimal? PortfolioValueAtPublication { get; set; }
+    public long? SharePriceAtPublication { get; set; }
     public string? CurrentPriceTradeDate { get; set; }
-
     public decimal? CurrentPriceToPortfolioValuePercent { get; set; }
-
     public int CurrentListedPositionCount { get; set; }
 
     public int CurrentPricedPositionCount { get; set; }

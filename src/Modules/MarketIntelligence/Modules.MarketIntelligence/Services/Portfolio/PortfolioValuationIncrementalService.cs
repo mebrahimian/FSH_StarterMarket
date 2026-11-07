@@ -2,6 +2,7 @@
 using FSH.Modules.MarketIntelligence.Data;
 using Microsoft.EntityFrameworkCore;
 using FSH.Modules.MarketIntelligence.Services.Calculations;
+using FSH.Modules.MarketIntelligence.Domain.Enums;
 
 namespace FSH.Modules.MarketIntelligence.Services.Portfolio;
 
@@ -144,7 +145,44 @@ public sealed class PortfolioValuationIncrementalService(
                         $"CompanyId={companyId}, " +
                         $"Period={period.PeriodEndDate}");
                 }
+                // Calculate publication-time valuation only for new periods.
+                PortfolioValuationAggregate? publicationValuation = null;
 
+                if (i > startIndex)
+                {
+                    var firstRevision = period.Revisions
+                        .OrderBy(r => r.PublishDateTime!.Value)
+                        .ThenBy(r => r.TracingNo)
+                        .First();
+
+                    DateOnly publicationDate =
+                        DateOnly.FromDateTime(period.FirstPublishedAt);
+
+                    // Use the latest available trading day before publication.
+                    DateOnly publicationPriceDate =
+                        publicationDate.AddDays(-1);
+
+                    bool hasInitialPositions =
+                        await dbContext.InvestmentPortfolioPositions
+                            .AsNoTracking()
+                            .AnyAsync(p =>
+                                p.ParentCompanyId == companyId &&
+                                p.PeriodEndDate == period.PeriodEndDate &&
+                                p.DisclosureId == firstRevision.DisclosureId &&
+                                p.SourceType == PortfolioSourceType.MonthlyActivity,
+                                cancellationToken);
+
+                    if (hasInitialPositions)
+                    {
+                        publicationValuation =
+                            await calculatorService.CalculateAsync(
+                                companyId,
+                                period.PeriodEndDate,
+                                firstRevision.DisclosureId,
+                                publicationPriceDate,
+                                cancellationToken);
+                    }
+                }
                 var valuation =
                     await calculatorService.CalculateAsync(
                         companyId,
@@ -154,13 +192,13 @@ public sealed class PortfolioValuationIncrementalService(
                         cancellationToken);
 
                 await snapshotService.UpsertAsync(
-                    companyId,
-                    period.PeriodEndDate,
-                    report.DisclosureId,
-                    valuation,
-                    valuationDate,
-                    cancellationToken);
-
+                    companyId: companyId,
+                    periodEndDate: period.PeriodEndDate,
+                    disclosureId: report.DisclosureId,
+                    valuation: valuation,
+                    valuationAsOfDate: valuationDate,
+                    publicationValuation: publicationValuation,
+                    cancellationToken: cancellationToken);
                 processed++;
             }
 

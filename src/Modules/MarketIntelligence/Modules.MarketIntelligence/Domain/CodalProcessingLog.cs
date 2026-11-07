@@ -78,13 +78,12 @@ public sealed class CodalProcessingLog
     string toDate,
     int pageNumber)
     {
-        if ((Operation != "Historical" && Operation != "Backfill") ||
+        if (Operation is not ("Historical" or "Backfill" or "CapitalIncreaseBackfill") ||
             Stage != "Progress")
         {
             throw new InvalidOperationException(
                 "This record is not a progress record.");
         }
-
         FromDate = fromDate;
         ToDate = toDate;
         PageNumber = pageNumber;

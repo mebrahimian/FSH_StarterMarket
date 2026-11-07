@@ -1066,17 +1066,54 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateOnly?>("AssemblyDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("CashIncoming")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<Guid?>("CodalDisclosureId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateOnly>("EffectiveDate")
                         .HasColumnType("date");
 
                     b.Property<int>("InstrumentId")
                         .HasColumnType("int");
 
+                    b.Property<decimal?>("NewCapital")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
                     b.Property<long>("NewShares")
                         .HasColumnType("bigint");
 
                     b.Property<long>("OldShares")
                         .HasColumnType("bigint");
+
+                    b.Property<decimal?>("PreviousCapital")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<DateOnly?>("RegistrationDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("Reserves")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("RetainedEarnings")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("RevaluationSurplus")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("SharePremium")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
 
                     b.HasKey("Id");
 
@@ -1903,6 +1940,10 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<decimal?>("PortfolioValueAtPublication")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
                     b.Property<DateTimeOffset?>("PreviousCalculatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1953,6 +1994,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.Property<decimal?>("PreviousValuePerShare")
                         .HasPrecision(28, 6)
                         .HasColumnType("decimal(28,6)");
+
+                    b.Property<long?>("SharePriceAtPublication")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");

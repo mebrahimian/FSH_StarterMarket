@@ -137,8 +137,11 @@ public sealed class CodalProcessingLogService(
         GetOrCreateBackfillProgressAsync(
             string fromDate,
             string toDate,
+            string operation = "Backfill",
             CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+
         using IServiceScope scope = scopeFactory.CreateScope();
 
         var dbContext = scope.ServiceProvider
@@ -146,7 +149,7 @@ public sealed class CodalProcessingLogService(
 
         var progress = await dbContext.CodalProcessingLogs
             .Where(x =>
-                x.Operation == "Backfill" &&
+                x.Operation == operation &&
                 x.Stage == "Progress" &&
                 x.FromDate == fromDate &&
                 x.ToDate == toDate)
@@ -160,7 +163,7 @@ public sealed class CodalProcessingLogService(
 
         int? lastCompletedPage = await dbContext.CodalProcessingLogs
             .Where(x =>
-                x.Operation == "Backfill" &&
+                x.Operation == operation &&
                 x.Stage == "Page" &&
                 x.Status == "Completed" &&
                 x.FromDate == fromDate &&
@@ -168,7 +171,7 @@ public sealed class CodalProcessingLogService(
             .MinAsync(x => x.PageNumber, cancellationToken);
 
         var newProgress = new CodalProcessingLog(
-            operation: "Backfill",
+            operation: operation,
             stage: "Progress",
             level: 1,
             status: "Processing",
@@ -182,5 +185,6 @@ public sealed class CodalProcessingLogService(
 
         return (newProgress.Id, lastCompletedPage);
     }
+
 
 }

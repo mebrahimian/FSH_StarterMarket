@@ -80,11 +80,6 @@ const OwnershipNetworkPage = lazy(
 const CapitalFlowPage = lazy(
   () => import("@/pages/portfolio-intelligence/capital-flow")
 );
-// گزارش قدیمی — محاسبات لحظه‌ای
-const PortfolioValuationPage = lazy(
-    () => import("@/pages/portfolio-intelligence/valuation")
-);
-
 // گزارش جدید — Snapshot
 const PortfolioValuationSnapshotsPage = lazy(
     () => import("@/pages/portfolio-intelligence/valuation-snapshots")
@@ -297,9 +292,12 @@ export const router = createBrowserRouter([
                 path: "market-intelligence/portfolio-matching",
                 element: withSuspense(<PortfolioMatchingPage />),
             },
-            {
-                path: "portfolio-intelligence/valuation",
-                element: withSuspense(<PortfolioValuationPage />),
+            {                
+                path: "portfolio-intelligence/valuation",                
+                element: (                    
+                    <Navigate                    
+                        to="/portfolio-intelligence/valuations"                        
+                        replace/>    ),                    
             },
             {
                 path: "portfolio-intelligence/valuations",

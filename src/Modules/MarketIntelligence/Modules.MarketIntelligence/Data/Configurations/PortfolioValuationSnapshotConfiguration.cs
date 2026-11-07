@@ -40,8 +40,10 @@ public sealed class PortfolioValuationSnapshotConfiguration
         builder.Property(x => x.CurrentPriceTradeDate)
             .HasMaxLength(20);
 
-        builder.Property(x => x.PreviousPriceTradeDate)
-            .HasMaxLength(20);
+        builder.Property(x => x.PreviousPriceTradeDate).HasMaxLength(20);
+        builder.Property(x => x.PortfolioValueAtPublication).HasPrecision(28, 6);
+
+        builder.Property(x => x.SharePriceAtPublication);
 
         // Current valuation
         builder.Property(x => x.CurrentRegisteredCapital)

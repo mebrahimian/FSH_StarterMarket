@@ -83,11 +83,14 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType2Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityType3Processor>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, MonthlyActivityBankProcessor>();
+            builder.Services.AddHttpClient<CodalReportHtmlDownloader>(
+                    client => client.Timeout = TimeSpan.FromMinutes(5));
             builder.Services.AddScoped<InvestmentPortfolioReader>();
             builder.Services.AddScoped<PortfolioHistoryRebuildService>();
             builder.Services.AddScoped<PortfolioValuationReportCalculatorService>();
             builder.Services.AddScoped<PortfolioValuationBackfillService>();
             builder.Services.AddScoped<ICodalDisclosureProcessor, InvestmentPortfolioProcessor>();
+            builder.Services.AddScoped<ICodalDisclosureProcessor, CapitalIncreaseRegistrationProcessor>();
             builder.Services.AddScoped<CodalDataQualityAuditService>();
             builder.Services.AddScoped<DailyPriceMarketPriceProvider>();
             builder.Services.AddScoped<PortfolioValuationEligibilityService>();
@@ -180,7 +183,6 @@ namespace FSH.Modules.MarketIntelligence
             group.MapCancelUserPaymentRequestEndpoint();
             group.MapApproveUserPaymentEndpoint();
             group.MapGetPortfolioByDisclosureIdEndpoint();
-            group.MapGetPortfolioValuationEndpoint();
             group.MapGetPortfolioValuationSnapshotsEndpoint();
             group.MapGetDataQualityIssuesEndpoint();
             group.MapGetCodalIncrementalScheduleEndpoint();
@@ -322,6 +324,23 @@ namespace FSH.Modules.MarketIntelligence
                        message = "Codal backfill queued.",
                    });
                }).RequirePermission(MarketIntelligencePermissions.CodalOperations.Execute);
+
+            group.MapPost("/codal/capital-increase-backfill-test",
+                   async Task<IResult> (ICodalCollectorService collectorService,
+                      CancellationToken cancellationToken) =>
+                   {
+                       await collectorService.CollectCapitalIncreaseBackfillChunkAsync(
+                           startPage: 1,
+                           endPage: 1,
+                           cancellationToken: cancellationToken);
+                       return Results.Ok(new
+                          {
+                           message = "Capital increase backfill test completed.",
+                           startPage = 1,
+                           endPage = 1
+                          });
+                   }).RequirePermission(
+                       MarketIntelligencePermissions.CodalOperations.Execute);
             ////////////////////////////
             group.MapPost("/codal/symbol-backfill", IResult
                      (CodalSymbolBackfillRequest request, IJobService jobService) =>

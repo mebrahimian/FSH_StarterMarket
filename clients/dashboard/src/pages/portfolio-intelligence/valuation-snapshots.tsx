@@ -1,6 +1,5 @@
 import { useAuth } from "@/auth/use-auth";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LockKeyhole } from "lucide-react";
 import {
@@ -275,16 +274,7 @@ const totalCount = data?.totalCount ?? 0;
                         disabled={loading}
                     >
                         {isPersian ? "به‌روزرسانی" : "Refresh"}
-                    </button>
-
-                    <Link
-                        to="/portfolio-intelligence/valuation"
-                        className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
-                    >
-                        {isPersian
-                            ? "مقایسه با گزارش قدیمی"
-                            : "View legacy report"}
-                    </Link>
+                    </button>                    
                 </div>
             </div>
 
