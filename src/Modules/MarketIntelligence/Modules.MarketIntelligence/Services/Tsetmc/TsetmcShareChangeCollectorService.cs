@@ -4,6 +4,7 @@ using FSH.Modules.MarketIntelligence.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using FSH.Modules.MarketIntelligence.Services.Codal;
 
 namespace FSH.Modules.MarketIntelligence.Services.Tsetmc;
 
@@ -11,6 +12,8 @@ public sealed class TsetmcShareChangeCollectorService(
     MarketIntelligenceDbContext dbContext,
     TsetmcPriceReader priceReader,
     IOptions<TsetmcOptions> options,
+    CapitalIncreaseReconciliationService reconciliationService,
+    CapitalIncreaseEventSyncService capitalIncreaseEventSyncService,
     ILogger<TsetmcShareChangeCollectorService> logger)
 {
     public Task<int> CollectAsync(
@@ -50,6 +53,17 @@ public sealed class TsetmcShareChangeCollectorService(
             cancellationToken.ThrowIfCancellationRequested();
 
             List<InstrumentShareChange> newItems = [];
+            void RecordReconciliationFailure(Exception exception)
+            {
+                if (logger.IsEnabled(LogLevel.Warning))
+                {
+                    logger.LogWarning(
+                        exception,
+                        "TSETMC share changes saved, but Codal reconciliation failed. InstrumentId={InstrumentId}, Symbol={Symbol}",
+                        instrument.Id,
+                        instrument.Symbol);
+                }
+            }
             void RecordFailure(Exception exception)
             {
                 failed++;
@@ -145,6 +159,44 @@ public sealed class TsetmcShareChangeCollectorService(
                     await dbContext
                         .SaveChangesAsync(cancellationToken)
                         .ConfigureAwait(false);
+
+                    try
+                    {
+                        _ = await capitalIncreaseEventSyncService
+                            .SyncInstrumentAsync(
+                            instrument.Id,
+                            cancellationToken)
+                            .ConfigureAwait(false);
+                        await reconciliationService.ReconcileInstrumentAsync(
+                            instrument.Id,
+                            newItems.Select(x => x.Id).ToArray(),
+                            cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                        when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        RecordReconciliationFailure(ex);
+                    }
+                    catch (IOException ex)
+                    {
+                        RecordReconciliationFailure(ex);
+                    }
+                    catch (FormatException ex)
+                    {
+                        RecordReconciliationFailure(ex);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        RecordReconciliationFailure(ex);
+                    }
+                    catch (DbUpdateException ex)
+                    {
+                        RecordReconciliationFailure(ex);
+                    }
                 }
 
                 inserted += newItems.Count;

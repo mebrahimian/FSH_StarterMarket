@@ -46,6 +46,7 @@ public sealed class MarketIntelligenceDbContext : BaseDbContext
     public DbSet<BenchmarkAsset> BenchmarkAssets => Set<BenchmarkAsset>();
     public DbSet<BenchmarkDailyPrice> BenchmarkDailyPrices => Set<BenchmarkDailyPrice>();
     public DbSet<InstrumentShareChange> InstrumentShareChanges => Set<InstrumentShareChange>();
+    public DbSet<CapitalIncreaseEvent> CapitalIncreaseEvents => Set<CapitalIncreaseEvent>();
     public DbSet<InstrumentValuationHistory> InstrumentValuationHistory => Set<InstrumentValuationHistory>();
     public DbSet<PortfolioValuationSnapshot> PortfolioValuationSnapshots => Set<PortfolioValuationSnapshot>();
     public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();

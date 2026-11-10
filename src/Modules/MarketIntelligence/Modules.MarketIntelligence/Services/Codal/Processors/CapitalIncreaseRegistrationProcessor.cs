@@ -1,10 +1,11 @@
-﻿using System.Globalization;
-using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
-using FSH.Modules.MarketIntelligence.Data;
+﻿using FSH.Modules.MarketIntelligence.Data;
 using FSH.Modules.MarketIntelligence.Domain;
 using FSH.Modules.MarketIntelligence.Services.Codal.Readers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Modules.MarketIntelligence.Domain;
+using System.Globalization;
+using static FSH.Framework.BuildingBlocks.Shared.Globalization.PersianTextNormalizer;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal.Processors;
 public sealed class CapitalIncreaseRegistrationProcessor(
@@ -22,6 +23,7 @@ public sealed class CapitalIncreaseRegistrationProcessor(
                    "آگهی ثبت افزایش سرمایه",
                    StringComparison.Ordinal);
     }
+
     public async Task ProcessAsync(
         Disclosure disclosure,
         CancellationToken cancellationToken = default)
@@ -35,10 +37,22 @@ public sealed class CapitalIncreaseRegistrationProcessor(
             return;
         }
 
+        // Already processed this Codal disclosure.
+        bool alreadyProcessed =
+            await dbContext.CapitalIncreaseEvents
+                .AsNoTracking()
+                .AnyAsync(
+                    x => x.CodalDisclosureId == disclosure.Id,
+                    cancellationToken);
+
+        if (alreadyProcessed)
+        {
+            return;
+        }
+
         string normalizedSymbol =
             NormalizeForMatch(disclosure.Symbol);
 
-        // Find TSETMC instruments before requesting Codal HTML.
         int[] instrumentIds =
             await dbContext.TsetmcInstruments
                 .AsNoTracking()
@@ -50,25 +64,32 @@ public sealed class CapitalIncreaseRegistrationProcessor(
 
         if (instrumentIds.Length == 0)
         {
-            logger.LogWarning(
-                "Capital registration {TracingNo}: no TSETMC instrument for {Symbol}.",
-                disclosure.TracingNo,
-                disclosure.Symbol);
+            if (logger.IsEnabled(LogLevel.Warning))
+            {
+                logger.LogWarning(
+                    "Capital registration {TracingNo}: no TSETMC instrument for {Symbol}.",
+                    disclosure.TracingNo,
+                    disclosure.Symbol);
+            }
 
             return;
         }
 
-        List<InstrumentShareChange> shareChanges =
-            await dbContext.InstrumentShareChanges
+        // Use logical capital increase events, not raw share changes.
+        List<CapitalIncreaseEvent> capitalEvents =
+            await dbContext.CapitalIncreaseEvents
                 .Where(x => instrumentIds.Contains(x.InstrumentId))
                 .ToListAsync(cancellationToken);
 
-        if (shareChanges.Count == 0)
+        if (capitalEvents.Count == 0)
         {
-            logger.LogWarning(
-                "Capital registration {TracingNo}: no share change for {Symbol}.",
-                disclosure.TracingNo,
-                disclosure.Symbol);
+            if (logger.IsEnabled(LogLevel.Warning))
+            {
+                logger.LogWarning(
+                    "Capital registration {TracingNo}: no capital increase event for {Symbol}.",
+                    disclosure.TracingNo,
+                    disclosure.Symbol);
+            }
 
             return;
         }
@@ -88,9 +109,9 @@ public sealed class CapitalIncreaseRegistrationProcessor(
             ParsePersianDate(registration.RegistrationDateRaw);
 
         // Codal capital: million IRR.
-        // TSETMC: number of shares, nominal value 1000 IRR.
-        List<InstrumentShareChange> matches =
-            shareChanges
+        // TSETMC shares: nominal value 1000 IRR.
+        List<CapitalIncreaseEvent> matches =
+            capitalEvents
                 .Where(x =>
                     CapitalMatches(
                         x.OldShares,
@@ -102,65 +123,72 @@ public sealed class CapitalIncreaseRegistrationProcessor(
 
         if (matches.Count != 1)
         {
-            logger.LogWarning(
-                "Capital registration {TracingNo}: expected one match for {Symbol}, found {Count}.",
-                disclosure.TracingNo,
-                disclosure.Symbol,
-                matches.Count);
+            if (logger.IsEnabled(LogLevel.Warning))
+            {
+                logger.LogWarning(
+                    "Capital registration {TracingNo}: expected one capital event for {Symbol}, found {Count}.",
+                    disclosure.TracingNo,
+                    disclosure.Symbol,
+                    matches.Count);
+            }
 
             return;
         }
 
-        InstrumentShareChange shareChange = matches[0];
+        CapitalIncreaseEvent capitalEvent = matches[0];
 
-        if (shareChange.CodalDisclosureId.HasValue &&
-            shareChange.CodalDisclosureId.Value != disclosure.Id)
+        if (capitalEvent.CodalDisclosureId.HasValue &&
+            capitalEvent.CodalDisclosureId.Value != disclosure.Id)
         {
-            logger.LogWarning(
-                "Share change {ShareChangeId} is already linked to another disclosure.",
-                shareChange.Id);
+            if (logger.IsEnabled(LogLevel.Warning))
+            {
+                logger.LogWarning(
+                    "Capital event {EventId} is already linked to another disclosure.",
+                    capitalEvent.Id);
+            }
 
             return;
         }
 
         bool linkedElsewhere =
-            await dbContext.InstrumentShareChanges
+            await dbContext.CapitalIncreaseEvents
                 .AsNoTracking()
                 .AnyAsync(
                     x =>
                         x.CodalDisclosureId == disclosure.Id &&
-                        x.Id != shareChange.Id,
+                        x.Id != capitalEvent.Id,
                     cancellationToken);
 
         if (linkedElsewhere)
         {
             throw new InvalidOperationException(
-                $"Codal disclosure {disclosure.Id} is already linked to another share change.");
+                $"Codal disclosure {disclosure.Id} is already linked to another capital event.");
         }
 
-        shareChange.ApplyCodalRegistration(
-            new InstrumentShareChange.CapitalIncreaseRegistrationDetails(
-                disclosure.Id,
-                assemblyDate,
-                registrationDate,
-                registration.PreviousCapital,
-                registration.NewCapital,
-                registration.CashIncoming,
-                registration.RetainedEarnings,
-                registration.Reserves,
-                registration.SharePremium,
-                registration.RevaluationSurplus));
+        capitalEvent.ApplyCodalRegistration(
+            disclosure.Id,
+            assemblyDate,
+            registrationDate,
+            registration.PreviousCapital,
+            registration.NewCapital,
+            registration.CashIncoming,
+            registration.RetainedEarnings,
+            registration.Reserves,
+            registration.SharePremium,
+            registration.RevaluationSurplus);
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
         if (logger.IsEnabled(LogLevel.Information))
         {
             logger.LogInformation(
-            "Capital registration {TracingNo} matched share change {ShareChangeId} for {Symbol}.",
-            disclosure.TracingNo,
-            shareChange.Id,
-            disclosure.Symbol);
+                "Capital registration {TracingNo} matched capital event {EventId} for {Symbol}.",
+                disclosure.TracingNo,
+                capitalEvent.Id,
+                disclosure.Symbol);
         }
     }
+
 
     private static bool CapitalMatches(
         long shares,

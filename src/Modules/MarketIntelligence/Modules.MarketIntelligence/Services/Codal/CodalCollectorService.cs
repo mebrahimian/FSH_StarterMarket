@@ -2013,11 +2013,11 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 }
 
                 bool alreadyLinked =
-                    await _dbContext.InstrumentShareChanges
-                        .AsNoTracking()
-                        .AnyAsync(
-                            x => x.CodalDisclosureId == disclosure.Id,
-                            cancellationToken);
+                    await _dbContext.CapitalIncreaseEvents
+                       .AsNoTracking()
+                       .AnyAsync(
+                        x => x.CodalDisclosureId == disclosure.Id,
+                        cancellationToken);
 
                 if (alreadyLinked)
                 {

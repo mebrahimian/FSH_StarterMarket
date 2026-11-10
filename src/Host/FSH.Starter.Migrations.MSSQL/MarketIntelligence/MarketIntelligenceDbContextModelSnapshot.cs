@@ -1871,6 +1871,80 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.ToView("vw_DisclosureStats", "marketintelligence");
                 });
 
+            modelBuilder.Entity("Modules.MarketIntelligence.Domain.CapitalIncreaseEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly>("AdjustmentEffectiveDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("AssemblyDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("CashIncoming")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<Guid?>("CodalDisclosureId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("InstrumentId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("NewCapital")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<long>("NewShares")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("OldShares")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("PreviousCapital")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<DateOnly?>("RegistrationDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("Reserves")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("RetainedEarnings")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("RevaluationSurplus")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.Property<decimal?>("SharePremium")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodalDisclosureId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CapitalIncreaseEvents_CodalDisclosureId")
+                        .HasFilter("[CodalDisclosureId] IS NOT NULL");
+
+                    b.HasIndex("InstrumentId", "OldShares", "NewShares")
+                        .IsUnique()
+                        .HasDatabaseName("UX_CapitalIncreaseEvents_Instrument_Shares");
+
+                    b.ToTable("CapitalIncreaseEvents", "marketintelligence", t =>
+                        {
+                            t.HasCheckConstraint("CK_CapitalIncreaseEvents_Shares", "[OldShares] > 0 AND [NewShares] > [OldShares]");
+                        });
+                });
+
             modelBuilder.Entity("Modules.MarketIntelligence.Domain.PortfolioValuationSnapshot", b =>
                 {
                     b.Property<int>("Id")
@@ -2071,6 +2145,15 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .WithMany()
                         .HasForeignKey("HoldingAssetId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Modules.MarketIntelligence.Domain.CapitalIncreaseEvent", b =>
+                {
+                    b.HasOne("FSH.Modules.MarketIntelligence.Domain.TsetmcInstrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }
