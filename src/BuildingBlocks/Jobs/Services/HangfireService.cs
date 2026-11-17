@@ -12,7 +12,7 @@ public class HangfireService : IJobService
         BackgroundJob.Delete(jobId, fromState);
 
     public string Enqueue(Expression<Func<Task>> methodCall) =>
-        BackgroundJob.Enqueue(methodCall);
+    BackgroundJob.Enqueue(methodCall);
 
     public string Enqueue(string queue, Expression<Func<Task>> methodCall) =>
         BackgroundJob.Enqueue(queue, methodCall);
@@ -25,6 +25,11 @@ public class HangfireService : IJobService
 
     public string Enqueue<T>(Expression<Func<T, Task>> methodCall) =>
         BackgroundJob.Enqueue(methodCall);
+
+    public string Enqueue<T>(
+        string queue,
+        Expression<Func<T, Task>> methodCall) =>
+        BackgroundJob.Enqueue<T>(queue, methodCall);
 
     public bool Requeue(string jobId) =>
         BackgroundJob.Requeue(jobId);

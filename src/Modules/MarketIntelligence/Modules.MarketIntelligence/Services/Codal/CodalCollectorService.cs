@@ -1427,9 +1427,9 @@ public sealed class CodalCollectorService : ICodalCollectorService
         DateTime lastPublishDate = DateTime.MinValue;
         long lastTracingNo = long.MinValue;
 
-        var pageNumber = 1;
-        var firstBatch = true;
+        var pageNumber = 1;       
         var processedCount = 0;
+        
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1438,30 +1438,42 @@ public sealed class CodalCollectorService : ICodalCollectorService
             {
                 break;
             }
-                        
+
+            //  IQueryable<Disclosure> query = _dbContext.Disclosures
+            //       .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending &&
+            //                   x.Let == 58);
+            
+
             IQueryable<Disclosure> query = _dbContext.Disclosures
-                 .Where(x => x.SalesParseStatus == DisclosureParseStatus.Pending &&
-                             x.Let == 58 &&
-                             x.Symbol == "وسپه");
-            if (!firstBatch)
-            {
-                DateTime cursorDate = lastPublishDate;
-                long cursorTracingNo = lastTracingNo;
-
-                query = query.Where(x => (x.PublishDateTime ?? DateTime.MinValue) > cursorDate ||
-                                         ((x.PublishDateTime ?? DateTime.MinValue) == cursorDate &&
-                                           x.TracingNo > cursorTracingNo)
-                                   );
-            }
-
+    .FromSqlRaw(
+        """
+        SELECT d.*
+        FROM marketintelligence.Disclosures d
+        INNER JOIN dbo.ErrHealthCenter e
+            ON e.Value = d.TracingNo
+        WHERE e.status = 0
+          AND d.Rt = 2
+          AND d.Let IN (58, 6)
+          
+        """
+    )
+    .Where(x =>
+        (x.PublishDateTime ?? DateTime.MinValue) > lastPublishDate ||
+        (
+            (x.PublishDateTime ?? DateTime.MinValue) == lastPublishDate &&
+            x.TracingNo > lastTracingNo
+        )
+    );
             List<Disclosure> disclosures =
-                await query
-                    .OrderBy(x =>
-                        x.PublishDateTime ?? DateTime.MinValue)
-                    .ThenBy(x => x.TracingNo)
-                    .Take(Math.Min(batchSize, remaining))
-                    .ToListAsync(cancellationToken);
-
+                await query.OrderBy(x =>
+                          x.PublishDateTime ?? DateTime.MinValue)
+                          .ThenBy(x => x.TracingNo)
+                          .Take(Math.Min(batchSize, remaining))
+                          .ToListAsync(cancellationToken);
+            _logger.LogWarning(
+                "ParsePending SELECTED {Count} disclosures: {TracingNos}",
+                disclosures.Count,
+                string.Join(", ", disclosures.Select(x => x.TracingNo)));
             if (disclosures.Count == 0)
             {
                 break;
@@ -1472,22 +1484,33 @@ public sealed class CodalCollectorService : ICodalCollectorService
                 cancellationToken.ThrowIfCancellationRequested();
 
                 List<ICodalDisclosureProcessor> processors =
-                    _processors
-                        .Where(x => x.CanProcess(disclosure))
-                        .ToList();
+    _processors
+        .Where(x =>
+            x is InvestmentPortfolioProcessor &&
+            x.CanProcess(disclosure))
+        .ToList();
 
                 bool processorFailed = false;
 
+
                 if (processors.Count == 0)
                 {
-                    disclosure.SalesParseStatus = DisclosureParseStatus.Skipped;
+                    _logger.LogWarning(
+                        "No portfolio processor found for Disclosure {TracingNo}.",
+                        disclosure.TracingNo);
 
-                    disclosure.SalesParsedAt = DateTime.UtcNow;
-
-                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+                        $"""
+        UPDATE dbo.ErrHealthCenter
+        SET status = 3
+        WHERE Value = {disclosure.TracingNo}
+          AND status = 0
+        """,
+                        cancellationToken);
 
                     continue;
                 }
+
 
 
                 foreach (ICodalDisclosureProcessor processor in processors)
@@ -1558,27 +1581,69 @@ public sealed class CodalCollectorService : ICodalCollectorService
                             disclosure.TracingNo);
                     }
                 }
+
                 if (processorFailed)
                 {
-                    disclosure.SalesParseStatus = DisclosureParseStatus.Failed;
-                    disclosure.SalesParsedAt = DateTime.UtcNow;
-                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+                        $"""
+        UPDATE dbo.ErrHealthCenter
+        SET status = 3
+        WHERE Value = {disclosure.TracingNo}
+          AND status = 0
+        """,
+                        cancellationToken);
+
+                    _logger.LogWarning(
+                        "Portfolio processing failed. TracingNo={TracingNo}",
+                        disclosure.TracingNo);
+
+                    continue;
                 }
-                
+
+
                 if (!processorFailed)
                 {
-                    await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
+                    // await _insightPipeline.ProcessAsync(disclosure, cancellationToken);
+
+                    bool hasPositions = await _dbContext.InvestmentPortfolioPositions
+                        .AsNoTracking()
+                        .AnyAsync(
+                            p => p.DisclosureId == disclosure.Id,
+                            cancellationToken);
+
+                    byte resultStatus = hasPositions ? (byte)1 : (byte)2;
+
+                    await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+                        $"""
+        UPDATE dbo.ErrHealthCenter
+        SET status = {resultStatus}
+        WHERE Value = {disclosure.TracingNo}
+          AND status = 0
+        """,
+                        cancellationToken);
+
+                    if (!hasPositions)
+                    {
+                        _logger.LogWarning(
+                            "Portfolio processing completed without positions. TracingNo={TracingNo}",
+                            disclosure.TracingNo);
+                    }
                 }
+
             }
             processedCount += disclosures.Count;
             Disclosure lastDisclosure = disclosures[^1];
 
             lastPublishDate = lastDisclosure.PublishDateTime ?? DateTime.MinValue;
             lastTracingNo = lastDisclosure.TracingNo;
-            firstBatch = false;
+            
             _dbContext.ChangeTracker.Clear();
             Console.WriteLine($"Disclosure scan batch saved: {pageNumber}");
             pageNumber++;
+            if (disclosures.Count < batchSize)
+            {
+                break;
+            }
         }
         _logger.LogInformation("End Of Parse Pending Disclosures.");
         return processedCount >= maxDisclosuresPerRun;

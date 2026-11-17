@@ -60,28 +60,55 @@ internal static class CodalCellReader
         // پیدا کردن cell مورد نظر
 
         var cells = document.RootElement
-           .GetProperty("sheets")
-           .EnumerateArray()
-           .SelectMany(sheet =>
-                       sheet.GetProperty("tables")
-                            .EnumerateArray())
-           .Where(table =>
-                  table.TryGetProperty("code", out var tableCode) &&
-                  tableCode.GetInt32() == metaTableCode)
-           .SelectMany(table =>
-                       table.GetProperty("cells")
-           .EnumerateArray());
-
+            .GetProperty("sheets")
+            .EnumerateArray()
+            .SelectMany(sheet =>
+            sheet.GetProperty("tables").EnumerateArray())
+            .Where(table =>
+               table.TryGetProperty("code", out var tableCode) &&
+               tableCode.GetInt32() == metaTableCode)
+            .SelectMany(table =>
+            table.GetProperty("cells")
+            .EnumerateArray()
+            .Select(cell => new
+            {
+                Cell = cell,
+                MetaTableId = table.TryGetProperty(
+                    "metaTableId", out var id)
+                    ? id.GetInt32()
+                    : (int?)null
+            }));
 
         var matchedCells = cells
-            .Where(cell =>
-                cell.TryGetProperty(
-                    "columnSequence",
-                    out var column) &&
-                column.GetInt32() == columnSequence)
+            .Where(x =>
+            {
+                int effectiveColumn = columnSequence;
+
+                if (reportingTypeCode == 1000004)
+                {
+                    effectiveColumn = x.MetaTableId switch
+                    {
+                        992 => columnSequence switch
+                        {
+                            5 => 2,
+                            6 => 3,
+                            _ => -1
+                        },
+
+                        2154 => columnSequence,
+
+                        _ => -1
+                    };
+                }
+
+                return effectiveColumn > 0 &&
+                    x.Cell.TryGetProperty(
+                        "columnSequence", out var column) &&
+                    column.GetInt32() == effectiveColumn;
+            })
+            .Select(x => x.Cell)
             .OrderBy(cell =>
-                cell.GetProperty("rowSequence")
-                    .GetInt32())
+                cell.GetProperty("rowSequence").GetInt32())
             .ToList();
 
 

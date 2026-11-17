@@ -74,12 +74,20 @@ const MarketHealthCenterPage = lazyNamed(
     import("@/pages/market-intelligence/health-center"),
     "MarketHealthCenterPage",
 );
+const RealMoneyFlowPage = lazy(
+    () => import("@/pages/market-monitoring/real-money-flow")
+);
+
+const MonthlyDisclosureGapsPage = lazy(
+    () => import("@/pages/market-intelligence/monthly-disclosure-gaps")
+);
 const OwnershipNetworkPage = lazy(
   () => import("@/pages/portfolio-intelligence/ownership")
 );
 const CapitalFlowPage = lazy(
   () => import("@/pages/portfolio-intelligence/capital-flow")
 );
+
 // گزارش جدید — Snapshot
 const PortfolioValuationSnapshotsPage = lazy(
     () => import("@/pages/portfolio-intelligence/valuation-snapshots")
@@ -283,7 +291,10 @@ export const router = createBrowserRouter([
             {
                 path: "market-intelligence/health-center",
                 element: withSuspense(<MarketHealthCenterPage />),
-            },            
+            },              {
+                path: "market-intelligence/monthly-gaps",                
+                element: withSuspense(<MonthlyDisclosureGapsPage />),            
+            },
             {
                 path: "market-intelligence/payment-management",
                 element: withSuspense(<PaymentManagementPage />),
@@ -291,6 +302,20 @@ export const router = createBrowserRouter([
             {
                 path: "market-intelligence/portfolio-matching",
                 element: withSuspense(<PortfolioMatchingPage />),
+            },
+            // Market Monitoring            
+            {
+               path: "market-monitoring",               
+               element: (
+                  <Navigate
+                    to="/market-monitoring/real-money-flow"
+                    replace
+                 />                 
+               ),             
+            },
+            {
+                path: "market-monitoring/real-money-flow",                
+                element: withSuspense(<RealMoneyFlowPage />),            
             },
             {                
                 path: "portfolio-intelligence/valuation",                

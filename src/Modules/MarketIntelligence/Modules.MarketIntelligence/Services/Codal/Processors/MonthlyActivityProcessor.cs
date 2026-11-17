@@ -62,6 +62,7 @@ public sealed class MonthlyActivityProcessor(
 
         if (string.IsNullOrWhiteSpace(disclosure.Url))
         {
+
             disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
 
             disclosure.SalesParsedAt = DateTime.UtcNow;
@@ -91,11 +92,28 @@ public sealed class MonthlyActivityProcessor(
             {
                 disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
                 disclosure.SalesParsedAt = DateTime.UtcNow;
-
+                logger.LogWarning(
+     "Monthly NoData [Metadata]. " +
+     "TracingNo={TracingNo}, " +
+     "HtmlLength={HtmlLength}, " +
+     "MetaTableCode={MetaTableCode}, " +
+     "PeriodColumn={PeriodColumn}, " +
+     "PeriodEnd={PeriodEnd}, " +
+     "YearEnd={YearEnd}, Url={Url}",
+     disclosure.TracingNo,
+     html.Length,
+     definition.MetaTableCode,
+     definition.SelectedCells["PeriodAmount"],
+     metadataCell?.PeriodEndToDate,
+     metadataCell?.YearEndToDate,
+     reportUri);
                 await dbContext.SaveChangesAsync(cancellationToken);
 
                 return;
             }
+            
+
+
 
             string periodEndToDate = metadataCell.PeriodEndToDate!;
             string yearEndToDate = metadataCell.YearEndToDate!;
@@ -130,6 +148,13 @@ public sealed class MonthlyActivityProcessor(
 
             if (periodCell is null || yearToDateCell is null)
             {
+                logger.LogWarning(
+    "Monthly NoData [SalesCells]. TracingNo={TracingNo}, " +
+    "PeriodCellMissing={PeriodMissing}, " +
+    "YtdCellMissing={YtdMissing}",
+    disclosure.TracingNo,
+    periodCell is null,
+    yearToDateCell is null);
                 disclosure.SalesParseStatus = DisclosureParseStatus.NoData;
                 disclosure.SalesParsedAt = DateTime.UtcNow;
 

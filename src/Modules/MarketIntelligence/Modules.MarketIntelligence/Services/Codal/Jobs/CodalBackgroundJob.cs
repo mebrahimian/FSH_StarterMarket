@@ -6,6 +6,7 @@ using FSH.Modules.MarketIntelligence.Services.Codal.Interfaces;
 using FSH.Modules.MarketIntelligence.Services.Companies;
 using FSH.Modules.MarketIntelligence.Services.Jobs;
 using FSH.Framework.Shared.Dates;
+using Microsoft.Extensions.Configuration;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -17,7 +18,8 @@ public sealed class CodalBackgroundJob(
     CompanyIdBackfillService companyIdBackfillService,
     BackgroundJobStatusService jobStatusService,
     MarketIntelligenceDbContext dbContext,
-    IJobService jobService)
+    IJobService jobService,
+    IConfiguration configuration)
 {
     private async Task<CodalIncrementalScheduleSetting> GetScheduleSettingAsync(
     CancellationToken cancellationToken)
@@ -132,16 +134,37 @@ public sealed class CodalBackgroundJob(
         {
             return;
         }
+        if (!configuration.GetValue<bool>("HangfireOptions:ParsePendingAutoContinue", true))
+        {
+            return;
+        }
 
         bool hasPending = await dbContext.Disclosures
-                .AnyAsync(x => x.SalesParseStatus == DisclosureParseStatus.Pending, cancellationToken);
+            .FromSqlRaw(
+                """
+        SELECT d.*
+        FROM marketintelligence.Disclosures d
+        INNER JOIN dbo.ErrHealthCenter e
+            ON e.Value = d.TracingNo
+        WHERE e.status = 0
+          AND d.Rt = 2
+          AND d.Let IN (58, 6)
+        """)
+            .AnyAsync(cancellationToken);
+
 
         if (!hasPending)
         {
             return;
         }
 
-        jobService.Enqueue<CodalBackgroundJob>(job => job.RunParsePendingAsync(CancellationToken.None));
+        string queue =
+    configuration["HangfireOptions:ParsePendingQueue"]
+    ?? "default";
+
+        jobService.Enqueue<CodalBackgroundJob>(
+            queue,
+            job => job.RunParsePendingAsync(CancellationToken.None));
     }
     private static bool ShouldRunIncremental(
     CodalIncrementalScheduleSetting setting)

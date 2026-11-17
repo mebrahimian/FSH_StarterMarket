@@ -28,7 +28,8 @@
     "health": "سلامت سیستم",
     "auditTrail": "ردپای ممیزی",
     "sessions": "نشست‌ها",
-    "trash": "سطل زباله"
+    "trash": "سطل زباله",
+    "unusualRealMoneyInflow": "ورود پول حقیقی غیرعادی"
   },
   "sections": {
     "operations": "عملیات",
@@ -37,6 +38,7 @@
     "catalog": "کاتالوگ",
     "helpdesk": "پشتیبانی",
     "identity": "مدیریت هویت",
-    "system": "سیستم"
+    "system": "سیستم",
+    "marketMonitoring": "پایش بازار"
   }
 }

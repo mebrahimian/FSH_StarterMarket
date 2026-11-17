@@ -261,5 +261,48 @@
       "chooseSlot": "Select stock for slot {{index}}",
       "permanentNotice": "Saved selections are permanent and cannot be removed or changed."
     }
+  },
+  "realMoneyFlow": {
+    "loading": "Loading report...",
+    "loadError": "Failed to load real money flow report",
+    "noData": "No signals found for the current criteria.",
+    "totalCount": "Total signals: {{count}}",
+    "symbol": "Symbol",
+    "tradeDate": "Trade Date",
+    "netFlow": "Net Real Money Flow",
+
+    "zScore": "Z-Score",
+    "zScoreFormula": "* Z-Score = (Today's net real money flow − Average net flow over the previous {{days}} trading days) ÷ Standard deviation of net flow over the same period",
+    "parameters": {
+      "title": "Report Parameters",
+      "lookbackDays": "Lookback Period (Trading Days)",
+      "minZScore": "Minimum Z-Score",
+      "minFlowMultiple": "Minimum Inflow Multiple",
+      "minTradeValueMultiple": "Minimum Trade Value Multiple",
+      "usage": "{{used}} of {{limit}} adjustable parameters changed",
+      "notice": "The number of adjustable parameters depends on your subscription.",
+      "apply": "Apply Parameters",
+      "reset": "Reset",
+      "invalid": "Invalid values or subscription limit exceeded.",
+      "planError": "Could not load subscription details. Parameter editing is unavailable."
+    },
+    "flowMultiple": "Flow Multiple",
+    "tradeValueMultiple": "Trade Value Multiple",
+    "priceChange": "Period Price Change (%)",
+    "previous": "Previous",
+    "next": "Next",
+    "pagination": "Page {{page}} of {{total}}",
+    "headerGuide": {
+      "title": "Column information",
+      "netFlow": "Net real money flow on the signal date equals individual investors' buy value minus their sell value.",
+      "zScore": "Z-Score = (Net real money flow on the signal date − Average net flow over the previous {{days}} trading days) ÷ Standard deviation of net flow over the same period. Higher scores indicate more unusual activity.",
+      "flowMultiple": "Net real money inflow on the signal date divided by the average absolute net flow over the previous {{days}} trading days. Outflow days are also included in the average.",
+      "tradeValueMultiple": "Trading value on the signal date divided by the average trading value over the previous {{days}} trading days.",
+      "priceChange": "Percentage price change from the start of the lookback period to the signal date, not the one-day price change. Capital-increase-adjusted prices are used when valid adjustment data is available.",
+      "hint": "Click the i icon next to a column to see its explanation.",
+      "lookbackDays": "Number of previous trading days used to calculate average money flow, standard deviation, and average trading value. The default is 20 trading days."
+    }
   }
+  
+
 }

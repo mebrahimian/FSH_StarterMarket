@@ -28,7 +28,8 @@
     "health": "Health",
     "auditTrail": "Audit trail",
     "sessions": "Sessions",
-    "trash": "Trash"
+    "trash": "Trash",
+    "unusualRealMoneyInflow": "Unusual Real Money Inflow"
   },
   "sections": {
     "operations": "Operations",
@@ -37,6 +38,7 @@
     "catalog": "Catalog",
     "helpdesk": "Helpdesk",
     "identity": "Identity",
-    "system": "System"
+    "system": "System",
+    "marketMonitoring": "Market Monitoring"
   }
 }

@@ -155,7 +155,21 @@ export const sections: NavSection[] = [
         },
   ],
 },
-
+{
+    id: "market-monitoring",
+    caption: "Market Monitoring",
+    captionKey: "sections.marketMonitoring",
+    icon: Activity,
+    items: [
+        {
+            to: "/market-monitoring/real-money-flow",
+            label: "Unusual Real Money Inflow",
+            labelKey: "items.unusualRealMoneyInflow",
+            icon: Activity,
+            perm: "Permissions.MarketIntelligence.Disclosures.View",
+        },
+    ],
+},
 {
     id: "portfolio-intelligence",
     caption: "Portfolio Intelligence",

@@ -19,6 +19,19 @@ public sealed class GetDataQualityIssuesQueryHandler(
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
+        DateOnly minTradeDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-365));
+        var recentlyPricedSymbols = (await dbContext.TsetmcInstruments
+            .AsNoTracking()
+            .Where(instrument =>
+                dbContext.DailyPrices.Any(price =>
+                    price.InstrumentId == instrument.Id &&
+                    price.TradeDate >= minTradeDate &&
+                    (price.ClosingPrice > 0 || price.LastPrice > 0)))
+            .Select(instrument => instrument.NormalizedSymbol)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false))
+            .Select(symbol => NormalizeForMatch(symbol))
+            .ToHashSet(StringComparer.Ordinal);
 
         var summaries = await (
             from summary in dbContext.MonthlyActivitySummaries
@@ -121,35 +134,80 @@ public sealed class GetDataQualityIssuesQueryHandler(
                     calculatedValue,
                     storedValue));
         }
-        var listedCompanySymbols = (await dbContext.CompanyMaster
-                     .AsNoTracking()
-                     .Where(x => x.IsListed &&
-                                 x.FSortSymbol != null)
-                     .Select(x => x.FSortSymbol!)
-                     .ToListAsync(cancellationToken)
-                     .ConfigureAwait(false))
-                     .ToHashSet(StringComparer.Ordinal);
+        var listedCompanies = await dbContext.CompanyMaster
+    .AsNoTracking()
+    .Where(x => x.IsListed && x.FSortSymbol != null)
+    .Select(x => new
+    {
+        x.CompanyId,
+        x.FSortSymbol
+    })
+    .ToListAsync(cancellationToken)
+    .ConfigureAwait(false);
+
+        var eligibleCompanies = listedCompanies
+            .Where(x => recentlyPricedSymbols.Contains(
+                NormalizeForMatch(x.FSortSymbol!)))
+            .ToList();
+
+        var listedCompanySymbols = eligibleCompanies
+            .Select(x => NormalizeForMatch(x.FSortSymbol!))
+            .ToHashSet(StringComparer.Ordinal);
+
+        int[] eligibleCompanyIds = eligibleCompanies
+            .Select(x => x.CompanyId)
+            .Distinct()
+            .ToArray();
+
         var missingPortfolioDisclosures = (await dbContext.Disclosures
-                     .AsNoTracking()
-                     .Where(disclosure => (disclosure.Let == 58 || disclosure.Let == 6) &&
-                                          disclosure.Rt == 2 &&
-                                          disclosure.HasHtml &&
-                                          !dbContext.InvestmentPortfolioPositions
-                    .Any(position => position.DisclosureId == disclosure.Id))
-                    .Select(disclosure => new
-                                              {
-                                                 disclosure.Symbol,
-                                                 disclosure.Title,
-                                                 disclosure.Let,
-                                                 disclosure.PublishDateTimeRaw,
-                                              })
-                    .ToListAsync(cancellationToken)
-                    .ConfigureAwait(false))
-                    .Where(disclosure =>
-                           listedCompanySymbols.Contains(
-                           NormalizeForMatch(disclosure.Symbol)) &&
-                           (disclosure.Let == 58 || IsMainFinancialReport(disclosure.Title)))    
-                    .ToList();
+            .AsNoTracking()
+            .Where(disclosure =>
+                (disclosure.Let == 58 || disclosure.Let == 6) &&
+                disclosure.Rt == 2 &&
+                disclosure.Ct != 5 &&
+                disclosure.HasHtml &&
+
+                !dbContext.InvestmentPortfolioPositions
+                    .Any(position =>
+                        position.DisclosureId == disclosure.Id) &&
+
+                // Ignore reports replaced by newer portfolio positions.
+                !dbContext.InvestmentPortfolioReportMetadata
+                    .Any(metadata =>
+                        metadata.DisclosureId == disclosure.Id &&
+                        metadata.PeriodEndToDate != null &&
+
+                        dbContext.InvestmentPortfolioPositions
+                            .Any(position =>
+                                position.ParentCompanyId == disclosure.CompanyId &&
+                                position.PeriodEndDate == metadata.PeriodEndToDate &&
+                                position.SourceType == metadata.SourceType &&
+                                position.AuditStatus == metadata.AuditStatus &&
+                                disclosure.PublishDateTime != null &&
+                                position.PublishDateTime != null &&
+                                (
+                                    position.PublishDateTime > disclosure.PublishDateTime ||
+                                    (
+                                        position.PublishDateTime == disclosure.PublishDateTime &&
+                                        position.TracingNo > disclosure.TracingNo
+                                    )
+                                ))))
+            .Select(disclosure => new
+            {
+                disclosure.Symbol,
+                disclosure.Title,
+                disclosure.Let,
+                disclosure.PublishDateTimeRaw,
+            })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false))
+            .Where(disclosure =>
+                listedCompanySymbols.Contains(
+                    NormalizeForMatch(disclosure.Symbol)) &&
+                (disclosure.Let == 58 ||
+                 IsMainFinancialReport(disclosure.Title)))
+            .ToList();
+
 
         foreach (var disclosure in missingPortfolioDisclosures)
         {
@@ -176,10 +234,11 @@ public sealed class GetDataQualityIssuesQueryHandler(
     await dbContext.Disclosures
         .AsNoTracking()
         .Where(disclosure =>
-            dbContext.InvestmentPortfolioPositions
-                .Any(position =>
-                    position.DisclosureId ==
-                    disclosure.Id) &&
+           disclosure.CompanyId.HasValue &&
+           eligibleCompanyIds.Contains(disclosure.CompanyId.Value) &&
+           dbContext.InvestmentPortfolioPositions
+        .Any(position =>
+           position.DisclosureId == disclosure.Id) &&
             (
                 !dbContext.InvestmentPortfolioReportMetadata
                     .Any(metadata =>
@@ -245,9 +304,10 @@ public sealed class GetDataQualityIssuesQueryHandler(
         var salesSnapshots = await dbContext.SalesPerformanceSnapshots
             .AsNoTracking()
             .Where(snapshot =>
-                snapshot.Symbol != null &&
-                snapshot.PeriodEndDate != null &&
-                snapshot.PeriodEndDate.Length >= 7)
+               eligibleCompanyIds.Contains(snapshot.CompanyId) &&
+               snapshot.Symbol != null &&
+               snapshot.PeriodEndDate != null &&
+               snapshot.PeriodEndDate.Length >= 7)
             .Select(snapshot => new
             {
                 snapshot.CompanyId,
@@ -341,8 +401,10 @@ public sealed class GetDataQualityIssuesQueryHandler(
                 .OrderByDescending(x => x.MissingMonths)
                 .ThenBy(x => x.Issue.Symbol)
                 .Select(x => x.Issue));
-        
-        return issues;
+
+        return issues
+            .Where(issue => listedCompanySymbols.Contains(NormalizeForMatch(issue.Symbol)))
+            .ToList();
     }
     
     private static string ToPersianYearMonth(

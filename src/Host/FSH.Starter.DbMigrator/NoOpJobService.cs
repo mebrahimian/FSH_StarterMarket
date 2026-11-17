@@ -29,6 +29,10 @@ internal sealed class NoOpJobService : IJobService
     public string Enqueue(Expression<Func<Task>> methodCall) => throw Reject(nameof(Enqueue));
     public string Enqueue<T>(Expression<Action<T>> methodCall) => throw Reject(nameof(Enqueue));
     public string Enqueue<T>(Expression<Func<T, Task>> methodCall) => throw Reject(nameof(Enqueue));
+    public string Enqueue<T>(string queue, Expression<Func<T, Task>> methodCall)
+    {
+        return string.Empty;
+    }
     public bool Requeue(string jobId) => throw Reject(nameof(Requeue));
     public bool Requeue(string jobId, string fromState) => throw Reject(nameof(Requeue));
     public string Schedule(Expression<Action> methodCall, TimeSpan delay) => throw Reject(nameof(Schedule));

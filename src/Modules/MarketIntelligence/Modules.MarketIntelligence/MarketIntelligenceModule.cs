@@ -16,6 +16,7 @@ using FSH.Modules.MarketIntelligence.Features.v1.PortfolioMatching;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioValuation;
 using FSH.Modules.MarketIntelligence.Features.v1.PortfolioViewer;
 using FSH.Modules.MarketIntelligence.Features.v1.UserSubscriptions;
+using FSH.Modules.MarketIntelligence.Features.v1.RealMoneyFlow;
 using FSH.Modules.MarketIntelligence.Services.Benchmark;
 using FSH.Modules.MarketIntelligence.Services.Benchmark.Jobs;
 using FSH.Modules.MarketIntelligence.Services.Codal;
@@ -36,6 +37,7 @@ using FSH.Modules.MarketIntelligence.Services.Portfolio;
 using FSH.Modules.MarketIntelligence.Services.Subscriptions;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 using FSH.Modules.MarketIntelligence.Services.Tsetmc.Jobs;
+
 using Hangfire;
 using Hangfire.Common;
 using Microsoft.AspNetCore.Builder;
@@ -148,6 +150,7 @@ namespace FSH.Modules.MarketIntelligence
             builder.Services.AddScoped<TsetmcPriceReader>();
             builder.Services.AddScoped<PriceHistoryCollectorService>();
             builder.Services.AddScoped<TsetmcShareChangeCollectorService>();
+            builder.Services.AddScoped<CapitalIncreasePriceAdjustmentService>();
             builder.Services.AddScoped<IFileAccessPolicy, UserPaymentRequestFileAccessPolicy>();
         }
         public void ConfigureMiddleware(IApplicationBuilder app)
@@ -196,7 +199,9 @@ namespace FSH.Modules.MarketIntelligence
             group.MapCreateUnlistedPortfolioCompanyEndpoint();
             group.MapMatchPortfolioCompanyEndpoint();
             group.MapUnmatchPortfolioCompanyEndpoint();
-            group.MapGetMatchedPortfolioCompaniesEndpoint();            
+            group.MapGetMatchedPortfolioCompaniesEndpoint();
+            group.MapGetRealMoneyFlowSignalEndpoint();
+            group.MapGetRealMoneyFlowReportEndpoint();
 
             group.MapGet("/jobs/status",
                 async (MarketIntelligenceDbContext dbContext,
@@ -328,29 +333,27 @@ namespace FSH.Modules.MarketIntelligence
                    });
                }).RequirePermission(MarketIntelligencePermissions.CodalOperations.Execute);
 
-            group.MapPost(
-    "/codal/capital-increase-backfill-test",
-    async Task<IResult> (
-        ICodalCollectorService collectorService,
-        CancellationToken cancellationToken) =>
-    {
-        const int startPage = 625;
-        const int endPage = 616;
-
-        await collectorService.CollectCapitalIncreaseBackfillChunkAsync(
-            startPage,
-            endPage,
-            cancellationToken);
-
-        return Results.Ok(new
-        {
-            startPage,
-            endPage,
-            message = "Capital increase backfill test completed."
-        });
-    })
-    .RequirePermission(
-        MarketIntelligencePermissions.CodalOperations.Execute);
+            group.MapPost("/codal/capital-increase-backfill-test",
+                (IJobService jobService) =>
+                {
+                    const int startPage = 299;                    
+                    const int endPage = 1;
+                    string jobId = jobService.Enqueue<CodalBackgroundJob>(
+                        "development",
+                        job => job.RunCapitalIncreaseBackfillChunkAsync(
+                            startPage,
+                            endPage,
+                            CancellationToken.None));
+                    return Results.Ok(new
+                    {
+                        jobId,
+                        startPage,
+                        endPage,
+                        message = "Capital increase backfill queued."
+                    });
+                })
+                .RequirePermission(
+                MarketIntelligencePermissions.CodalOperations.Execute);
             ////////////////////////////
             group.MapPost("/codal/symbol-backfill", IResult
                      (CodalSymbolBackfillRequest request, IJobService jobService) =>
@@ -645,21 +648,18 @@ namespace FSH.Modules.MarketIntelligence
             })
               .RequireAuthorization();
             ////////////////////
-            group.MapPost("/codal/parse-pending", (IJobService jobService) =>
-                {
-                    string jobId =
-                        jobService.Enqueue<CodalBackgroundJob>(
-                            job =>
-                                job.RunParsePendingAsync(CancellationToken.None));
+            group.MapPost("/codal/parse-pending",
+    (IJobService jobService, IConfiguration configuration) =>
+    {
+        string queue =
+            configuration["HangfireOptions:ParsePendingQueue"]
+            ?? "default";
 
-                    return Results.Accepted(
-                        value: new
-                        {
-                            jobId,
-                            message =
-                                "Pending disclosure parsing queued."
-                        });
-                })
+        string jobId =
+            jobService.Enqueue<CodalBackgroundJob>(
+                queue,
+                job => job.RunParsePendingAsync(CancellationToken.None));
+    })
                 .RequirePermission(MarketIntelligencePermissions
                                   .CodalOperations
                                   .Execute);

@@ -17,7 +17,7 @@ public interface IJobService
     string Enqueue<T>(Expression<Action<T>> methodCall);
 
     string Enqueue<T>(Expression<Func<T, Task>> methodCall);
-
+    string Enqueue<T>(string queue, Expression<Func<T, Task>> methodCall);
     bool Requeue(string jobId);
 
     bool Requeue(string jobId, string fromState);

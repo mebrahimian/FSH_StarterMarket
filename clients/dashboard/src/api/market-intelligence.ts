@@ -1011,3 +1011,65 @@ export function searchSubscriptionCompanies(
         `/api/v1/marketintelligence/subscriptions/companies?${params}`
     );
 }
+
+export type RealMoneyFlowReportParams = {
+    tradeDate?: string;
+    lookbackDays?: number;
+    minZScore?: number;
+    minFlowMultiple?: number;
+    minTradeValueMultiple?: number;
+    companyId?: number;
+    pageNumber?: number;
+    pageSize?: number;
+};
+
+export type RealMoneyFlowReportItem = {
+    companyId: number;
+    symbol: string;
+    startDate: string;
+    endDate: string;
+    netFlow: number;
+    zScore: number;
+    flowMultiple: number;
+    tradeValueMultiple: number;
+    isUnusual: boolean;
+    startPrice: number;
+    endPrice: number;
+    rawPriceChangePercent: number;
+    adjustedPriceChangePercent: number | null;
+    adjustmentFactor: number;
+    adjustmentStatus: string;
+};
+
+export type RealMoneyFlowReportResponse =
+    PagedResponse<RealMoneyFlowReportItem>;
+
+export function getRealMoneyFlowReport(
+    params: RealMoneyFlowReportParams = {},
+): Promise<RealMoneyFlowReportResponse> {
+    const query = new URLSearchParams();
+
+    if (params.tradeDate) {
+        query.set("tradeDate", params.tradeDate);
+    }
+
+    query.set("lookbackDays", String(params.lookbackDays ?? 20));
+    query.set("minZScore", String(params.minZScore ?? 1.5));
+    query.set("minFlowMultiple", String(params.minFlowMultiple ?? 2));
+    query.set("minTradeValueMultiple", String(params.minTradeValueMultiple ?? 1.5));
+
+    if (params.companyId != null) {
+        query.set("companyId", String(params.companyId));
+    }
+
+    query.set("pageNumber", String(params.pageNumber ?? 1));
+    query.set("pageSize", String(params.pageSize ?? 20));
+
+    return apiFetch<RealMoneyFlowReportResponse>(
+        `/api/v1/marketintelligence/real-money-flow?${query.toString()}`,
+        {
+            timeoutMs: 120_000,
+        },
+    );
+}
+
