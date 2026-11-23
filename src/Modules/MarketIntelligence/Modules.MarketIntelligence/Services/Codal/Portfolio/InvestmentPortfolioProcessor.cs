@@ -70,6 +70,84 @@ public sealed class InvestmentPortfolioProcessor(
         }
 
 
+        bool hasProcessedCorrection =
+            await (
+                from correction in dbContext.Disclosures.AsNoTracking()
+                join metadata in dbContext.InvestmentPortfolioReportMetadata.AsNoTracking()
+                    on correction.Id equals metadata.DisclosureId
+                where correction.PreviousVersionTracingNo == disclosure.TracingNo
+                      && correction.PublishDateTime > disclosure.PublishDateTime
+                select correction.Id
+            )
+            .AnyAsync(cancellationToken);
+
+
+        if (hasProcessedCorrection)
+        {
+            if (!disclosure.PreviousVersionTracingNo.HasValue)
+            {
+                var supersededSheets =
+                    await reader.ReadAsync(disclosure.Url, cancellationToken);
+
+                long[] previousVersionNumbers = supersededSheets
+                    .Select(x => x.Metadata.PreviousVersionTracingNo)
+                    .Where(x => x.HasValue)
+                    .Select(x => x!.Value)
+                    .Distinct()
+                    .ToArray();
+
+                if (previousVersionNumbers.Length > 1)
+                {
+                    throw new InvalidOperationException(
+                        $"Conflicting previous versions. TracingNo={disclosure.TracingNo}");
+                }
+
+                if (previousVersionNumbers.Length == 1)
+                {
+                    long resolvedPreviousTracingNo = previousVersionNumbers[0];
+
+                    Disclosure? previousDisclosure =
+                        await dbContext.Disclosures.AsNoTracking()
+                            .FirstOrDefaultAsync(
+                                x => x.TracingNo == resolvedPreviousTracingNo,
+                                cancellationToken);
+
+                    if (previousDisclosure is null ||
+                        previousDisclosure.Let != disclosure.Let ||
+                        NormalizeForMatch(previousDisclosure.Symbol) !=
+                            NormalizeForMatch(disclosure.Symbol) ||
+                        !previousDisclosure.PublishDateTime.HasValue ||
+                        !disclosure.PublishDateTime.HasValue ||
+                        previousDisclosure.PublishDateTime.Value >=
+                            disclosure.PublishDateTime.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"Invalid previous disclosure. " +
+                            $"TracingNo={disclosure.TracingNo}, " +
+                            $"PreviousTracingNo={resolvedPreviousTracingNo}");
+                    }
+
+                    disclosure.AssignPreviousVersion(resolvedPreviousTracingNo);
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                    if (logger.IsEnabled(LogLevel.Information))
+                        logger.LogInformation(
+                        "Superseded disclosure previous version saved. " +
+                        "TracingNo={TracingNo}, PreviousTracingNo={PreviousTracingNo}",
+                        disclosure.TracingNo,
+                        resolvedPreviousTracingNo);
+                }
+            }
+            if (logger.IsEnabled(LogLevel.Information))
+                logger.LogInformation(
+                "Skipping superseded portfolio disclosure. TracingNo={TracingNo}",
+                disclosure.TracingNo);
+
+            return;
+        }
+
+
+
         string parentFSortSymbol = NormalizeForMatch(disclosure.Symbol);
 
         int? parentCompanyId =
@@ -312,13 +390,43 @@ public sealed class InvestmentPortfolioProcessor(
         {
             return;
         }
+
+        long[] previousVersionTracingNos = sheets
+            .Select(x => x.Metadata.PreviousVersionTracingNo)
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
+            .Distinct()
+            .ToArray();
+
+        if (previousVersionTracingNos.Length > 1)
+        {
+            throw new InvalidOperationException(
+                $"Conflicting previous versions. TracingNo={disclosure.TracingNo}");
+        }
+
+        if (previousVersionTracingNos.Length == 1)
+        {
+            long previousTracingNo = previousVersionTracingNos[0];
+
+            if (disclosure.PreviousVersionTracingNo.HasValue &&
+                disclosure.PreviousVersionTracingNo.Value != previousTracingNo)
+            {
+                throw new InvalidOperationException(
+                    $"Previous version mismatch. TracingNo={disclosure.TracingNo}");
+            }
+
+            disclosure.AssignPreviousVersion(previousTracingNo);
+        }
+
         dbContext.InvestmentPortfolioPositions.RemoveRange(existing);
 
         await dbContext.InvestmentPortfolioPositions
             .AddRangeAsync(
                 entities,
                 cancellationToken);
-        if (updateHoldingPeriods)
+        if (updateHoldingPeriods &&
+            sourceType == PortfolioSourceType.MonthlyActivity &&
+            !disclosure.PreviousVersionTracingNo.HasValue)
         {
             IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio =
                 await GetPreviousPortfolioAsync(
@@ -334,8 +442,155 @@ public sealed class InvestmentPortfolioProcessor(
                 cancellationToken);
         }
 
-        if (updateHoldingPeriods && sourceType == PortfolioSourceType.MonthlyActivity)
+
+        if (disclosure.PreviousVersionTracingNo is long supersededTracingNo)
         {
+            // Validate the previous disclosure before modifying data.
+            Disclosure? previousDisclosure = await dbContext.Disclosures
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    x => x.TracingNo == supersededTracingNo,
+                    cancellationToken);
+
+            if (previousDisclosure is null ||
+                previousDisclosure.Let != disclosure.Let ||
+                NormalizeForMatch(previousDisclosure.Symbol) != parentFSortSymbol ||
+                !previousDisclosure.PublishDateTime.HasValue ||
+                !disclosure.PublishDateTime.HasValue ||
+                previousDisclosure.PublishDateTime.Value >=
+                    disclosure.PublishDateTime.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Invalid portfolio correction relationship. " +
+                    $"TracingNo={disclosure.TracingNo}, " +
+                    $"PreviousTracingNo={supersededTracingNo}");
+            }
+
+            if (entities.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Correction has no portfolio positions. " +
+                    $"TracingNo={disclosure.TracingNo}");
+            }
+
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction =
+                    await dbContext.Database.BeginTransactionAsync(
+                        cancellationToken);
+
+                // 1. Save the correction first.
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                // 2. Verify that the correction positions are persisted.
+                int savedPositions = await dbContext.InvestmentPortfolioPositions
+                    .AsNoTracking()
+                    .CountAsync(
+                        x => x.DisclosureId == disclosure.Id,
+                        cancellationToken);
+
+                if (savedPositions != entities.Count)
+                {
+                    throw new InvalidOperationException(
+                        $"Correction positions were not fully saved. " +
+                        $"TracingNo={disclosure.TracingNo}, " +
+                        $"Expected={entities.Count}, Actual={savedPositions}");
+                }
+
+                // 3. Delete the superseded positions by TracingNo.
+
+                var obsoleteTracingNos = new List<long>();
+
+                var visitedTracingNos = new HashSet<long>
+                {
+                    disclosure.TracingNo
+                };
+
+                long? tracingNoToCheck = supersededTracingNo;
+                DateTime? newerPublishDateTime = disclosure.PublishDateTime;
+
+                while (tracingNoToCheck is long tracingNo)
+                {
+                    if (!visitedTracingNos.Add(tracingNo))
+                    {
+                        throw new InvalidOperationException(
+                            $"Circular correction chain. TracingNo={tracingNo}");
+                    }
+
+                    Disclosure? previousVersion = await dbContext.Disclosures
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(
+                            x => x.TracingNo == tracingNo,
+                            cancellationToken);
+
+                    if (previousVersion is null ||
+                        previousVersion.Let != disclosure.Let ||
+                        NormalizeForMatch(previousVersion.Symbol) != parentFSortSymbol ||
+                        !previousVersion.PublishDateTime.HasValue ||
+                        !newerPublishDateTime.HasValue ||
+                        previousVersion.PublishDateTime.Value >= newerPublishDateTime.Value)
+                    {
+                        throw new InvalidOperationException(
+                            $"Invalid correction chain. TracingNo={tracingNo}");
+                    }
+
+                    obsoleteTracingNos.Add(tracingNo);
+
+                    newerPublishDateTime = previousVersion.PublishDateTime;
+                    tracingNoToCheck = previousVersion.PreviousVersionTracingNo;
+                }
+
+                int deletedPositions = await dbContext.InvestmentPortfolioPositions
+                    .Where(x =>
+                        x.ParentCompanyId == parentCompanyId.Value &&
+                        x.SourceType == sourceType &&
+                        obsoleteTracingNos.Contains(x.TracingNo))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                // 4. Recalculate the current period after deletion.
+                if (updateHoldingPeriods &&
+                    sourceType == PortfolioSourceType.MonthlyActivity)
+                {
+                    IReadOnlyList<InvestmentPortfolioPosition> previousPortfolio =
+                        await GetPreviousPortfolioAsync(
+                            parentCompanyId.Value,
+                            periodEndDate,
+                            cancellationToken);
+
+                    await ApplyHoldingEntryExitAsync(
+                        disclosure.Symbol,
+                        previousPortfolio,
+                        entities,
+                        periodEndDate,
+                        cancellationToken);
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+
+                    await calculationChangeService.MarkChangedAsync(
+                        parentCompanyId.Value,
+                        "PortfolioValuation",
+                        cancellationToken);
+                }
+
+                // 5. Both operations succeed or both roll back.
+                await transaction.CommitAsync(cancellationToken);
+                if (logger.IsEnabled(LogLevel.Information))
+                    logger.LogInformation(
+                    "Portfolio correction committed. " +
+                    "TracingNo={TracingNo}, PreviousTracingNo={PreviousTracingNo}, " +
+                    "SavedPositions={SavedPositions}, DeletedPositions={DeletedPositions}",
+                    disclosure.TracingNo,
+                    supersededTracingNo,
+                    savedPositions,
+                    deletedPositions);
+            });
+        }
+        else if (updateHoldingPeriods &&
+                 sourceType == PortfolioSourceType.MonthlyActivity)
+        {
+            // Existing normal incremental behavior: unchanged.
             var strategy = dbContext.Database.CreateExecutionStrategy();
 
             await strategy.ExecuteAsync(async () =>
@@ -358,6 +613,7 @@ public sealed class InvestmentPortfolioProcessor(
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
+
 
         if (logger.IsEnabled(LogLevel.Information))
         {
@@ -681,13 +937,14 @@ public sealed class InvestmentPortfolioProcessor(
         ArgumentException.ThrowIfNullOrWhiteSpace(parentSymbol);
         ArgumentException.ThrowIfNullOrWhiteSpace(currentPeriodEndDate);
 
-        int[] childCompanyIds =
-    previousPortfolio
-        .Concat(currentPortfolio)
-        .Where(x => x.ChildCompanyId.HasValue)
-        .Select(x => x.ChildCompanyId!.Value)
-        .Distinct()
-        .ToArray();
+        string normalizedParentSymbol = parentSymbol.Trim();
+
+        int[] childCompanyIds = previousPortfolio
+            .Concat(currentPortfolio)
+            .Where(x => x.ChildCompanyId.HasValue)
+            .Select(x => x.ChildCompanyId!.Value)
+            .Distinct()
+            .ToArray();
 
         List<PortfolioHoldingAsset> holdingAssets =
             await dbContext.PortfolioHoldingAssets
@@ -698,6 +955,7 @@ public sealed class InvestmentPortfolioProcessor(
                     (x.UnlistedCompanyId.HasValue &&
                      childCompanyIds.Contains(x.UnlistedCompanyId.Value)))
                 .ToListAsync(cancellationToken);
+
         Dictionary<int, int> listedAssetLookup = [];
         Dictionary<int, int> unlistedAssetLookup = [];
 
@@ -722,143 +980,139 @@ public sealed class InvestmentPortfolioProcessor(
         {
             if (!position.ChildCompanyId.HasValue)
             {
-                return 0;
+                throw new InvalidOperationException(
+                    "ChildCompanyId is missing.");
             }
 
-            int childCompanyId =
-                position.ChildCompanyId.Value;
+            int childCompanyId = position.ChildCompanyId.Value;
 
-            if (listedAssetLookup.TryGetValue(
+            if (position.IsListed &&
+                listedAssetLookup.TryGetValue(
                     childCompanyId,
-                    out int holdingAssetId))
+                    out int listedAssetId))
             {
-                return holdingAssetId;
+                return listedAssetId;
             }
 
-            if (unlistedAssetLookup.TryGetValue(
+            if (!position.IsListed &&
+                unlistedAssetLookup.TryGetValue(
                     childCompanyId,
-                    out holdingAssetId))
+                    out int unlistedAssetId))
             {
-                return holdingAssetId;
+                return unlistedAssetId;
             }
 
             throw new InvalidOperationException(
-    $"HoldingAsset not found. " +
-    $"ChildCompanyId={childCompanyId}, " +
-    $"RawCompanyName={position.RawCompanyName}, " +
-    $"FSortName={position.FSortName}, " +
-    $"IsListed={position.IsListed}");
+                $"HoldingAsset not found. " +
+                $"ChildCompanyId={childCompanyId}, " +
+                $"RawCompanyName={position.RawCompanyName}, " +
+                $"IsListed={position.IsListed}");
         }
 
-        Dictionary<int, bool> previousHoldings =
-            previousPortfolio
-                .Where(x => x.ChildCompanyId.HasValue)
-                .Select(GetHoldingAssetId)
-                .Where(x => x > 0)
-                .Distinct()
-                .ToDictionary(
-                    x => x,
-                    _ => true);
-
-        HashSet<int> enteredHoldingAssetIds = [];
-
-        foreach (InvestmentPortfolioPosition current
-                 in currentPortfolio)
+        Dictionary<int, decimal> BuildBalances(
+            IReadOnlyList<InvestmentPortfolioPosition> portfolio)
         {
-            if (!current.ChildCompanyId.HasValue)
+            Dictionary<int, decimal> balances = [];
+
+            foreach (InvestmentPortfolioPosition position in portfolio)
             {
-                continue;
+                if (!position.ChildCompanyId.HasValue)
+                {
+                    continue;
+                }
+
+                if (!position.EndingQuantity.HasValue)
+                {
+                    throw new InvalidOperationException(
+                        $"EndingQuantity is null. " +
+                        $"ParentSymbol={normalizedParentSymbol}, " +
+                        $"ChildCompanyId={position.ChildCompanyId}, " +
+                        $"PeriodEndDate={position.PeriodEndDate}");
+                }
+
+                decimal quantity = position.EndingQuantity.Value;
+
+                if (quantity < 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Negative EndingQuantity. " +
+                        $"ChildCompanyId={position.ChildCompanyId}, " +
+                        $"PeriodEndDate={position.PeriodEndDate}");
+                }
+
+                int holdingAssetId = GetHoldingAssetId(position);
+
+                if (!balances.TryAdd(holdingAssetId, quantity))
+                {
+                    throw new InvalidOperationException(
+                        $"Duplicate HoldingAssetId in portfolio. " +
+                        $"ParentSymbol={normalizedParentSymbol}, " +
+                        $"HoldingAssetId={holdingAssetId}, " +
+                        $"PeriodEndDate={position.PeriodEndDate}");
+                }
             }
 
-            int holdingAssetId =
-                GetHoldingAssetId(current);
-
-            if (previousHoldings.ContainsKey(
-                    holdingAssetId))
-            {
-                previousHoldings[holdingAssetId] =
-                    false;
-
-                continue;
-            }
-
-            enteredHoldingAssetIds.Add(
-                holdingAssetId);
+            return balances;
         }
 
-        string normalizedParentSymbol =
-            parentSymbol.Trim();
+        Dictionary<int, decimal> previousBalances =
+            BuildBalances(previousPortfolio);
 
-        List<InvestmentPortfolioHoldingPeriod>
-            activeHoldingPeriods =
-                await dbContext
-                    .InvestmentPortfolioHoldingPeriods
-                    .Where(x =>
-                        x.ParentSymbol ==
-                            normalizedParentSymbol &&
-                        x.IsActive)
-                    .ToListAsync(cancellationToken);
+        Dictionary<int, decimal> currentBalances =
+            BuildBalances(currentPortfolio);
 
-        // Entry
-        foreach (int holdingAssetId
-                 in enteredHoldingAssetIds)
+        List<InvestmentPortfolioHoldingPeriod> existingChanges =
+            await dbContext.InvestmentPortfolioHoldingPeriods
+                .Where(x =>
+                    x.ParentSymbol == normalizedParentSymbol &&
+                    x.ChangeDate == currentPeriodEndDate)
+                .ToListAsync(cancellationToken);
+
+        Dictionary<int, InvestmentPortfolioHoldingPeriod> existingLookup =
+            existingChanges.ToDictionary(x => x.HoldingAssetId);
+
+        int[] holdingAssetIds = previousBalances.Keys
+            .Union(currentBalances.Keys)
+            .OrderBy(x => x)
+            .ToArray();
+
+        foreach (int holdingAssetId in holdingAssetIds)
         {
-            bool alreadyActive =
-                activeHoldingPeriods.Any(x =>
-                    x.HoldingAssetId ==
-                        holdingAssetId);
+            decimal previousQuantity =
+                previousBalances.GetValueOrDefault(holdingAssetId);
 
-            if (alreadyActive)
+            decimal currentQuantity =
+                currentBalances.GetValueOrDefault(holdingAssetId);
+
+            existingLookup.TryGetValue(
+                holdingAssetId,
+                out InvestmentPortfolioHoldingPeriod? existingChange);
+
+            if (previousQuantity == currentQuantity)
             {
+                // An amendment may have eliminated an earlier change.
+                if (existingChange is not null)
+                {
+                    dbContext.InvestmentPortfolioHoldingPeriods
+                        .Remove(existingChange);
+                }
+
                 continue;
             }
 
-            var holdingPeriod =
+            if (existingChange is not null)
+            {
+                // Correct the event for the same reporting date.
+                existingChange.CorrectQuantity(currentQuantity);
+                continue;
+            }
+
+            dbContext.InvestmentPortfolioHoldingPeriods.Add(
                 new InvestmentPortfolioHoldingPeriod(
                     normalizedParentSymbol,
                     holdingAssetId,
-                    currentPeriodEndDate);
-
-            dbContext
-                .InvestmentPortfolioHoldingPeriods
-                .Add(holdingPeriod);
-
-            activeHoldingPeriods.Add(
-                holdingPeriod);
-        }
-
-        // Exit
-        foreach (KeyValuePair<int, bool> previous
-                 in previousHoldings)
-        {
-            if (!previous.Value)
-            {
-                continue;
-            }
-
-            InvestmentPortfolioHoldingPeriod?
-                activePeriod =
-                    activeHoldingPeriods
-                        .FirstOrDefault(x =>
-                            x.HoldingAssetId ==
-                                previous.Key);
-
-            if (activePeriod is null)
-            {
-                logger.LogWarning(
-                    "Active HoldingPeriod not found for Exit. " +
-                    "ParentSymbol: {ParentSymbol}, " +
-                    "HoldingAssetId: {HoldingAssetId}, " +
-                    "PeriodEndDate: {PeriodEndDate}",
-                    normalizedParentSymbol,
-                    previous.Key,
-                    currentPeriodEndDate);
-
-                continue;
-            }
-
-            activePeriod.Close(
-                currentPeriodEndDate);
+                    currentPeriodEndDate,
+                    currentQuantity));
         }
     }
 }

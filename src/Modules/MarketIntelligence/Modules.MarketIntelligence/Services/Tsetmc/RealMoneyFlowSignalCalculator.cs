@@ -9,6 +9,11 @@ public sealed record RealMoneyFlowSignalParameters(
     decimal MinFlowMultiple = 2m,
     decimal MinTradeValueMultiple = 1.5m);
 
+public enum RealMoneyFlowDirection
+{
+    Inflow = 0,
+    Outflow = 1
+}
 public sealed record RealMoneyFlowSignal(
     DateOnly TradeDate,
     long NetFlow,
@@ -21,7 +26,8 @@ public static class RealMoneyFlowSignalCalculator
 {
     public static RealMoneyFlowSignal? Calculate(
         IReadOnlyCollection<DailyPrice> prices,
-        RealMoneyFlowSignalParameters? parameters = null)
+        RealMoneyFlowSignalParameters? parameters = null,
+        RealMoneyFlowDirection direction = RealMoneyFlowDirection.Inflow)
     {
         ArgumentNullException.ThrowIfNull(prices);
 
@@ -86,12 +92,26 @@ public static class RealMoneyFlowSignalCalculator
         decimal standardDeviation =
             (decimal)Math.Sqrt((double)variance);
 
+        decimal directionalFlow = direction switch
+        {
+            RealMoneyFlowDirection.Inflow => currentFlow,
+            RealMoneyFlowDirection.Outflow => -currentFlow,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction))
+        };
+
+        decimal directionalDifference = direction switch
+        {
+            RealMoneyFlowDirection.Inflow => currentFlow - averageFlow,
+            RealMoneyFlowDirection.Outflow => averageFlow - currentFlow,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction))
+        };
+
         decimal zScore = standardDeviation > 0
-            ? (currentFlow - averageFlow) / standardDeviation
+            ? directionalDifference / standardDeviation
             : 0m;
 
         decimal flowMultiple = averageAbsoluteFlow > 0
-            ? currentFlow / averageAbsoluteFlow
+            ? directionalFlow / averageAbsoluteFlow
             : 0m;
 
         decimal tradeValueMultiple = averageTradeValue > 0
@@ -99,7 +119,7 @@ public static class RealMoneyFlowSignalCalculator
             : 0m;
 
         bool isUnusual =
-            currentFlow > 0 &&
+            directionalFlow > 0 &&
             zScore >= parameters.MinZScore &&
             flowMultiple >= parameters.MinFlowMultiple &&
             tradeValueMultiple >= parameters.MinTradeValueMultiple;

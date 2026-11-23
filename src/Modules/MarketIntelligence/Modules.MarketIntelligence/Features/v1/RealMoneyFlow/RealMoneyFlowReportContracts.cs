@@ -11,7 +11,8 @@ public sealed record RealMoneyFlowReportRequest(
     decimal MinTradeValueMultiple = 1.5m,
     int? CompanyId = null,
     int PageNumber = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    RealMoneyFlowDirection Direction = RealMoneyFlowDirection.Inflow);
 
 public sealed record RealMoneyFlowReportItem(
     int CompanyId,

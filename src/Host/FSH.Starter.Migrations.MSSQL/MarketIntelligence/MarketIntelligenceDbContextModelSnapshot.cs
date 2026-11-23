@@ -709,6 +709,9 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                         .HasMaxLength(1024)
                         .HasColumnType("nvarchar(1024)");
 
+                    b.Property<long?>("PreviousVersionTracingNo")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("PublishDateTime")
                         .HasMaxLength(32)
                         .HasColumnType("datetime2");
@@ -873,6 +876,696 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
                     b.HasIndex("CompanyId", "PeriodEndDate");
 
                     b.ToTable("Insights", "marketintelligence");
+                });
+
+            modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.Insights.RealMoneyFlowSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AvailableHistoryMonths")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CalculatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CurrentMonthInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<int>("CurrentMonthInflowDays")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CurrentMonthNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("CurrentMonthNetFlowToTradeValuePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("CurrentMonthOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<int>("CurrentMonthOutflowDays")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("CurrentMonthTradeValue")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<int>("CurrentMonthTradingDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentMonthValidFlowDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("HasComparableHistoricalBaseline")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("HasComparablePreviousYearData")
+                        .HasColumnType("bit");
+
+                    b.Property<DateOnly>("LastFlowTradeDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("MonthlyInflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("MonthlyNetFlowYoYChange")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("MonthlyOutflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<string>("PeriodEndDate")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("PreviousYearCurrentMonthInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearCurrentMonthNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearCurrentMonthOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearRollingSixMonthInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearRollingSixMonthNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearRollingSixMonthOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearRollingThreeMonthInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearRollingThreeMonthNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearRollingThreeMonthOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearToDateInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearToDateNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("PreviousYearToDateOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("RollingSixMonthInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("RollingSixMonthNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("RollingSixMonthOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("RollingThreeMonthInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("RollingThreeMonthNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("RollingThreeMonthOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentInflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentInflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentInflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentNetFlowVsAverageDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentNetFlowVsHighDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentNetFlowVsLowDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentOutflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentOutflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthCurrentOutflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthInflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthInflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixMonthInflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixMonthInflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixMonthInflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixMonthInflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixMonthNetFlowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthNetFlowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixMonthNetFlowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixMonthNetFlowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixMonthNetFlowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixMonthNetFlowYoYChange")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthOutflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixMonthOutflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixMonthOutflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixMonthOutflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixMonthOutflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixMonthOutflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentInflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentInflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentInflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentNetFlowVsAverageDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentNetFlowVsHighDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentNetFlowVsLowDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentOutflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentOutflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthCurrentOutflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("SixtyMonthInflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixtyMonthInflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixtyMonthInflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixtyMonthInflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixtyMonthInflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixtyMonthNetFlowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixtyMonthNetFlowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixtyMonthNetFlowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixtyMonthNetFlowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixtyMonthNetFlowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixtyMonthOutflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("SixtyMonthOutflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixtyMonthOutflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SixtyMonthOutflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("SixtyMonthOutflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentInflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentInflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentInflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentNetFlowVsAverageDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentNetFlowVsHighDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentNetFlowVsLowDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentOutflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentOutflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthCurrentOutflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthInflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthInflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("ThreeMonthInflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("ThreeMonthInflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("ThreeMonthInflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("ThreeMonthInflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("ThreeMonthNetFlowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthNetFlowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("ThreeMonthNetFlowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("ThreeMonthNetFlowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("ThreeMonthNetFlowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("ThreeMonthNetFlowYoYChange")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthOutflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("ThreeMonthOutflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("ThreeMonthOutflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("ThreeMonthOutflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("ThreeMonthOutflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("ThreeMonthOutflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentInflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentInflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentInflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentNetFlowVsAverageDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentNetFlowVsHighDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentNetFlowVsLowDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentOutflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentOutflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthCurrentOutflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwelveMonthInflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwelveMonthInflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwelveMonthInflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwelveMonthInflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwelveMonthInflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwelveMonthNetFlowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwelveMonthNetFlowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwelveMonthNetFlowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwelveMonthNetFlowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwelveMonthNetFlowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwelveMonthOutflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwelveMonthOutflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwelveMonthOutflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwelveMonthOutflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwelveMonthOutflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentInflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentInflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentInflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentNetFlowVsAverageDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentNetFlowVsHighDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentNetFlowVsLowDifference")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentOutflowVsAveragePercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentOutflowVsHighPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthCurrentOutflowVsLowPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthInflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthInflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwentyFourMonthInflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwentyFourMonthInflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwentyFourMonthInflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwentyFourMonthNetFlowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthNetFlowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwentyFourMonthNetFlowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwentyFourMonthNetFlowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwentyFourMonthNetFlowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwentyFourMonthOutflowAverage")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("TwentyFourMonthOutflowHigh")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwentyFourMonthOutflowHighPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("TwentyFourMonthOutflowLow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<string>("TwentyFourMonthOutflowLowPeriod")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("YearToDateInflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("YearToDateInflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal?>("YearToDateNetFlow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("YearToDateNetFlowYoYChange")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("YearToDateOutflow")
+                        .HasPrecision(28, 4)
+                        .HasColumnType("decimal(28,4)");
+
+                    b.Property<decimal?>("YearToDateOutflowYoYGrowthPercent")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PeriodEndDate");
+
+                    b.HasIndex("CompanyId", "PeriodEndDate")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "PeriodEndDate", "CalculatedAt");
+
+                    b.ToTable("RealMoneyFlowSnapshots", "marketintelligence");
                 });
 
             modelBuilder.Entity("FSH.Modules.MarketIntelligence.Domain.Insights.SalesPerformanceSnapshot", b =>
@@ -1172,20 +1865,17 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("EntryDate")
+                    b.Property<string>("ChangeDate")
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
 
-                    b.Property<string>("ExitDate")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<decimal>("CurrentQuantity")
+                        .HasPrecision(28, 6)
+                        .HasColumnType("decimal(28,6)");
 
                     b.Property<int>("HoldingAssetId")
                         .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
 
                     b.Property<string>("ParentSymbol")
                         .IsRequired()
@@ -1196,13 +1886,7 @@ namespace FSH.Starter.Migrations.MSSQL.MarketIntelligence
 
                     b.HasIndex("HoldingAssetId");
 
-                    b.HasIndex("ParentSymbol", "HoldingAssetId")
-                        .IsUnique()
-                        .HasFilter("[IsActive] = 1");
-
-                    b.HasIndex("ParentSymbol", "IsActive");
-
-                    b.HasIndex("ParentSymbol", "HoldingAssetId", "EntryDate")
+                    b.HasIndex("ParentSymbol", "HoldingAssetId", "ChangeDate")
                         .IsUnique();
 
                     b.ToTable("InvestmentPortfolioHoldingPeriods", "marketintelligence");

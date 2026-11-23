@@ -1,6 +1,7 @@
 ﻿using FSH.Framework.Core.Domain;
 
 namespace FSH.Modules.MarketIntelligence.Domain;
+
 public sealed class InvestmentPortfolioHoldingPeriod :
     BaseEntity<int>,
     IGlobalEntity
@@ -12,34 +13,31 @@ public sealed class InvestmentPortfolioHoldingPeriod :
     public InvestmentPortfolioHoldingPeriod(
         string parentSymbol,
         int holdingAssetId,
-        string entryDate)
+        string changeDate,
+        decimal currentQuantity)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(parentSymbol);
-        ArgumentException.ThrowIfNullOrWhiteSpace(entryDate);
-
+        ArgumentException.ThrowIfNullOrWhiteSpace(changeDate);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(holdingAssetId);
+        ArgumentOutOfRangeException.ThrowIfNegative(currentQuantity);
 
         ParentSymbol = parentSymbol.Trim();
         HoldingAssetId = holdingAssetId;
-        EntryDate = entryDate;
-        IsActive = true;
+        ChangeDate = changeDate;
+        CurrentQuantity = currentQuantity;
     }
 
     public string ParentSymbol { get; private set; } = string.Empty;
 
     public int HoldingAssetId { get; private set; }
 
-    public string EntryDate { get; private set; } = string.Empty;
+    public string ChangeDate { get; private set; } = string.Empty;
 
-    public string? ExitDate { get; private set; }
+    public decimal CurrentQuantity { get; private set; }
 
-    public bool IsActive { get; private set; }
-
-    public void Close(string exitDate)
+    public void CorrectQuantity(decimal currentQuantity)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(exitDate);
-
-        ExitDate = exitDate;
-        IsActive = false;
+        ArgumentOutOfRangeException.ThrowIfNegative(currentQuantity);
+        CurrentQuantity = currentQuantity;
     }
 }

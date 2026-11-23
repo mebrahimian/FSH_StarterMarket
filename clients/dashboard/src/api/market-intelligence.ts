@@ -1021,6 +1021,8 @@ export type RealMoneyFlowReportParams = {
     companyId?: number;
     pageNumber?: number;
     pageSize?: number;
+    direction?: "Inflow" | "Outflow";
+
 };
 
 export type RealMoneyFlowReportItem = {
@@ -1057,7 +1059,7 @@ export function getRealMoneyFlowReport(
     query.set("minZScore", String(params.minZScore ?? 1.5));
     query.set("minFlowMultiple", String(params.minFlowMultiple ?? 2));
     query.set("minTradeValueMultiple", String(params.minTradeValueMultiple ?? 1.5));
-
+    query.set("direction", params.direction ?? "Inflow");
     if (params.companyId != null) {
         query.set("companyId", String(params.companyId));
     }

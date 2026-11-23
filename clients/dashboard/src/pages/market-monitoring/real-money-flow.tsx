@@ -94,7 +94,7 @@ export default function RealMoneyFlowPage() {
     const locale = isPersian ? "fa-IR" : "en-US";
 
     const [pageNumber, setPageNumber] = useState(1);
-
+    const [direction, setDirection] = useState<"Inflow" | "Outflow">("Inflow");
     const [data, setData] =
         useState<RealMoneyFlowReportResponse | null>(null);
 
@@ -151,10 +151,11 @@ export default function RealMoneyFlowPage() {
         setLoading(true);
         setHasError(false);
 
-        getRealMoneyFlowReport({
-            ...appliedFilters,
-            pageNumber,
-            pageSize: PAGE_SIZE,
+        getRealMoneyFlowReport({            
+            ...appliedFilters,            
+            direction,            
+            pageNumber,            
+            pageSize: PAGE_SIZE,        
         })
             .then(result => {
                 if (active) {
@@ -175,7 +176,7 @@ export default function RealMoneyFlowPage() {
         return () => {
             active = false;
         };
-    }, [pageNumber, appliedFilters]);
+    },  [pageNumber, appliedFilters, direction]);
 
     // Close popup on outside click, Escape, scroll or resize.
     useEffect(() => {
@@ -360,35 +361,71 @@ export default function RealMoneyFlowPage() {
         <>
             <main
                 className="space-y-4"
-                dir={isPersian ? "rtl" : "ltr"}
-            >
-                <header className="-mt-6 overflow-x-auto">
-                    <h1 className="inline-flex items-baseline gap-1 whitespace-nowrap">
-                        <span className="text-2xl font-semibold">
-                            {tNav("items.unusualRealMoneyInflow")}
-                        </span>
+                dir={isPersian ? "rtl" : "ltr"}>                
+                <header className="-mt-6 flex flex-wrap items-center justify-between gap-3">
+                   <h1 className="inline-flex items-baseline gap-1 whitespace-nowrap">
+                       <span className="text-2xl font-semibold">
+                           {isPersian
+                               ? "جریان پول حقیقی غیرعادی"
+                               : "Unusual Real Money Flow"}
+                       </span>
 
-                        <span className="text-sm font-normal text-muted-foreground">
-                            ({tNav("sections.marketMonitoring")})
-                        </span>
-                    </h1>
+                       <span className="text-sm font-normal text-muted-foreground">
+                           ({tNav("sections.marketMonitoring")})
+                       </span>
+                   </h1>   
+                   <div role="group"                   
+                        aria-label={isPersian                         
+                                      ? "جهت جریان پول"                                      
+                                      : "Money flow direction"                                      
+                                   }                                   
+                        className="inline-flex items-center gap-1 rounded-xl
+                                   border border-border bg-muted/40 p-1">                   
+                       <button type="button"                       
+                               aria-pressed={direction === "Inflow"}                               
+                               onClick={() => {                               
+                                 setDirection("Inflow");                                 
+                                 setPageNumber(1);                                 
+                                              }                                              
+                                       }                                       
+                               className={`rounded-lg px-4 py-2 text-sm font-semibold                               
+                                           transition-colors ${direction === "Inflow"                                           
+                                               ? "bg-emerald-600 text-white shadow-sm"                                               
+                                               : "text-muted-foreground hover:bg-muted"}`}>                       
+                          {isPersian ? "ورود پول حقیقی" : "Real Money Inflow"}
+                       </button>
+                       <button
+                          type="button"
+                          aria-pressed={direction === "Outflow"}
+                          onClick={() => {
+                              setDirection("Outflow");
+                              setPageNumber(1);
+                          }}
+                          className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                              direction === "Outflow"
+                                  ? "bg-rose-600 text-white shadow-sm"
+                                  : "text-muted-foreground hover:bg-muted"
+                          }`}>
+                          {isPersian ? "خروج پول حقیقی" : "Real Money Outflow"}
+                       </button>
+                    </div>         
                 </header>
-
-                {/* Compact responsive parameter form */}
-                
+                {/* Compact responsive parameter form */}                
                 <form onSubmit={event => {                
                        event.preventDefault();                       
                        applyFilters(); }}
-                      className="-mt-2 px-4 rounded-lg bg-emerald-50/70 
-                                 dark:bg-emerald-950/20"
-                >
+                      className={`-mt-2 px-4 rounded-lg                      
+                                 ${ direction === "Inflow"                                 
+                                    ? "bg-emerald-50/70 dark:bg-emerald-950/20"                                    
+                                    : "bg-rose-100/80 dark:bg-rose-900/40"                                    
+                                  }`}>
                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <h2 className="text-sm font-semibold">
                          {t("realMoneyFlow.parameters.title")}
                       </h2>                      
                       <span className="text-xs text-muted-foreground">
                          {t("realMoneyFlow.parameters.usage", {used: changedCount,                          
-                                                              limit: allowedChanges,}                                                              
+                                                               limit: allowedChanges,}                                                              
                            )                   
                          }
                       </span>
@@ -405,8 +442,16 @@ export default function RealMoneyFlowPage() {
                                                         className="flex flex-col gap-1">
                                                       <div className="flex items-center gap-1.5">                                                
                                                             <label htmlFor={`flow-parameter-${key}`}                                                
-                                                                   className="text-xs font-medium">
-                                                               {t(`realMoneyFlow.parameters.${key}`)}
+                                                                   className="text-xs font-medium">                                                               
+                                                               {key === "minZScore"                                                                
+                                                                    ? direction === "Inflow"                                                                     
+                                                                         ? (isPersian ? "حداقل امتیاز Z ورود" : "Minimum Inflow Z-Score")                                                                         
+                                                                         : (isPersian ? "حداقل امتیاز Z خروج" : "Minimum Outflow Z-Score")                                                                         
+                                                                    : key === "minFlowMultiple"                                                                    
+                                                                         ? direction === "Inflow"                                                                          
+                                                                               ? (isPersian ? "حداقل ضریب ورود پول" : "Minimum Inflow Multiple")                                                                               
+                                                                               : (isPersian ? "حداقل ضریب خروج پول" : "Minimum Outflow Multiple")                                                                               
+                                                                         : t(`realMoneyFlow.parameters.${key}`)}
                                                             </label>                                                
                                                             <button type="button"                                                
                                                                     data-flow-info                                                        
@@ -528,8 +573,6 @@ export default function RealMoneyFlowPage() {
                        </p>
                    )}
                 </form>
-
-
                 {/* Report status */}
                 {loading && (
                     <p className="text-muted-foreground">
@@ -565,10 +608,31 @@ export default function RealMoneyFlowPage() {
                                                         className="whitespace-nowrap px-3 py-2 text-start font-medium"
                                                     >
                                                         <div className="flex items-center gap-1.5">
-                                                            <span>
-                                                                {t(`realMoneyFlow.${key}`)}
+                                                            <span>                                                                
+                                                              {key === "netFlow"                                                              
+                                                                ? direction === "Inflow"                                                                
+                                                                  ? (isPersian                                                                   
+                                                                      ? "خالص ورود پول حقیقی"                                                                   
+                                                                      : "Net Real Money Inflow")
+                                                                  : (isPersian ? "خالص خروج پول حقیقی"                                                                 
+                                                                               : "Net Real Money Outflow")                                                                               
+                                                                : key === "zScore"                                                                
+                                                                      ? direction === "Inflow"                                                                      
+                                                                         ? (isPersian                                                                          
+                                                                             ? "امتیاز Z ورود"                                                                              
+                                                                             : "Inflow Z-Score")                                                                             
+                                                                         : (isPersian                                                                          
+                                                                             ? "امتیاز Z خروج"                                                                             
+                                                                             : "Outflow Z-Score")                                                                             
+                                                                      : key === "flowMultiple"                                                                      
+                                                                             ? direction === "Inflow"                                                                             
+                                                                                ? (isPersian                                                                                
+                                                                                   ? "ضریب ورود پول"                                                                                   
+                                                                                   : "Inflow Multiple")                                                                                   
+                                                                                : (isPersian ? "ضریب خروج پول"                                                                                 
+                                                                                             : "Outflow Multiple")                                                                                              
+                                                                             : t(`realMoneyFlow.${key}`)}
                                                             </span>
-
                                                             {INFO_COLUMNS.has(key) && (
                                                                 <button
                                                                     type="button"
@@ -604,7 +668,6 @@ export default function RealMoneyFlowPage() {
                                             })}
                                         </tr>
                                     </thead>
-
                                     <tbody>
                                         {data.items.map(item => {
                                             const priceChange =
@@ -625,8 +688,12 @@ export default function RealMoneyFlowPage() {
                                                     </td>
 
                                                     <td className="whitespace-nowrap px-3 py-2 tabular-nums">
-                                                        <span dir="ltr" className="inline-block whitespace-nowrap">                                                        
-                                                           {formatNumber(item.netFlow / 1_000_000, 0)} m                                                        
+                                                        <span dir="ltr" className={direction === "Outflow"                                                        
+                                                                                    ? "text-rose-600"                                                                                    
+                                                                                    : "text-emerald-600"}>                                                        
+                                                           {formatNumber(direction === "Outflow"                                                           
+                                                               ? Math.abs(item.netFlow) / 1_000_000                                                               
+                                                               : item.netFlow / 1_000_000, 0)} m                                                        
                                                         </span>
                                                     </td>
 

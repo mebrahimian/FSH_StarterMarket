@@ -36,7 +36,8 @@ public sealed class GetRealMoneyFlowReportQueryHandler(
             request.MinFlowMultiple < 0 ||
             request.MinTradeValueMultiple < 0 ||
             request.PageNumber < 1 ||
-            request.PageSize is < 1 or > 100)
+            request.PageSize is < 1 or > 100 ||
+            !Enum.IsDefined(request.Direction))
         {
             throw new CustomException(
                 "Invalid real money flow parameters.",
@@ -253,7 +254,8 @@ public sealed class GetRealMoneyFlowReportQueryHandler(
 
             var signal = RealMoneyFlowSignalCalculator.Calculate(
                 history,
-                parameters);
+                parameters,
+                request.Direction);
 
             if (signal?.IsUnusual != true)
                 continue;

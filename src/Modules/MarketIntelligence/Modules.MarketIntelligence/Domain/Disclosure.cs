@@ -14,6 +14,19 @@ public sealed class Disclosure : BaseEntity<Guid>, IGlobalEntity
     /// </summary>
     public long TracingNo { get; private set; }
 
+    public long? PreviousVersionTracingNo { get; private set; }
+    public void AssignPreviousVersion(long previousTracingNo)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(previousTracingNo);
+
+        if (previousTracingNo == TracingNo)
+        {
+            throw new InvalidOperationException(
+                "A disclosure cannot correct itself.");
+        }
+
+        PreviousVersionTracingNo = previousTracingNo;
+    }
     /// <summary>
     /// Stock symbol associated with the disclosure.
     /// </summary>

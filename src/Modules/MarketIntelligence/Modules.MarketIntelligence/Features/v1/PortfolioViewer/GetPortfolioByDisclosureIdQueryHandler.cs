@@ -39,7 +39,50 @@ public sealed class GetPortfolioByDisclosureIdQueryHandler(
 
         if (positions.Count == 0)
         {
-            return null;
+            // The requested disclosure may have been superseded
+            // by a newer revision. Resolve its parent company.
+
+            int? requestedCompanyId = await dbContext.Disclosures
+                .AsNoTracking()
+                .Where(disclosure =>
+                    disclosure.Id == query.DisclosureId)
+                .Select(disclosure => disclosure.CompanyId)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!requestedCompanyId.HasValue)
+            {
+                return null;
+            }
+
+            // Find the latest available portfolio for the company,
+            // regardless of the originally requested disclosure.
+
+            Guid? latestDisclosureId =
+                await dbContext.InvestmentPortfolioPositions
+                    .AsNoTracking()
+                    .Where(position =>
+                        position.ParentCompanyId == requestedCompanyId.Value)
+                    .OrderByDescending(position =>
+                        position.PeriodEndDate)
+                    .ThenByDescending(position =>
+                        position.PublishDateTime)
+                    .ThenByDescending(position =>
+                        position.TracingNo)
+                    .Select(position =>
+                        (Guid?)position.DisclosureId)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+            if (!latestDisclosureId.HasValue)
+            {
+                return null;
+            }
+
+            return await Handle(
+                new GetPortfolioByDisclosureIdQuery(
+                    latestDisclosureId.Value),
+                cancellationToken);
         }
         logger.LogInformation("Portfolio handler started");
         var firstPosition = positions[0];

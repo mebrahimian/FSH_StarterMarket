@@ -937,13 +937,13 @@ const rule0Issues: DataQualityIssue[] =
             <PageHero   className="-mt-5 [&>div]:!py-3 sm:[&>div]:!py-3"
                 title={tMarket("healthCenter.title")}
                 subtitle={tMarket("healthCenter.subtitle")}
-                actions={
-
-                    
-                    <div className="-mt-5 flex w-[600px] flex-col items-start gap-2 self-start">
-
+                actions={                    
+                    <div className="-mt-5 flex w-full max-w-[600px] min-w-0 flex-col items-start gap-2 self-start">
                         <CodalOperationsPanel />
-                        <div className="mt-2 grid w-full grid-cols-4 gap-1">
+                        <div className="mt-2 grid w-full min-w-0 grid-cols-2 gap-1 
+                                        sm:grid-cols-4 [&>button]:min-w-0 [&>button]:h-auto 
+                                        [&>button]:min-h-9 [&>button]:whitespace-normal 
+                                        [&>button]:px-2 [&>button]:py-2 [&>button]:text-center">
                             <Button
                                 type="button"
                                 variant="outline"

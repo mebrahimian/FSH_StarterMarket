@@ -26,6 +26,7 @@ public sealed class PortfolioChildCompanyResolver(
             "اوراقمشارکت(پذیرفتهشدهدربورس)",
             "اوراقمشارکت)پذیرفتهشدهدربورس(",
             "(حقتقدم)",
+            "بازارخارجازبورس(otc)",
             "دراوراقبهاداربادرآمدثابتکاریزما",
             "سایرسهامدرجشدهدربازارهایپایهفرابورس"
         };
@@ -152,74 +153,6 @@ public sealed class PortfolioChildCompanyResolver(
             .Select(x => x.CompanyId)
             .Distinct()
             .ToArray();
-
-        if (companyIds.Length == 1)
-        {
-            var alias = aliases[0];
-
-            if (alias.HoldingAssetId.HasValue)
-            {
-                PortfolioHoldingAsset? asset =
-                    await dbContext.PortfolioHoldingAssets
-                        .FirstOrDefaultAsync(
-                            x => x.Id == alias.HoldingAssetId.Value,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-
-                if (asset is not null)
-                {
-                    PortfolioHoldingAssetIdentity identity =
-                        await holdingAssetIdentityResolver
-                            .ResolveAsync(
-                                asset,
-                                cancellationToken)
-                            .ConfigureAwait(false);
-
-                    return new PortfolioChildCompanyResolution(
-                        CompanyId: identity.CompanyId,
-                        HoldingAssetId: asset.Id,
-                        IsListed: identity.IsListed,
-                        IsExcluded: false,
-                        FSortName: fSortName);
-                }
-            }
-
-            int aliasCompanyId = companyIds[0];
-
-            var masterById = await dbContext.CompanyMaster
-                .FirstOrDefaultAsync(
-                    x => x.CompanyId == aliasCompanyId,
-                    cancellationToken)
-                .ConfigureAwait(false);
-
-            if (masterById is not null)
-            {
-                PortfolioHoldingAsset asset =
-                    await ResolveHoldingAssetAsync(
-                        masterById.CompanyId,
-                        masterById.IsListed,
-                        masterById.CompanyName,
-                        masterById.FSortName,
-                        masterById.Symbol,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-
-                alias.AssignHoldingAsset(asset.Id);
-
-                await dbContext.SaveChangesAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                return new PortfolioChildCompanyResolution(
-                    CompanyId: masterById.CompanyId,
-                    HoldingAssetId: asset.Id,
-                    IsListed: masterById.IsListed,
-                    IsExcluded: false,
-                    FSortName: fSortName);
-            }
-
-            // Alias تاریخی است ولی CompanyId آن دیگر canonical نیست.
-            // اینجا return نمی‌کنیم؛ می‌افتد روی CompanyMaster-by-name و بعد Codal.
-        }
         var masterMatches = await dbContext.CompanyMaster
                 .Where(x => x.FSortName == fSortName)
                 .ToListAsync(cancellationToken)
@@ -268,6 +201,90 @@ public sealed class PortfolioChildCompanyResolver(
                 IsExcluded: false,
                 FSortName: fSortName);
         }
+
+        if (companyIds.Length == 1)
+        {
+            var alias = aliases[0];
+
+            if (alias.HoldingAssetId.HasValue)
+            {
+                PortfolioHoldingAsset? asset =
+                    await dbContext.PortfolioHoldingAssets
+                        .FirstOrDefaultAsync(
+                            x => x.Id == alias.HoldingAssetId.Value,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                if (asset is not null)
+                {
+
+                    bool aliasMatchesAsset = alias.IsListed
+                        ? asset.ListedCompanyId == alias.CompanyId
+                        : asset.UnlistedCompanyId == alias.CompanyId;
+
+                    if (aliasMatchesAsset)
+                    {
+                        return new PortfolioChildCompanyResolution(
+                            CompanyId: alias.CompanyId,
+                            HoldingAssetId: asset.Id,
+                            IsListed: alias.IsListed,
+                            IsExcluded: false,
+                            FSortName: fSortName);
+                    }
+
+                    PortfolioHoldingAssetIdentity identity =
+                        await holdingAssetIdentityResolver
+                        .ResolveAsync(
+                            asset,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return new PortfolioChildCompanyResolution(
+                        CompanyId: identity.CompanyId,
+                        HoldingAssetId: asset.Id,
+                        IsListed: identity.IsListed,
+                        IsExcluded: false,
+                        FSortName: fSortName);
+                }
+            }
+
+            int aliasCompanyId = companyIds[0];
+
+            var masterById = await dbContext.CompanyMaster
+                .FirstOrDefaultAsync(
+                    x => x.CompanyId == aliasCompanyId,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (masterById is not null)
+            {
+                PortfolioHoldingAsset asset =
+                    await ResolveHoldingAssetAsync(
+                        masterById.CompanyId,
+                        masterById.IsListed,
+                        masterById.CompanyName,
+                        masterById.FSortName,
+                        masterById.Symbol,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+
+                alias.AssignHoldingAsset(asset.Id);
+
+                await dbContext.SaveChangesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                return new PortfolioChildCompanyResolution(
+                    CompanyId: masterById.CompanyId,
+                    HoldingAssetId: asset.Id,
+                    IsListed: masterById.IsListed,
+                    IsExcluded: false,
+                    FSortName: fSortName);
+            }
+
+            // Alias تاریخی است ولی CompanyId آن دیگر canonical نیست.
+            // اینجا return نمی‌کنیم؛ می‌افتد روی CompanyMaster-by-name و بعد Codal.
+        }
+        
         const string rightsSuffix = "(حقتقدم)";
 
         if (fSortName.EndsWith(

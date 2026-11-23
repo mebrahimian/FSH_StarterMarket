@@ -7,7 +7,8 @@ namespace FSH.Modules.MarketIntelligence.Data.Configurations;
 public sealed class InvestmentPortfolioHoldingPeriodConfiguration :
     IEntityTypeConfiguration<InvestmentPortfolioHoldingPeriod>
 {
-    public void Configure(EntityTypeBuilder<InvestmentPortfolioHoldingPeriod> builder)
+    public void Configure(
+        EntityTypeBuilder<InvestmentPortfolioHoldingPeriod> builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
@@ -17,33 +18,21 @@ public sealed class InvestmentPortfolioHoldingPeriodConfiguration :
             .HasMaxLength(64)
             .IsRequired();
 
-        builder.Property(x => x.EntryDate)
+        builder.Property(x => x.ChangeDate)
             .HasMaxLength(10)
             .IsRequired();
 
-        builder.Property(x => x.ExitDate)
-            .HasMaxLength(10);
+        builder.Property(x => x.CurrentQuantity)
+            .HasPrecision(28, 6)
+            .IsRequired();
 
         builder.HasIndex(x => new
         {
             x.ParentSymbol,
             x.HoldingAssetId,
-            x.EntryDate
+            x.ChangeDate
         })
         .IsUnique();
-
-        builder.HasIndex(x => new
-        {
-            x.ParentSymbol,
-            x.IsActive
-        });
-        builder.HasIndex(x => new
-        {
-            x.ParentSymbol,
-            x.HoldingAssetId
-        })
-        .IsUnique()
-        .HasFilter("[IsActive] = 1");
 
         builder.HasIndex(x => x.HoldingAssetId);
 

@@ -5,6 +5,7 @@ using Mediator;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using FSH.Modules.MarketIntelligence.Services.Tsetmc;
 
 namespace FSH.Modules.MarketIntelligence.Features.v1.RealMoneyFlow;
 
@@ -18,6 +19,7 @@ public static class GetRealMoneyFlowReportEndpoint
                 "/real-money-flow",
                 (
                     DateOnly? tradeDate,
+                    RealMoneyFlowDirection? direction,
                     int? lookbackDays,
                     decimal? minZScore,
                     decimal? minFlowMultiple,
@@ -36,7 +38,8 @@ public static class GetRealMoneyFlowReportEndpoint
                         MinTradeValueMultiple: minTradeValueMultiple ?? 1.5m,
                         CompanyId: companyId,
                         PageNumber: pageNumber ?? 1,
-                        PageSize: pageSize ?? 20);
+                        PageSize: pageSize ?? 20,
+                        Direction: direction ?? RealMoneyFlowDirection.Inflow);
 
                     return mediator.Send(
                         new GetRealMoneyFlowReportQuery(request),

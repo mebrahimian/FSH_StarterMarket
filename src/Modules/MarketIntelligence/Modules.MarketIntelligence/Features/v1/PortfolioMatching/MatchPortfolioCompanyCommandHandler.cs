@@ -51,6 +51,29 @@ public sealed class MatchPortfolioCompanyCommandHandler(
                             "The selected target company was not found.");
                     }
 
+                    int[] exactCompanyIds =
+                        await dbContext.CompanyMaster
+                            .AsNoTracking()
+                            .Where(company =>
+                                company.FSortName == fSortName)
+                            .Select(company => company.CompanyId)
+                            .Distinct()
+                            .ToArrayAsync(cancellationToken)
+                            .ConfigureAwait(false);
+
+                    // If the normalized name already matches a company
+                    // in CompanyMaster, manual matching must not redirect
+                    // it to an unrelated CompanyId.
+                    if (exactCompanyIds.Length > 0 &&
+                        !exactCompanyIds.Contains(targetCompany.CompanyId))
+                    {
+                        throw new InvalidOperationException(
+                            $"Invalid portfolio company match. " +
+                            $"FSortName={fSortName}, " +
+                            $"SelectedCompanyId={targetCompany.CompanyId}, " +
+                            $"ExpectedCompanyIds={string.Join(",", exactCompanyIds)}.");
+                    }
+
                     // تمام Aliasهای همین نام را بررسی می‌کنیم،
                     // بدون توجه به IsListed.
                     List<PortfolioCompanyAlias> existingAliases =

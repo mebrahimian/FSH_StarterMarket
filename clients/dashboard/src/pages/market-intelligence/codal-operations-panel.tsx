@@ -301,9 +301,12 @@ export function CodalOperationsPanel({
             : "";
 
     return (
-        <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]  shadow-xs">
-            <div className="flex w-[600px] flex-col items-start gap-2 self-start">
-                <div className="grid w-full grid-cols-4 overflow-hidden rounded-xl border border-border/70 bg-background">
+        <section className="w-full min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-xs">
+            <div className="flex w-full max-w-[600px] min-w-0 flex-col items-start gap-2 self-start">
+                <div className="grid w-full min-w-0 grid-cols-4 overflow-hidden 
+                                rounded-xl border border-border/70 bg-background [&>button]:min-w-0 
+                                [&>button]:h-auto [&>button]:min-h-9 [&>button]:whitespace-normal 
+                                [&>button]:px-2 [&>button]:py-2 [&>button]:text-center">
                     <Button
                         type="button"
                         size="sm"

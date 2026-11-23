@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using MimeKit;
+using System.Globalization;
 using System.Text.Json;
 
 namespace FSH.Modules.MarketIntelligence.Services.Codal;
@@ -629,11 +630,67 @@ internal static class CodalCellReader
             html,
             "ctl00_txbUnauthorizedCapital");
 
+        long? previousVersionTracingNo = null;
+
+        var previousLink = System.Text.RegularExpressions.Regex.Match(
+            html,
+            """<a\b[^>]*\bid\s*=\s*["'][^"']*hlPrevVersion["'][^>]*>(?<content>.*?)</a>""",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+            System.Text.RegularExpressions.RegexOptions.Singleline,
+            TimeSpan.FromSeconds(1));
+
+        if (previousLink.Success)
+        {
+            string linkText = System.Net.WebUtility.HtmlDecode(
+                System.Text.RegularExpressions.Regex.Replace(
+                    previousLink.Groups["content"].Value,
+                    "<[^>]+>",
+                    " ",
+                    System.Text.RegularExpressions.RegexOptions.Singleline,
+                    TimeSpan.FromSeconds(1)));
+
+            var numberMatch = System.Text.RegularExpressions.Regex.Match(
+                linkText,
+                @"اصلاحیه\s+اطلاعیه\s+شماره\s*\(\s*(?<number>[0-9۰-۹٠-٩]+)\s*\)",
+                System.Text.RegularExpressions.RegexOptions.None,
+                TimeSpan.FromSeconds(1));
+
+            if (numberMatch.Success)
+            {
+                string digits = new string(
+                    numberMatch.Groups["number"].Value
+                    .Select(c =>
+                    {
+                        if (c is >= '۰' and <= '۹')
+                        {
+                            return (char)('0' + c - '۰');
+                        }
+                        if (c is >= '٠' and <= '٩')
+                        {
+                            return (char)('0' + c - '٠');
+                        }
+                        return c;
+                    })
+                    .ToArray());
+
+                if (long.TryParse(
+                        digits,
+                        NumberStyles.None,
+                        CultureInfo.InvariantCulture,
+                        out long tracingNo) &&
+                    tracingNo > 0)
+                {
+                    previousVersionTracingNo = tracingNo;
+                }
+            }
+        }
+
         return new CodalReportHeaderData(
             ReportSymbol: reportSymbol,
             ReportCompanyName: reportCompanyName,
             RegisteredCapital: registeredCapital,
-            UnauthorizedCapital: unauthorizedCapital);
+            UnauthorizedCapital: unauthorizedCapital,
+            PreviousVersionTracingNo: previousVersionTracingNo);
     }
     private static List<CodalDatasourceMetadata> BuildMetadata(
     JsonElement root,
@@ -684,7 +741,8 @@ internal static class CodalCellReader
                         ReportSymbol: header.ReportSymbol,
                         ReportCompanyName: header.ReportCompanyName,
                         RegisteredCapital: header.RegisteredCapital,
-                        UnauthorizedCapital: header.UnauthorizedCapital));
+                        UnauthorizedCapital: header.UnauthorizedCapital,
+                        PreviousVersionTracingNo: header.PreviousVersionTracingNo));
             }
         }
 
@@ -1147,7 +1205,8 @@ internal sealed record CodalDatasourceMetadata(
     string? ReportSymbol,
     string? ReportCompanyName,
     decimal? RegisteredCapital,
-    decimal? UnauthorizedCapital);
+    decimal? UnauthorizedCapital,
+    long? PreviousVersionTracingNo);
 
 internal sealed record CodalTableRow(
     int RowSequence,
@@ -1159,5 +1218,6 @@ internal sealed record CodalReportHeaderData(
     string? ReportSymbol,
     string? ReportCompanyName,
     decimal? RegisteredCapital,
-    decimal? UnauthorizedCapital);
+    decimal? UnauthorizedCapital,
+    long? PreviousVersionTracingNo = null);
     

@@ -300,7 +300,10 @@
       "tradeValueMultiple": "Trading value on the signal date divided by the average trading value over the previous {{days}} trading days.",
       "priceChange": "Percentage price change from the start of the lookback period to the signal date, not the one-day price change. Capital-increase-adjusted prices are used when valid adjustment data is available.",
       "hint": "Click the i icon next to a column to see its explanation.",
-      "lookbackDays": "Number of previous trading days used to calculate average money flow, standard deviation, and average trading value. The default is 20 trading days."
+      "lookbackDays": "Number of previous trading days used to calculate average money flow, standard deviation, and average trading value. The default is 20 trading days.",
+      "netFlowOutflow": "Net real money flow equals individual buy value minus individual sell value. A negative value indicates net real money outflow.",
+      "zScoreOutflow": "Outflow Z-Score = (Average net flow over the previous {{days}} trading days − Net flow on the signal date) ÷ Standard deviation over the same period. Higher scores indicate more unusual outflow.",
+      "flowMultipleOutflow": "Absolute net real money outflow on the signal date divided by the average absolute net flow over the previous {{days}} trading days. Both inflow and outflow days contribute to the historical average."
     }
   }
   
